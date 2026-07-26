@@ -10,7 +10,7 @@ import {
 } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, PotionBelt, StatusRow, TopBar } from '../components'
 import { POTIONS } from '@neonspire/engine'
-import { doCombat, playCardWithFx, resolveCombatIfOver, usePotion } from '../game'
+import { discardPotion, doCombat, playCardWithFx, resolveCombatIfOver, usePotion } from '../game'
 import { defeatFx, flyMini, fxPulses, fxRemainingMs, localWho, registerAnchor, useShake, victoryFx } from '../fx'
 import { combat, pileView, run } from '../store'
 import { byName } from '../components'
@@ -227,7 +227,7 @@ export function CombatScreen() {
         </div>
       )}
 
-      <PotionBelt cls="incombat" onUse={clickPotion} selected={potionSel} />
+      <PotionBelt cls="incombat" onUse={clickPotion} onDrop={discardPotion} selected={potionSel} />
 
       <div class="dock">
         <div

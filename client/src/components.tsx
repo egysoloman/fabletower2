@@ -24,7 +24,7 @@ import { muted, sfx, toggleMute } from './sfx'
 import { burst, fxPulses, registerAnchor } from './fx'
 import { lang, t, tf, toggleLang } from './i18n'
 import { SoundIcon } from './sprites'
-import { abandonRun } from './game'
+import { abandonRun, discardPotion } from './game'
 
 export function CardView(props: {
   card: CardInst
@@ -115,7 +115,12 @@ export function RelicBar(props: { relics: string[] }) {
 }
 
 /** Potion chips. Interactive in combat (onUse), read-only elsewhere. */
-export function PotionBelt(props: { onUse?: (idx: number) => void; selected?: number | null; cls?: string }) {
+export function PotionBelt(props: {
+  onUse?: (idx: number) => void
+  onDrop?: (idx: number) => void
+  selected?: number | null
+  cls?: string
+}) {
   void lang.value
   const r = run.value
   if (!r || r.potions.length === 0) return null
@@ -125,13 +130,26 @@ export function PotionBelt(props: { onUse?: (idx: number) => void; selected?: nu
         const def = POTIONS[id]
         if (!def) return null
         return (
-          <div
-            key={i}
-            class={`potion ${def.rarity} ${props.onUse ? 'usable' : ''} ${props.selected === i ? 'selected' : ''}`}
-            data-tip={`${potionName(id)}\n${potionDesc(id)}`}
-            onClick={() => props.onUse?.(i)}
-          >
-            {def.sym}
+          <div key={i} class="potionwrap">
+            <div
+              class={`potion ${def.rarity} ${props.onUse ? 'usable' : ''} ${props.selected === i ? 'selected' : ''}`}
+              data-tip={`${potionName(id)}\n${potionDesc(id)}`}
+              onClick={() => props.onUse?.(i)}
+            >
+              {def.sym}
+            </div>
+            {props.onDrop && (
+              <div
+                class="potdrop"
+                data-tip={t('dropPotion')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  props.onDrop!(i)
+                }}
+              >
+                ×
+              </div>
+            )}
           </div>
         )
       })}
@@ -156,7 +174,7 @@ export function TopBar(props: { showAbandon?: boolean }) {
         {r.asc > 0 ? ` · A${r.asc}` : ''}
       </span>
       <RelicBar relics={r.relics} />
-      {screen.value !== 'combat' && <PotionBelt cls="inbar" />}
+      {screen.value !== 'combat' && <PotionBelt cls="inbar" onDrop={discardPotion} />}
       <span class="spacer" />
       <span
         class={`stat linkish ${fxPulses.value['deck'] ?? ''}`}

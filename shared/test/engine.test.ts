@@ -879,3 +879,46 @@ describe('artifact & events (cycle 7)', () => {
     }
   })
 })
+
+describe('ascension 6-10 (cycle 8)', () => {
+  it('A10 doubles the curse and cuts max hp to 60', async () => {
+    const { MAX_ASC } = await import('../src/run')
+    expect(MAX_ASC).toBe(10)
+    const r10 = newRun(1, 10)
+    expect(r10.deck.filter((c) => c.id === 'lag').length).toBe(2)
+    expect(r10.maxHp).toBe(60)
+    expect(newRun(1, 9).deck.filter((c) => c.id === 'lag').length).toBe(1)
+  })
+
+  it('A6 weakens rests and A9 narrows boss choices', async () => {
+    const { bossRelicChoices } = await import('../src/run')
+    const r6 = newRun(2, 6)
+    expect(restHealAmount(r6)).toBe(Math.floor(r6.maxHp * 0.2))
+    expect(bossRelicChoices(newRun(3, 9)).length).toBe(2)
+    expect(bossRelicChoices(newRun(3, 0)).length).toBe(3)
+  })
+
+  it('A8 marks up every shop price by 20%', () => {
+    const s0 = genShop(newRun(4, 0))
+    const s8 = genShop(newRun(4, 8))
+    expect(s8.removePrice).toBe(Math.floor(s0.removePrice * 1.2))
+    for (let i = 0; i < s0.cards.length; i++) {
+      expect(s8.cards[i].id).toBe(s0.cards[i].id)
+      expect(s8.cards[i].price).toBe(Math.floor(s0.cards[i].price * 1.2))
+    }
+  })
+
+  it('A7 drops potions less often', async () => {
+    const { rollPotionDrop } = await import('../src/run')
+    const count = (asc: number) => {
+      const run = newRun(6, asc)
+      let n = 0
+      for (let i = 0; i < 200; i++) {
+        run.potions = []
+        if (rollPotionDrop(run)) n++
+      }
+      return n
+    }
+    expect(count(7)).toBeLessThan(count(0))
+  })
+})

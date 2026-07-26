@@ -27,15 +27,16 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
   ],
 }
 
-export const MAX_ASC = 5
+export const MAX_ASC = 10
 
 export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState {
   const rng = rngFromSeed(seed)
   let uid = 1
   const deck = STARTER_DECKS[char].map((id): CardInst => ({ uid: uid++, id, up: false }))
-  // A2+: the Spire rides along — start cursed.
+  // A2+: the Spire rides along — start cursed. A10 doubles down.
   if (asc >= 2) deck.push({ uid: uid++, id: 'lag', up: false })
-  const maxHp = asc >= 5 ? 65 : 75
+  if (asc >= 10) deck.push({ uid: uid++, id: 'lag', up: false })
+  const maxHp = asc >= 10 ? 60 : asc >= 5 ? 65 : 75
   return {
     seed,
     rng,
@@ -160,15 +161,16 @@ export function bossRelicId(run: RunState): string | null {
   return pick(run.rng, pool).id
 }
 
-/** Up to 3 relics offered after a boss: boss-rarity first, rare fills in. */
+/** Up to 3 relics offered after a boss (A9+: only 2): boss-rarity first, rare fills in. */
 export function bossRelicChoices(run: RunState): string[] {
+  const want = run.asc >= 9 ? 2 : 3
   const pool = obtainableRelics(run.relics, true)
   const bosses = pool.filter((r) => r.rarity === 'boss')
   const rares = pool.filter((r) => r.rarity === 'rare')
   const out: string[] = []
   for (const group of [bosses, rares]) {
     const bag = [...group]
-    while (out.length < 3 && bag.length > 0) {
+    while (out.length < want && bag.length > 0) {
       out.push(bag.splice(Math.floor(rand(run.rng) * bag.length), 1)[0].id)
     }
   }
@@ -186,9 +188,9 @@ export function randomPotionId(run: RunState): string {
   return rand(run.rng) < 0.22 ? pick(run.rng, rares).id : pick(run.rng, commons).id
 }
 
-/** ~35% of combat victories drop a potion (if there's belt space). */
+/** ~35% of combat victories drop a potion (A7+: 25%), if there's belt space. */
 export function rollPotionDrop(run: RunState): string | null {
-  if (rand(run.rng) >= 0.35) return null
+  if (rand(run.rng) >= (run.asc >= 7 ? 0.25 : 0.35)) return null
   if (run.potions.length >= MAX_POTIONS) return null
   return randomPotionId(run)
 }
@@ -218,6 +220,8 @@ const CARD_PRICE: Record<string, [number, number]> = {
 }
 
 export function genShop(run: RunState): ShopStock {
+  // A8+: everything on the grey market costs 20% more.
+  const mark = (p: number) => (run.asc >= 8 ? Math.floor(p * 1.2) : p)
   const cards: ShopStock['cards'] = []
   let guard = 0
   while (cards.length < 5 && guard++ < 60) {
@@ -226,13 +230,13 @@ export function genShop(run: RunState): ShopStock {
     const def = pick(run.rng, cardsByRarity(rarity, run.char))
     if (cards.some((c) => c.id === def.id)) continue
     const [lo, hi] = CARD_PRICE[rarity]
-    cards.push({ id: def.id, price: randInt(run.rng, lo, hi), sold: false })
+    cards.push({ id: def.id, price: mark(randInt(run.rng, lo, hi)), sold: false })
   }
   const relicPool = obtainableRelics(run.relics)
   const relics: ShopStock['relics'] = []
   for (let i = 0; i < 2 && relicPool.length > 0; i++) {
     const def = relicPool.splice(Math.floor(rand(run.rng) * relicPool.length), 1)[0]
-    relics.push({ id: def.id, price: def.rarity === 'rare' ? randInt(run.rng, 220, 250) : randInt(run.rng, 140, 165), sold: false })
+    relics.push({ id: def.id, price: mark(def.rarity === 'rare' ? randInt(run.rng, 220, 250) : randInt(run.rng, 140, 165)), sold: false })
   }
   const potions: ShopStock['potions'] = []
   for (let i = 0; i < 2; i++) {
@@ -240,11 +244,11 @@ export function genShop(run: RunState): ShopStock {
     if (potions.some((p) => p.id === id)) continue
     potions.push({
       id,
-      price: POTIONS[id].rarity === 'rare' ? randInt(run.rng, 70, 90) : randInt(run.rng, 42, 58),
+      price: mark(POTIONS[id].rarity === 'rare' ? randInt(run.rng, 70, 90) : randInt(run.rng, 42, 58)),
       sold: false,
     })
   }
-  return { cards, relics, potions, removePrice: 75 + 25 * run.removesBought }
+  return { cards, relics, potions, removePrice: mark(75 + 25 * run.removesBought) }
 }
 
 // --- Rest / deck manipulation ----------------------------------------------
@@ -252,7 +256,7 @@ export function genShop(run: RunState): ShopStock {
 export function restHealAmount(run: RunState): number {
   let bonus = 0
   for (const r of run.relics) bonus += RELICS[r]?.hooks.restBonus ?? 0
-  return Math.floor(run.maxHp * (run.asc >= 3 ? 0.25 : 0.3)) + bonus
+  return Math.floor(run.maxHp * (run.asc >= 6 ? 0.2 : run.asc >= 3 ? 0.25 : 0.3)) + bonus
 }
 
 export function upgradeCard(run: RunState, uid: number): boolean {

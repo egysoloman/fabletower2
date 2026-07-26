@@ -414,6 +414,16 @@ export function continueFromReward() {
   saveGame()
 }
 
+/** Toss a potion to free belt space (any screen). */
+export function discardPotion(i: number) {
+  const r = run.value
+  if (!r || r.potions[i] === undefined) return
+  r.potions.splice(i, 1)
+  sfx.click()
+  touch()
+  saveGame()
+}
+
 /** Take the win at the surface: Act 3 cleared, run over. */
 export function jackOut() {
   const r = run.value

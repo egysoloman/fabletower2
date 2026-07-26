@@ -84,6 +84,7 @@ export function MenuScreen() {
             </button>
           </div>
         )}
+        {asc > 0 && <div class="ascmod">{t(`ascMod${asc}` as Parameters<typeof t>[0])}</div>}
         <button class="btn big" onClick={startDaily}>
           {t('dailyRun')}
         </button>
