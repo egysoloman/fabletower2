@@ -7,6 +7,7 @@ import { climbActive, climbOpp, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
+import { charColor } from './charselect'
 
 const ICONS: Record<NodeType, string> = {
   combat: '⚔',
@@ -90,6 +91,8 @@ export function MapScreen() {
   if (!r) return null
   const open = new Set(availableNodeIds(r))
   const done = new Set(r.path)
+  const pc = charColor(r.char)
+  const cur = r.pos ? byId.get(r.pos) : null
 
   // Slide a glowing marker along the path, then actually enter the node.
   const startTravel = (n: MapNode) => {
@@ -108,7 +111,7 @@ export function MapScreen() {
       step++
       const k = step / 5
       const p = toScreen(tr.fx + (tr.tx - tr.fx) * k, tr.fy + (tr.ty - tr.fy) * k)
-      if (p) burst(p.x, p.y, '#00e5ff', 4, 1.5)
+      if (p) burst(p.x, p.y, pc, 4, 1.5)
       if (step >= 5) clearInterval(trail)
     }, 80)
     setTimeout(() => clickNode(n.id), 500)
@@ -131,20 +134,31 @@ export function MapScreen() {
       )}
       <div class="act-title">{tf('actTitle', { act: r.act })}</div>
       <div class="map-wrap">
-        <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={svgRef}>
+        <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={svgRef} style={{ '--pc': pc } as never}>
           {nodes.flatMap((n) =>
             n.next.map((id) => {
               const m = byId.get(id)
               if (!m) return null
               const lit = (n.id === r.pos && open.has(id)) || (done.has(n.id) && done.has(id))
+              const walked = done.has(n.id) && done.has(id)
+              const d = `M ${cx(n)} ${cy(n)} C ${cx(n)} ${cy(n) - rowH / 2}, ${cx(m)} ${cy(m) + rowH / 2}, ${cx(m)} ${cy(m)}`
               return (
-                <path
-                  key={n.id + id}
-                  class={`map-edge ${lit ? 'lit' : ''}`}
-                  pathLength={1}
-                  style={{ '--row-delay': `${n.row * 70}ms` } as never}
-                  d={`M ${cx(n)} ${cy(n)} C ${cx(n)} ${cy(n) - rowH / 2}, ${cx(m)} ${cy(m) + rowH / 2}, ${cx(m)} ${cy(m)}`}
-                />
+                <g key={n.id + id}>
+                  <path
+                    class={`map-edge ${lit ? 'lit' : ''}`}
+                    pathLength={1}
+                    style={{ '--row-delay': `${n.row * 70}ms` } as never}
+                    d={d}
+                  />
+                  {walked && (
+                    <path
+                      class="map-pulse"
+                      pathLength={1}
+                      style={{ '--pd': `${(n.row * 0.408).toFixed(2)}s` } as never}
+                      d={d}
+                    />
+                  )}
+                </g>
               )
             }),
           )}
@@ -165,6 +179,16 @@ export function MapScreen() {
               </g>
             )
           })}
+          {cur && !travel && [0, 1].map((k) => (
+            <circle
+              key={'ring' + k}
+              class="cur-ring"
+              cx={cx(cur)}
+              cy={cy(cur)}
+              r={cur.type === 'boss' ? 26 : 16}
+              style={{ '--rd': `${k * 1.2}s` } as never}
+            />
+          ))}
           {travel && (
             <circle
               class="travel-dot"

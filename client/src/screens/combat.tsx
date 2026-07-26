@@ -240,7 +240,7 @@ export function CombatScreen() {
       </div>
 
       {(selected !== null || potionSel !== null) && (
-        <div class="turnbanner" style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9 }}>
+        <div class="turnbanner bare" style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9 }}>
           {t('selectTarget')}
         </div>
       )}

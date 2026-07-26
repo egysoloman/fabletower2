@@ -411,7 +411,7 @@ export function PvpScreen() {
       </div>
 
       {toast && (
-        <div class="turnbanner" style={{ top: '58%', fontSize: '16px', animation: 'none', color: 'var(--red)' }}>
+        <div class="turnbanner bare" style={{ top: '58%', fontSize: '16px', animation: 'none', color: 'var(--red)' }}>
           {toast}
         </div>
       )}

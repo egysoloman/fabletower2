@@ -281,7 +281,8 @@ export function RestScreen() {
           <div class="sub">{t('safehouseText')}</div>
           <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <div
-              class={`bigchoice ${used ? 'disabled' : ''}`}
+              class={`bigchoice pop-in ${used ? 'disabled' : ''}`}
+              style={{ '--i': 0 } as never}
               onClick={(e) => {
                 const p = evCenter(e)
                 burst(p.x, p.y, '#3dffa2', 18, 3)
@@ -292,7 +293,7 @@ export function RestScreen() {
               <div class="t">{t('recharge')}</div>
               <div class="d">{tf('rechargeDesc', { n: restHealAmount(r) })}</div>
             </div>
-            <div class={`bigchoice pink ${used ? 'disabled' : ''}`} onClick={restUpgrade}>
+            <div class={`bigchoice pop-in pink ${used ? 'disabled' : ''}`} style={{ '--i': 1 } as never} onClick={restUpgrade}>
               <div class="t">{t('patch')}</div>
               <div class="d">{t('patchDesc')}</div>
             </div>
@@ -327,11 +328,11 @@ export function DescendScreen() {
           <h2 class="pink">{t('descendTitle')}</h2>
           <div class="sub">{t('descendText')}</div>
           <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <div class="bigchoice pink" onClick={() => descendToRoot()}>
+            <div class="bigchoice pop-in pink" style={{ '--i': 0 } as never} onClick={() => descendToRoot()}>
               <div class="t">{t('descendGo')}</div>
               <div class="d">{t('descendGoDetail')}</div>
             </div>
-            <div class="bigchoice" onClick={() => jackOut()}>
+            <div class="bigchoice pop-in" style={{ '--i': 1 } as never} onClick={() => jackOut()}>
               <div class="t">{t('descendLeave')}</div>
               <div class="d">{t('descendLeaveDetail')}</div>
             </div>
@@ -374,7 +375,7 @@ export function EventScreen() {
             <>
               <div class="result-lines">
                 {lines.map((l, i) => (
-                  <div key={i}>▸ {l}</div>
+                  <div key={i} style={{ '--i': i } as never}>▸ {l}</div>
                 ))}
               </div>
               <button

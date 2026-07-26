@@ -34,6 +34,7 @@ import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand } from './hand'
+import { charColor } from './charselect'
 
 function defaultWsUrl(): string {
   const loc = window.location
@@ -194,7 +195,7 @@ export function CoopScreen() {
           ))}
         </div>
         {coopToast.value && (
-          <div class="turnbanner" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
+          <div class="turnbanner bare" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
             {coopToast.value}
           </div>
         )}
@@ -271,7 +272,7 @@ export function CoopScreen() {
           </div>
         )}
         {coopToast.value && (
-          <div class="turnbanner" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
+          <div class="turnbanner bare" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
             {coopToast.value}
           </div>
         )}
@@ -302,7 +303,16 @@ export function CoopScreen() {
                   </span>
                 </div>
               ))}
-              <div class="orbit-core" />
+              <div class="orbit-core" style={{ '--cc': charColor(m.party[0]?.char ?? 'runner') } as never} />
+              {m.party.map((p: any, i: number) =>
+                i === 0 ? null : (
+                  <div
+                    key={'ring' + i}
+                    class="orbit-ring"
+                    style={{ '--cc': charColor(p.char ?? 'runner'), '--rd': `${(i - 1) * 0.8}s` } as never}
+                  />
+                ),
+              )}
             </div>
             <div class="coopnodes">
               {(m.pos === null
@@ -454,7 +464,8 @@ export function CoopScreen() {
                 {ev.choices.map((ch, i) => (
                   <div
                     key={i}
-                    class={`bigchoice ${i % 2 ? 'pink' : ''} ${ch.needGold && coopEvent.value.gold < ch.needGold ? 'disabled' : ''}`}
+                    class={`bigchoice pop-in ${i % 2 ? 'pink' : ''} ${ch.needGold && coopEvent.value.gold < ch.needGold ? 'disabled' : ''}`}
+                    style={{ '--i': i } as never}
                     onClick={() => (coopSend({ t: 'coopeventpick', choice: i }), sfx.click())}
                   >
                     <div class="t">{eventChoiceLabel(ev, i)}</div>
