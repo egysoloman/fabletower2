@@ -19,6 +19,10 @@ import {
   coopSend,
   coopView,
   coopYou,
+  coopConn,
+  coopForm,
+  coopLobby,
+  coopReady,
 } from '../coopclient'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -188,7 +192,38 @@ export function CoopScreen() {
             </button>
           </>
         )}
-        {(phase === 'connecting' || phase === 'queued') && <div class="pulse">{t('coopGathering')}</div>}
+        {(phase === 'connecting' || phase === 'queued') && (
+          <>
+            <div class="pulse">{t('coopGathering')}</div>
+            {coopLobby.value && (
+              <div class="lobbylist">
+                {coopLobby.value.members.map((m: string) => (
+                  <div key={m} class="lobbyrow">{m}</div>
+                ))}
+                {Array.from({ length: Math.max(0, coopLobby.value.need) }).map((_, i) => (
+                  <div key={'w' + i} class="lobbyrow empty">{t('lobbyWaiting')}</div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {phase === 'form' && coopForm.value && (
+          <div class="panel popin">
+            <h2>{t('formTitle')}</h2>
+            <div class="lobbylist">
+              {coopForm.value.map((m: any) => (
+                <div key={m.tag} class={`lobbyrow ${m.ready ? 'ready' : ''}`}>
+                  <Sprite id={m.char} size={26} />
+                  <span>{m.tag}</span>
+                  <span class="rdy">{m.ready ? t('readyYes') : t('readyWait')}</span>
+                </div>
+              ))}
+            </div>
+            <button class="btn big pink" onClick={coopReady}>
+              {t('readyBtn')}
+            </button>
+          </div>
+        )}
         {phase === 'map' && m && (
           <>
             <div class="sub" style={{ color: 'var(--gold)' }}>

@@ -92,6 +92,12 @@ interface Client {
   name: string
   room: Room | null
   alive: boolean
+  /** Reconnect identity: stable across socket drops for one match. */
+  token: string | null
+  online: boolean
+  dcTimer: NodeJS.Timeout | null
+  /** Short public visitor id, shown next to names to disambiguate. */
+  vid: string
 }
 
 interface ClimbDeckEntry {
@@ -107,9 +113,43 @@ interface Room {
   /** Climb race only. */
   seed: number
   ready: [{ deck: ClimbDeckEntry[]; hp: number } | null, { deck: ClimbDeckEntry[]; hp: number } | null]
+  /** Match concluded (duel over / race decided) — room lingers for rematch/spectate. */
+  finished: boolean
+  rematch: [boolean, boolean]
 }
 
 const waiting: Record<Mode, Client | null> = { duel: null, climb: null }
+
+/** token -> seated client, alive for the duration of a match (+grace). */
+const seats = new Map<string, Client>()
+const RECONNECT_GRACE_MS = 5 * 60 * 1000
+
+function mintToken(c: Client): string {
+  if (c.token) seats.delete(c.token)
+  const token = randomBytes(12).toString('hex')
+  c.token = token
+  seats.set(token, c)
+  return token
+}
+
+function releaseSeat(c: Client) {
+  if (c.token) seats.delete(c.token)
+  c.token = null
+  if (c.dcTimer) clearTimeout(c.dcTimer)
+  c.dcTimer = null
+}
+
+function peersOf(c: Client): Client[] {
+  const room = c.room
+  if (room) return room.players.filter((p) => p !== c)
+  const coop = coopRooms.get(c)
+  if (coop) return coop.players.map((p) => p.client).filter((x) => x !== c)
+  return []
+}
+
+function notifyPeerConn(c: Client, online: boolean) {
+  for (const p of peersOf(c)) send(p.ws, { t: 'peer-conn', name: c.name, online })
+}
 
 // --- Co-op: shared climb, shared battles -------------------------------------
 
@@ -143,6 +183,43 @@ interface CoopRoom {
 const coopQueues: Record<number, Client[]> = { 2: [], 3: [], 4: [] }
 const coopRooms = new Map<Client, CoopRoom>()
 
+const tagOf = (c: Client) => `${c.name}#${c.vid}`
+
+/** Pre-run team formation: everyone sees the party and readies up. */
+interface PendingParty {
+  clients: Client[]
+  chars: CharId[]
+  ready: boolean[]
+  size: number
+}
+const pendingParties = new Map<Client, PendingParty>()
+
+function broadcastLobby(size: number) {
+  const q = coopQueues[size].filter((c) => c.ws.readyState === WebSocket.OPEN)
+  coopQueues[size] = q
+  for (const c of q) send(c.ws, { t: 'lobby', size, members: q.map(tagOf), need: size - q.length })
+}
+
+function broadcastForm(party: PendingParty) {
+  for (const c of party.clients) {
+    send(c.ws, {
+      t: 'coopform',
+      size: party.size,
+      members: party.clients.map((m, i) => ({ tag: tagOf(m), char: party.chars[i], ready: party.ready[i] })),
+    })
+  }
+}
+
+function dissolveForm(party: PendingParty, gone: Client | null) {
+  for (const c of party.clients) pendingParties.delete(c)
+  // Remaining members rejoin the head of the queue and keep waiting.
+  for (const c of party.clients) {
+    if (c === gone || c.ws.readyState !== WebSocket.OPEN) continue
+    coopQueues[party.size].unshift(c)
+  }
+  broadcastLobby(party.size)
+}
+
 /** Co-op map profile: no per-player shops/events in v1 — retype to keep the party together. */
 function coopMap(act: number, rng: Rng): ActMap {
   const map = genActMap(act, rng)
@@ -169,7 +246,7 @@ function coopMapMsg(room: CoopRoom, idx: number) {
     pos: room.pos,
     map: room.map,
     party: room.players.map((p) => ({
-      name: p.client.name, char: p.char, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
+      name: tagOf(p.client), char: p.char, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
     })),
   }
 }
@@ -193,7 +270,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, lastEncounter: '', ended: false,
   }
   for (const c of clients) coopRooms.set(c, room)
-  coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed }))
+  coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed, token: mintToken(room.players[i].client) }))
 }
 
 function coopAvailable(room: CoopRoom): string[] {
@@ -271,7 +348,10 @@ function coopMaybeAdvance(room: CoopRoom) {
 
 function endCoop(room: CoopRoom) {
   room.ended = true
-  for (const p of room.players) coopRooms.delete(p.client)
+  for (const p of room.players) {
+    coopRooms.delete(p.client)
+    releaseSeat(p.client)
+  }
 }
 
 function send(ws: WebSocket, msg: unknown) {
@@ -299,25 +379,28 @@ function startMatch(a: Client, b: Client, mode: Mode) {
   const seed = randomBytes(4).readUInt32LE(0)
   if (mode === 'duel') {
     const state = newPvp(seed, [a.name, b.name])
-    const room: Room = { mode, players: [a, b], state, seed, ready: [null, null] }
+    const room: Room = { mode, players: [a, b], state, seed, ready: [null, null], finished: false, rematch: [false, false] }
     a.room = room
     b.room = room
     room.players.forEach((p, i) => {
-      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1) })
+      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1), token: mintToken(p) })
     })
     return
   }
   // Climb race: both players run the SAME seed solo; the duel comes later.
-  const room: Room = { mode, players: [a, b], state: null, seed, ready: [null, null] }
+  const room: Room = { mode, players: [a, b], state: null, seed, ready: [null, null], finished: false, rematch: [false, false] }
   a.room = room
   b.room = room
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name })
+    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name, token: mintToken(p) })
   })
 }
 
 function endRoom(room: Room) {
-  for (const p of room.players) if (p.room === room) p.room = null
+  for (const p of room.players) {
+    if (p.room === room) p.room = null
+    releaseSeat(p)
+  }
 }
 
 /** The checkpoint duel fires once both racers have felled their act boss. */
@@ -334,9 +417,11 @@ function maybeStartClimbDuel(room: Room) {
 }
 
 function finishClimb(room: Room, winnerIdx: 0 | 1, reason: string) {
+  room.finished = true
   send(room.players[winnerIdx].ws, { t: 'climbwin', reason })
   send(room.players[1 - winnerIdx].ws, { t: 'climbloss', reason })
-  endRoom(room)
+  // room lingers: the winner may CONTINUE the climb (progress keeps
+  // relaying so the loser can spectate) until both leave.
 }
 
 function handleAction(client: Client, rawAction: unknown) {
@@ -357,20 +442,23 @@ function handleAction(client: Client, rawAction: unknown) {
     send(p.ws, { t: 'st', view: viewFor(room.state!, i as 0 | 1), events: res.events })
   })
   if (room.state.over) {
-    if (room.mode === 'climb') {
-      finishClimb(room, room.state.over.winner, room.state.over.reason)
-    } else {
-      endRoom(room)
-    }
+    room.finished = true
+    if (room.mode === 'climb') finishClimb(room, room.state.over.winner, room.state.over.reason)
+    // duel rooms linger so both sides can hit REMATCH
   }
 }
 
 const wss = new WebSocketServer({ server: http })
 
 wss.on('connection', (ws) => {
-  const client: Client = { ws, name: 'RUNNER', room: null, alive: true }
+  let client: Client = {
+    ws, name: 'RUNNER', room: null, alive: true, token: null, online: true, dcTimer: null,
+    vid: randomBytes(2).toString('hex'),
+  }
+  ;(ws as any).isAlive = true
+  send(ws, { t: 'hello', vid: client.vid })
 
-  ws.on('pong', () => (client.alive = true))
+  ws.on('pong', () => { client.alive = true; (ws as any).isAlive = true })
 
   ws.on('message', (data) => {
     let msg: any
@@ -406,6 +494,78 @@ wss.on('connection', (ws) => {
       case 'action':
         handleAction(client, msg.action)
         break
+      case 'resume': {
+        // Reconnect into a live seat within the grace window.
+        const seat = seats.get(String(msg.token ?? ''))
+        if (!seat) return send(ws, { t: 'resume-fail' })
+        if (seat.ws !== ws && seat.ws.readyState === WebSocket.OPEN) return send(ws, { t: 'resume-fail' })
+        if (seat.dcTimer) clearTimeout(seat.dcTimer)
+        seat.dcTimer = null
+        seat.ws = ws
+        seat.alive = true
+        seat.online = true
+        client = seat
+        notifyPeerConn(client, true)
+        const room = client.room
+        const coop = coopRooms.get(client)
+        if (room) {
+          const idx = room.players.indexOf(client) as 0 | 1
+          if (room.mode === 'duel' || room.state) {
+            send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true })
+          } else {
+            send(ws, { t: 'climbstart', you: idx, seed: room.seed, opp: room.players[1 - idx].name, token: client.token, rejoin: true })
+          }
+        } else if (coop && !coop.ended) {
+          const idx = coop.players.findIndex((p) => p.client === client)
+          send(ws, { ...coopMapMsg(coop, idx), t: 'coopstart', seed: 0, token: client.token, rejoin: true })
+          if (coop.combat) send(ws, { t: 'coopcombat', you: idx, view: coopViewFor(coop.combat) })
+          else if (coop.rewards) send(ws, { t: 'coopreward', you: idx, ...coop.rewards[idx] })
+        } else {
+          releaseSeat(client)
+          send(ws, { t: 'resume-fail' })
+        }
+        break
+      }
+      case 'rematch': {
+        const room = client.room
+        if (!room || room.mode !== 'duel' || !room.finished) break
+        const idx = room.players.indexOf(client) as 0 | 1
+        room.rematch[idx] = true
+        const other = room.players[1 - idx]
+        if (room.rematch[0] && room.rematch[1]) {
+          const seed = randomBytes(4).readUInt32LE(0)
+          room.state = newPvp(seed, [room.players[0].name, room.players[1].name])
+          room.finished = false
+          room.rematch = [false, false]
+          room.players.forEach((p, i) => {
+            send(p.ws, { t: 'match', you: i, view: viewFor(room.state!, i as 0 | 1), token: p.token })
+          })
+        } else {
+          send(other.ws, { t: 'rematch-offer' })
+          send(ws, { t: 'rematch-wait' })
+        }
+        break
+      }
+      case 'leave': {
+        const coop = coopRooms.get(client)
+        if (coop && !coop.ended) {
+          coopBroadcast(coop, () => ({ t: 'coopend', reason: `${client.name} left` }))
+          endCoop(coop)
+        }
+        const room = client.room
+        if (room) {
+          const live = !room.finished && (room.state ? !room.state.over : room.mode === 'climb')
+          endRoom(room)
+          const other = room.players.find((p) => p !== client)
+          if (other && live) {
+            if (room.mode === 'climb') send(other.ws, { t: 'climbwin', reason: `${client.name} left` })
+            else send(other.ws, { t: 'opp-left' })
+          } else if (other) {
+            send(other.ws, { t: 'peer-conn', name: client.name, online: false, gone: true })
+          }
+        }
+        break
+      }
       case 'coopqueue': {
         if (client.room || coopRooms.has(client)) return send(ws, { t: 'err', msg: 'already in a match' })
         client.name = cleanName(msg.name)
@@ -418,11 +578,30 @@ wss.on('connection', (ws) => {
         }
         coopQueues[size].push(client)
         send(ws, { t: 'queued', mode: 'coop', size })
-        const q = coopQueues[size].filter((c) => c.ws.readyState === WebSocket.OPEN)
-        coopQueues[size] = q
+        broadcastLobby(size)
+        const q = coopQueues[size]
         if (q.length >= size) {
-          const party = q.splice(0, size)
-          startCoopParty(party, party.map((c) => (c as any).coopChar ?? 'runner'))
+          const members = q.splice(0, size)
+          const party: PendingParty = {
+            clients: members,
+            chars: members.map((c) => ((c as any).coopChar ?? 'runner') as CharId),
+            ready: members.map(() => false),
+            size,
+          }
+          for (const c of members) pendingParties.set(c, party)
+          broadcastForm(party)
+        }
+        break
+      }
+      case 'coopready': {
+        const party = pendingParties.get(client)
+        if (!party) break
+        const idx = party.clients.indexOf(client)
+        party.ready[idx] = true
+        broadcastForm(party)
+        if (party.ready.every(Boolean)) {
+          for (const c of party.clients) pendingParties.delete(c)
+          startCoopParty(party.clients, party.chars)
         }
         break
       }
@@ -559,33 +738,62 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
+    if (client.ws !== ws) return // an old socket of a reconnected seat
     if (waiting.duel === client) waiting.duel = null
     if (waiting.climb === client) waiting.climb = null
-    for (const q of Object.values(coopQueues)) {
+    for (const [sz, q] of Object.entries(coopQueues)) {
       const at = q.indexOf(client)
-      if (at >= 0) q.splice(at, 1)
-    }
-    const coop = coopRooms.get(client)
-    if (coop && !coop.ended) {
-      // v1: a departure ends the expedition for everyone.
-      coopBroadcast(coop, () => ({ t: 'coopend', reason: `${client.name} disconnected` }))
-      endCoop(coop)
-    }
-    const room = client.room
-    if (room) {
-      const over = room.state?.over
-      endRoom(room)
-      const other = room.players.find((p) => p !== client)
-      if (other && !over) {
-        if (room.mode === 'climb') send(other.ws, { t: 'climbwin', reason: `${client.name} disconnected` })
-        else send(other.ws, { t: 'opp-left' })
+      if (at >= 0) {
+        q.splice(at, 1)
+        broadcastLobby(Number(sz))
       }
     }
+    const pending = pendingParties.get(client)
+    if (pending) dissolveForm(pending, client)
+    const inMatch = (client.room && !client.room.finished) || coopRooms.has(client)
+    if (!inMatch) {
+      // finished rooms: dropping the socket counts as leaving
+      const room = client.room
+      if (room) endRoom(room)
+      releaseSeat(client)
+      return
+    }
+    // Live match: hold the seat for the reconnect grace window.
+    client.online = false
+    notifyPeerConn(client, false)
+    client.dcTimer = setTimeout(() => {
+      client.dcTimer = null
+      const coop = coopRooms.get(client)
+      if (coop && !coop.ended) {
+        coopBroadcast(coop, () => ({ t: 'coopend', reason: `${client.name} disconnected` }))
+        endCoop(coop)
+      }
+      const room = client.room
+      if (room) {
+        const over = room.finished || room.state?.over
+        endRoom(room)
+        const other = room.players.find((p) => p !== client)
+        if (other && !over) {
+          if (room.mode === 'climb') send(other.ws, { t: 'climbwin', reason: `${client.name} disconnected` })
+          else send(other.ws, { t: 'opp-left' })
+        }
+      }
+      releaseSeat(client)
+    }, RECONNECT_GRACE_MS)
   })
 })
 
 const heartbeat = setInterval(() => {
-  for (const ws of wss.clients) ws.ping()
+  // Terminate unresponsive sockets so seats/queues never leak under load;
+  // the close handler then runs the normal reconnect-grace path.
+  for (const ws of wss.clients) {
+    if ((ws as any).isAlive === false) {
+      ws.terminate()
+      continue
+    }
+    ;(ws as any).isAlive = false
+    ws.ping()
+  }
 }, 30000)
 wss.on('close', () => clearInterval(heartbeat))
 

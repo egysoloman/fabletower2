@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, cardName, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
-import { BlockChip, HpBar, StatusRow } from '../components'
+import { BlockChip, CardView, HpBar, StatusRow } from '../components'
 import {
   anchorCenter,
   defeatFx,
@@ -49,6 +49,12 @@ export function PvpScreen() {
   const [pending, setPending] = useState(false)
   const ws = useRef<WebSocket | null>(null)
   const toastTimer = useRef<number>()
+  const token = useRef<string | null>(null)
+  const retryTimer = useRef<number>()
+  const retryDeadline = useRef(0)
+  const [conn, setConn] = useState<'online' | 'reconnecting'>('online')
+  const [myTag, setMyTag] = useState('')
+  const [pileOpen, setPileOpen] = useState(false)
   const shakeCls = useShake()
 
   const showToast = (msg: string) => {
@@ -57,17 +63,31 @@ export function PvpScreen() {
     toastTimer.current = window.setTimeout(() => setToast(''), 2200)
   }
 
-  const connect = () => {
+  /** Open a socket wired with the shared message handler. */
+  const openSocket = (onOpen: (sock: WebSocket) => void): WebSocket | null => {
     try {
-      setPhase('connecting')
       const sock = new WebSocket(url)
       ws.current = sock
-      sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name }))
+      sock.onopen = () => onOpen(sock)
       sock.onerror = () => {
-        setNotice(t('serverErr'))
-        setPhase('error')
+        if (!token.current) {
+          setNotice(t('serverErr'))
+          setPhase('error')
+        }
       }
       sock.onclose = () => {
+        if (ws.current !== sock) return
+        // Seated in a live match: try to resume within the grace window.
+        if (token.current) {
+          setConn('reconnecting')
+          if (!retryDeadline.current) retryDeadline.current = Date.now() + 4.5 * 60 * 1000
+          if (Date.now() < retryDeadline.current) {
+            retryTimer.current = window.setTimeout(() => {
+              openSocket((s2) => s2.send(JSON.stringify({ t: 'resume', token: token.current })))
+            }, 1500)
+            return
+          }
+        }
         setPhase((p) => (p === 'playing' || p === 'queued' || p === 'connecting' ? 'error' : p))
         setNotice((n) => n || t('connLost'))
       }
@@ -79,14 +99,36 @@ export function PvpScreen() {
           return
         }
         switch (data.t) {
+          case 'hello':
+            setMyTag(`${name}#${data.vid}`)
+            break
           case 'queued':
             setPhase('queued')
             break
           case 'match':
+            if (data.token) token.current = data.token
+            retryDeadline.current = 0
+            setConn('online')
             setView(data.view)
             setPending(false)
+            setNotice('')
+            setForfeitWin(false)
             setPhase('playing')
-            sfx.win()
+            if (!data.rejoin) sfx.win()
+            break
+          case 'resume-fail':
+            token.current = null
+            setNotice(t('connLost'))
+            setPhase('error')
+            break
+          case 'rematch-wait':
+            showToast(t('rematchWait'))
+            break
+          case 'rematch-offer':
+            showToast(t('rematchOffer'))
+            break
+          case 'peer-conn':
+            showToast(data.online ? t('oppBack') : t('oppDropped'))
             break
           case 'st': {
             setView(data.view)
@@ -102,19 +144,40 @@ export function PvpScreen() {
             showToast(data.msg ?? 'rejected')
             break
           case 'opp-left':
+            token.current = null
             setNotice(t('oppLeft'))
             setForfeitWin(true)
             setPhase('over')
             break
         }
       }
+      return sock
     } catch {
       setNotice(t('badUrl'))
       setPhase('error')
+      return null
     }
   }
 
-  useEffect(() => () => ws.current?.close(), [])
+  const connect = () => {
+    setPhase('connecting')
+    openSocket((sock) => sock.send(JSON.stringify({ t: 'queue', name })))
+  }
+
+  useEffect(
+    () => () => {
+      clearTimeout(retryTimer.current)
+      const sock = ws.current
+      ws.current = null
+      try {
+        sock?.send(JSON.stringify({ t: 'leave' }))
+      } catch {
+        /* already gone */
+      }
+      sock?.close()
+    },
+    [],
+  )
 
   const youIdx = view?.you
   useEffect(() => {
@@ -138,8 +201,28 @@ export function PvpScreen() {
   }
 
   const leave = () => {
-    ws.current?.close()
+    try {
+      ws.current?.send(JSON.stringify({ t: 'leave' }))
+    } catch {
+      /* already gone */
+    }
+    token.current = null
+    const sock = ws.current
+    ws.current = null
+    sock?.close()
     screen.value = 'menu'
+  }
+
+  const requestRematch = () => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ t: 'rematch' }))
+      showToast(t('rematchWait'))
+    } else {
+      setView(null)
+      setPhase('setup')
+      setNotice('')
+      setForfeitWin(false)
+    }
   }
 
   if (phase !== 'playing' && phase !== 'over') {
@@ -159,7 +242,12 @@ export function PvpScreen() {
             </>
           )}
           {phase === 'connecting' && <div class="pulse">{t('connecting')}</div>}
-          {phase === 'queued' && <div class="pulse">{t('scanning')}</div>}
+          {phase === 'queued' && (
+            <>
+              <div class="pulse">{t('scanning')}</div>
+              {myTag && <div style={{ color: 'var(--dim)', fontSize: '12px' }}>{tf('youAre', { tag: myTag })}</div>}
+            </>
+          )}
           {phase === 'error' && (
             <>
               <div style={{ color: 'var(--red)', maxWidth: '440px', textAlign: 'center', lineHeight: 1.6 }}>{notice}</div>
@@ -218,6 +306,7 @@ export function PvpScreen() {
   return (
     <div class={`combat screen ${shakeCls}`}>
       <div class="topbar">
+        <span class={`conndot ${conn}`} data-tip={conn === 'online' ? t('connOnline') : t('connReconnecting')} />
         <span class="stat" style={{ color: 'var(--purple)' }}>
           {tf('pvpTurn', { n: view.turn })}
         </span>
@@ -247,8 +336,8 @@ export function PvpScreen() {
           <div class="pname">{tf('youSuffix', { name: me.name })}</div>
           <HpBar hp={me.hp} maxHp={me.maxHp} mine />
           <StatusRow statuses={me.statuses} />
-          <div style={{ fontSize: '11px', color: 'var(--dim)' }}>
-            {tf('pvpCounts', { a: me.drawCount, b: me.discard.length })}
+          <div class="linkish" style={{ fontSize: '11px', color: 'var(--dim)' }} onClick={() => setPileOpen(true)}>
+            {tf('pvpCounts', { a: me.drawCount, b: me.discard.length })} ▾
           </div>
         </div>
 
@@ -279,6 +368,22 @@ export function PvpScreen() {
         </div>
       )}
 
+      {pileOpen && (
+        <div class="overlay" onClick={() => setPileOpen(false)}>
+          <div class="panel popin" onClick={(e) => e.stopPropagation()}>
+            <h2>{tf('discardPileTitle', { a: me.discard.length, b: 0 })}</h2>
+            <div class="gridcards">
+              {me.discard.length === 0 && <div class="sub">{t('empty')}</div>}
+              {me.discard.map((c, i) => (
+                <CardView key={i} card={c} />
+              ))}
+            </div>
+            <button class="btn" onClick={() => setPileOpen(false)}>
+              {t('close')}
+            </button>
+          </div>
+        </div>
+      )}
       {view.over || phase === 'over' ? (
         <div class="overlay">
           <div class="panel">
@@ -286,7 +391,7 @@ export function PvpScreen() {
             <div class="sub">
               {view.over ? tf('flatlinedWho', { name: view.sides[view.over.winner === 0 ? 1 : 0].name }) : notice}
             </div>
-            <button class="btn pink" onClick={() => { setView(null); setPhase('setup'); setNotice(''); setForfeitWin(false) }}>
+            <button class="btn pink" onClick={requestRematch}>
               {t('rematch')}
             </button>
             <button class="btn ghost" onClick={leave}>

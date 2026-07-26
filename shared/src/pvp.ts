@@ -25,6 +25,8 @@ export const PVP_DECK: string[] = [
   'zeroday', 'twinlaser', 'spike', 'breaker', 'crash', 'killswitch',
   'firewall', 'encrypt', 'reboot', 'shortcircuit', 'debugprobe', 'malware',
   'holodecoy', 'cachehit', 'overvolt', 'neoncore', 'nanoplating',
+  // powers & tech so duels play the full game, not a trimmed one
+  'thornsexe', 'autoturret', 'viralload', 'datasiphon', 'riotshield',
 ]
 
 export interface PvpDuelistOpts {
