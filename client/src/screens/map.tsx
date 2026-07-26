@@ -5,8 +5,6 @@ import { clickNode } from '../game'
 import { burst, uiRipple } from '../fx'
 import { climbActive, climbOpp, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
-import { Sprite } from '../sprites'
-import { charColor } from './charselect'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 
@@ -69,7 +67,6 @@ export function MapScreen() {
     return { x: rect.left + (x / W) * rect.width, y: rect.top + (y / H) * rect.height }
   }
 
-  const curNode = r?.pos ? allNodes(r.map).find((n) => n.id === r.pos) : null
   const nodes = r ? allNodes(r.map) : []
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
@@ -178,19 +175,6 @@ export function MapScreen() {
             />
           )}
         </svg>
-        {curNode && !travel && (
-          <div
-            class="char-token"
-            style={{
-              left: `${(cx(curNode) / W) * 100}%`,
-              top: `${(cy(curNode) / H) * 100}%`,
-              color: charColor(r.char),
-            }}
-            data-tip={t(('char' + r.char[0].toUpperCase() + r.char.slice(1)) as Parameters<typeof t>[0])}
-          >
-            <Sprite id={r.char} size={30} />
-          </div>
-        )}
       </div>
     </div>
   )
