@@ -35,8 +35,9 @@ the same server). For production: `npm run build && npm start` — the server
 serves the built client and the WebSocket on one port.
 
 ```bash
-npm test             # engine test suite (75+ tests, incl. full simulated runs)
-npm run typecheck    # strict TS across all three packages
+npm test                     # engine test suite (95 tests, incl. full simulated runs)
+npm run typecheck            # strict TS across all three packages
+npm run balance -w shared    # heuristic-bot balance sweep (win rates per character)
 ```
 
 ## The one-engine rule

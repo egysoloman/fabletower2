@@ -46,9 +46,9 @@ reg(E({
   ],
 }))
 reg(E({
-  id: 'hatchery', name: 'Hatchery', glyph: '☗', hp: [34, 40],
+  id: 'hatchery', name: 'Hatchery', glyph: '☗', hp: [30, 36],
   moves: [
-    { id: 'spawn', name: 'Spawn', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'spambot' }] },
+    { id: 'spawn', name: 'Spawn', weight: 2, maxRepeat: 1, effects: [{ k: 'summon', id: 'spambot' }] },
     { id: 'spit', name: 'Acid Spit', weight: 2, effects: [{ k: 'atk', n: 6 }] },
     { id: 'shell', name: 'Shell Up', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 7 }] },
   ],
@@ -84,9 +84,9 @@ reg(E({
   id: 'watchdog', name: 'WATCHDOG PRIME', glyph: '🐕', hp: [115, 115], boss: true,
   moves: [
     { id: 'bark', name: 'Bark Signal', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'block', n: 8 }] },
-    { id: 'bite', name: 'Bite', weight: 3, effects: [{ k: 'atk', n: 8, times: 2 }] },
-    { id: 'pounce', name: 'Pounce', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 14 }] },
-    { id: 'leash', name: 'SNAPPED LEASH', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'thorns', n: 4 }, { k: 'buff', id: 'str', n: 2 }] },
+    { id: 'bite', name: 'Bite', weight: 3, effects: [{ k: 'atk', n: 7, times: 2 }] },
+    { id: 'pounce', name: 'Pounce', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 13 }] },
+    { id: 'leash', name: 'SNAPPED LEASH', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'thorns', n: 3 }, { k: 'buff', id: 'str', n: 2 }] },
   ],
 }))
 
@@ -329,7 +329,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['leech'],
       ['leech', 'spambot'],
     ],
-    elite: [['hound'], ['hatchery', 'golem']],
+    elite: [['hound'], ['hatchery', 'kiddie']],
     boss: [['compiler'], ['watchdog']],
   },
   2: {
