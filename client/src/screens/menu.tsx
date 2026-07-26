@@ -4,7 +4,7 @@ import { ascUnlocked, newGame, runHistory } from '../game'
 import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
 import { screenWipe } from '../fx'
-import { setSetting, settings } from '../settings'
+import { installPrompt, setSetting, settings } from '../settings'
 import { account, login, logout, register, syncMsg, syncUp } from '../account'
 import { useState as useAccState } from 'preact/hooks'
 import { muted, sfx, toggleMute } from '../sfx'
@@ -228,6 +228,18 @@ export function SettingsScreen() {
           </button>
         </label>
       </div>
+      {installPrompt.value && (
+        <button
+          class="btn gold"
+          style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
+          onClick={() => {
+            void installPrompt.value?.prompt()
+            installPrompt.value = null
+          }}
+        >
+          {t('installApp')}
+        </button>
+      )}
       <AccountPanel />
       <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
         {t('back')}

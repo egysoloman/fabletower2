@@ -34,3 +34,8 @@ export function qualityFactor(): number {
   const q = settings.value.quality
   return q === 'high' ? 1 : q === 'medium' ? 0.5 : 0.2
 }
+
+/** PWA install prompt captured from beforeinstallprompt (null = unavailable). */
+export const installPrompt = signal<{ prompt: () => Promise<unknown> } | null>(null)
+/** Live connectivity for the offline indicator. */
+export const netOnline = signal(typeof navigator === 'undefined' ? true : navigator.onLine)

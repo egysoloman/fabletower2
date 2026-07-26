@@ -1560,3 +1560,10 @@ details .gridcards { margin-top: 10px; max-height: 40vh; overflow-y: auto; }
 .achtoast small { color: var(--dim); font-size: 11px; }
 @keyframes achIn { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: none; } }
 @keyframes achOut { to { opacity: 0; transform: translateX(60px); } }
+
+.offlinebadge {
+  position: fixed; bottom: 12px; left: 12px; z-index: 96;
+  padding: 6px 12px; font-size: 11px; letter-spacing: 0.1em;
+  color: var(--gold); border: 1px solid rgba(255, 209, 102, 0.6); border-radius: 4px;
+  background: rgba(20, 12, 2, 0.92); animation: fadeSlide 0.3s ease backwards;
+}

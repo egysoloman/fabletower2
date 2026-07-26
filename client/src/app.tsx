@@ -4,6 +4,7 @@ import { screen } from './store'
 import { MenuScreen, NewRunScreen, SettingsScreen } from './screens/menu'
 import { CodexScreen } from './screens/codex'
 import { achToasts } from './meta'
+import { netOnline } from './settings'
 import { t } from './i18n'
 import { MapScreen } from './screens/map'
 import { CombatScreen } from './screens/combat'
@@ -37,6 +38,7 @@ export function App() {
         {s === 'climb' && <ClimbScreen />}
         {s === 'coop' && <CoopScreen />}
       </div>
+      {!netOnline.value && <div class="offlinebadge">{t('offlineBadge')}</div>}
       <div class="achtoasts">
         {achToasts.value.map((id) => (
           <div key={id} class="achtoast">
