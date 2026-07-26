@@ -25,6 +25,8 @@ const ZONE_MARGIN = 46
 
 interface DragState {
   idx: number
+  /** Identity of the grabbed card — survives hand reindexing. */
+  uid: number
   pointerId: number
   startX: number
   startY: number
@@ -44,7 +46,7 @@ interface DragState {
 }
 
 interface Returning {
-  idx: number
+  uid: number
   x: number
   y: number
   toX: number
@@ -76,17 +78,23 @@ export function DraggableHand(props: DraggableHandProps) {
   propsRef.current = props
 
   const endDrag = () => {
+    // Clear the imperative ref immediately so same-dispatch fallbacks (the
+    // window pointerup safety net) can't double-handle this drag.
+    dragRef.current = null
     dragMode.value = null
     dragHoverWho.value = null
     setDrag(null)
   }
 
   const springBack = (d: DragState) => {
-    const cardEl = slotEls.current.get(d.idx)?.querySelector('.card')
+    // The card may have left the hand while we dragged (hand replaced by an
+    // end-turn or a server update) — then there is nothing to spring back to.
+    const curIdx = propsRef.current.cards.findIndex((c) => c.uid === d.uid)
+    const cardEl = curIdx >= 0 ? slotEls.current.get(curIdx)?.querySelector('.card') : null
     const rect = cardEl?.getBoundingClientRect()
     if (rect) {
       setRet({
-        idx: d.idx,
+        uid: d.uid,
         x: d.x - d.grabDX + d.w / 2,
         y: d.y - d.grabDY + d.h / 2,
         toX: rect.left + rect.width / 2,
@@ -112,6 +120,7 @@ export function DraggableHand(props: DraggableHandProps) {
     const handTop = handRef.current?.getBoundingClientRect().top ?? window.innerHeight * 0.72
     setDrag({
       idx: i,
+      uid: p.cards[i].uid,
       pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
@@ -135,9 +144,11 @@ export function DraggableHand(props: DraggableHandProps) {
       if (!d || e.pointerId !== d.pointerId) return d
       const p = propsRef.current
       let active = d.active
-      if (!active && Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > DRAG_THRESHOLD) {
+      if (!active) {
+        // Below the threshold nothing is rendered — skip the state churn.
+        if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) <= DRAG_THRESHOLD) return d
         active = true
-        const card = p.cards[d.idx]
+        const card = p.cards.find((c) => c.uid === d.uid)
         dragMode.value = card && CARDS[card.id].target === 'enemy' ? 'target' : 'zone'
       }
       if (active && dragMode.value === 'target') {
@@ -168,30 +179,60 @@ export function DraggableHand(props: DraggableHandProps) {
     const p = propsRef.current
     const hover = dragHoverWho.value
     const mode = dragMode.value
+    // Re-resolve the grabbed card by identity: the hand may have been
+    // reindexed (or the card removed) since pointer-down.
+    const curIdx = p.cards.findIndex((c) => c.uid === d.uid)
+    if (curIdx < 0) {
+      endDrag()
+      return
+    }
     if (!d.active) {
       endDrag()
-      p.onCardClick?.(d.idx)
+      p.onCardClick?.(curIdx)
       return
     }
     const cx = d.x - d.grabDX + d.w / 2
     const cy = d.y - d.grabDY + d.h / 2
     if (mode === 'target' && hover) {
       endDrag()
-      p.onPlay(d.idx, hover, { x: cx, y: cy })
+      p.onPlay(curIdx, hover, { x: cx, y: cy })
     } else if (mode === 'zone' && d.y < d.zoneY) {
       endDrag()
-      p.onPlay(d.idx, undefined, { x: cx, y: cy })
+      p.onPlay(curIdx, undefined, { x: cx, y: cy })
     } else {
       springBack(d)
     }
   }
 
-  const onCancel = () => {
+  const onCancel = (e?: PointerEvent) => {
     const d = dragRef.current
-    if (d) springBack(d)
+    if (!d) return
+    if (e && e.pointerId !== d.pointerId) return
+    springBack(d)
   }
 
-  // Escape aborts an in-flight drag.
+  // Invalidate an in-flight drag the moment its card leaves the hand or the
+  // hand gets disabled (end turn pressed with a second finger, server update,
+  // combat ending) — otherwise the drag would wedge with no pointer to end it.
+  useEffect(() => {
+    const d = dragRef.current
+    if (!d) return
+    if (props.disabled || !props.cards.some((c) => c.uid === d.uid)) endDrag()
+  }, [props.cards, props.disabled])
+
+  // Reset the module-level targeting signals if we unmount mid-drag (screen
+  // change, opponent disconnect) so later combats don't inherit highlights.
+  useEffect(
+    () => () => {
+      dragRef.current = null
+      dragMode.value = null
+      dragHoverWho.value = null
+    },
+    [],
+  )
+
+  // Escape aborts; window-level pointerup/cancel is the safety net for a
+  // pointer whose capture element unmounted (slot keyed out mid-drag).
   const active = !!drag?.active
   useEffect(() => {
     if (!active) return
@@ -201,12 +242,23 @@ export function DraggableHand(props: DraggableHandProps) {
         if (d) springBack(d)
       }
     }
+    const onWinUp = (e: PointerEvent) => {
+      const d = dragRef.current
+      if (d && e.pointerId === d.pointerId) springBack(d)
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('pointerup', onWinUp)
+    window.addEventListener('pointercancel', onWinUp)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('pointerup', onWinUp)
+      window.removeEventListener('pointercancel', onWinUp)
+    }
   }, [active])
 
   const n = props.cards.length
-  const dragCard = drag?.active ? props.cards[drag.idx] : null
+  const dragCard = drag?.active ? props.cards.find((c) => c.uid === drag.uid) : null
+  const retCard = ret ? props.cards.find((c) => c.uid === ret.uid) : null
   const hoverWho = dragHoverWho.value
   const snapTip = hoverWho ? anchorCenter(hoverWho) : null
   const arrowColor = dragCard && CARDS[dragCard.id].type === 'attack' ? '#ff2d95' : '#00e5ff'
@@ -217,7 +269,7 @@ export function DraggableHand(props: DraggableHandProps) {
       <div class="hand" ref={handRef}>
         {props.cards.map((c, i) => {
           const mid = (n - 1) / 2
-          const hidden = (drag?.active && drag.idx === i) || ret?.idx === i
+          const hidden = (drag?.active && drag.uid === c.uid) || ret?.uid === c.uid
           const cls = [
             'cardslot',
             props.playable.has(i) ? '' : 'unplayable',
@@ -257,25 +309,25 @@ export function DraggableHand(props: DraggableHandProps) {
         <div
           class="drag-ghost"
           style={{
-            left: drag.x - drag.grabDX + drag.w / 2 + 'px',
-            top: drag.y - drag.grabDY + drag.h / 2 + 'px',
-            transform: `translate(-50%,-50%) rotate(${drag.tilt.toFixed(1)}deg)`,
+            transform: `translate3d(${drag.x - drag.grabDX + drag.w / 2}px, ${
+              drag.y - drag.grabDY + drag.h / 2
+            }px, 0) translate(-50%,-50%) rotate(${drag.tilt.toFixed(1)}deg)`,
           }}
         >
           <CardView card={dragCard} />
         </div>
       )}
 
-      {ret && props.cards[ret.idx] && (
+      {ret && retCard && (
         <div
           class="drag-ghost returning"
           style={{
-            left: (ret.started ? ret.toX : ret.x) + 'px',
-            top: (ret.started ? ret.toY : ret.y) + 'px',
-            transform: 'translate(-50%,-50%) scale(0.92)',
+            transform: `translate3d(${ret.started ? ret.toX : ret.x}px, ${
+              ret.started ? ret.toY : ret.y
+            }px, 0) translate(-50%,-50%) scale(0.92)`,
           }}
         >
-          <CardView card={props.cards[ret.idx]} />
+          <CardView card={retCard} />
         </div>
       )}
 

@@ -9,7 +9,7 @@ import {
 } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow, TopBar } from '../components'
 import { doCombat, playCardWithFx, resolveCombatIfOver } from '../game'
-import { registerAnchor, useShake } from '../fx'
+import { fxPulses, fxRemainingMs, localWho, registerAnchor, useShake } from '../fx'
 import { combat, pileView } from '../store'
 import { byName } from '../components'
 import { t, tf } from '../i18n'
@@ -36,9 +36,12 @@ function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarge
   const { e, idx } = props
   const boss = e.maxHp >= 100
   const hl = props.highlight
+  // No impact pulses on a corpse: the recoil animation would override the
+  // .dead fade transform and pop the fading panel back to full size.
+  const pulseCls = e.dead ? '' : (fxPulses.value['e' + idx] ?? '')
   return (
     <div
-      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''}`}
+      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''} ${pulseCls}`}
       onClick={() => hl !== 'none' && props.onTarget()}
       ref={(el) => registerAnchor('e' + idx, el)}
     >
@@ -65,10 +68,16 @@ export function CombatScreen() {
   const [selected, setSelected] = useState<number | null>(null)
   const shakeCls = useShake()
 
+  useEffect(() => {
+    localWho.value = 'p'
+  }, [])
+
   const over = cs?.over ?? null
   useEffect(() => {
     if (over) {
-      const timer = setTimeout(() => resolveCombatIfOver(), 1000)
+      // Wait out any still-playing event beats (a long enemy phase can run
+      // past a fixed delay) plus a beat for the death animation.
+      const timer = setTimeout(() => resolveCombatIfOver(), Math.max(1000, fxRemainingMs() + 450))
       return () => clearTimeout(timer)
     }
   }, [over])
@@ -128,7 +137,7 @@ export function CombatScreen() {
       )}
 
       <div class="arena">
-        <div class="player-zone" ref={(el) => registerAnchor('p', el)}>
+        <div class={`player-zone ${fxPulses.value['p'] ?? ''}`} ref={(el) => registerAnchor('p', el)}>
           <div class="energy-orb" data-tip={t('energyTip')}>
             {p.energy}/{p.energyMax}
           </div>

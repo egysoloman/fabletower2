@@ -35,17 +35,36 @@ export function anchorBox(who: string): DOMRect | null {
 }
 
 /**
- * One-shot CSS animation on a fighter panel (recoil, lunge, glow pulse).
- * Re-adding mid-flight restarts the animation via a reflow.
+ * One-shot animation classes for fighter panels (recoil, lunge, glow pulse),
+ * driven through a signal so Preact owns the class attribute — mutating
+ * classList directly gets wiped whenever the component re-renders (e.g. drag
+ * highlights flipping mid-animation). Screens append `fxPulses.value[who]`
+ * to the panel's class. Clearing to '' for one frame restarts the animation.
  */
-function pulse(who: string, cls: string, dur = 520) {
-  const el = anchors.get(who)
-  if (!el || !el.isConnected) return
-  el.classList.remove(cls)
-  void el.offsetWidth
-  el.classList.add(cls)
-  setTimeout(() => el.classList.remove(cls), dur)
+export const fxPulses = signal<Record<string, string>>({})
+const pulseTokens: Record<string, number> = {}
+
+function pulse(who: string, cls: string, dur = 680) {
+  const token = (pulseTokens[who] = (pulseTokens[who] ?? 0) + 1)
+  fxPulses.value = { ...fxPulses.value, [who]: '' }
+  requestAnimationFrame(() => {
+    if (pulseTokens[who] !== token) return
+    fxPulses.value = { ...fxPulses.value, [who]: cls }
+  })
+  setTimeout(() => {
+    if (pulseTokens[who] !== token) return
+    const next = { ...fxPulses.value }
+    delete next[who]
+    fxPulses.value = next
+  }, dur)
 }
+
+/**
+ * The anchor id of the local player's own panel ('p' in PvE, 'p0'/'p1' in
+ * PvP) — set by each combat screen so "you got hit" feedback (big screen
+ * shake) only fires for damage the local player actually takes.
+ */
+export const localWho = signal('p')
 
 /** Panels on the left half recoil left / lunge right, and vice versa. */
 function sideOf(who: string): 'l' | 'r' {
@@ -160,10 +179,16 @@ export function useShake(): string {
     if (ev.id === last.current) return
     last.current = ev.id
     setCls('')
-    const raf = requestAnimationFrame(() => setCls(ev.big ? 'shake' : 'shake-sm'))
-    const timer = setTimeout(() => setCls(''), 430)
+    // Double rAF: guarantee a styled frame with the class absent, so a
+    // same-class shake arriving mid-shake restarts the animation.
+    let raf2 = 0
+    const raf = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => setCls(ev.big ? 'shake' : 'shake-sm'))
+    })
+    const timer = setTimeout(() => setCls(''), 450)
     return () => {
       cancelAnimationFrame(raf)
+      cancelAnimationFrame(raf2)
       clearTimeout(timer)
     }
   }, [ev])
@@ -187,8 +212,12 @@ interface Particle {
 
 const parts: Particle[] = []
 
+/** Hard cap so stacked bursts can't melt low-end GPUs (shadowBlur is pricey). */
+const MAX_PARTICLES = 340
+
 export function burst(x: number, y: number, color: string, n = 14, speed = 3.2) {
   for (let i = 0; i < n; i++) {
+    if (parts.length >= MAX_PARTICLES) return
     const a = Math.random() * Math.PI * 2
     const v = (0.4 + Math.random()) * speed
     parts.push({
@@ -209,6 +238,7 @@ export function burst(x: number, y: number, color: string, n = 14, speed = 3.2) 
 /** Upward sparkle cone (heals, buffs). */
 function burstUp(x: number, y: number, color: string, n = 10, speed = 2.4) {
   for (let i = 0; i < n; i++) {
+    if (parts.length >= MAX_PARTICLES) return
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.1
     const v = (0.5 + Math.random()) * speed
     parts.push({
@@ -280,7 +310,7 @@ function ParticleCanvas() {
         ctx.globalAlpha = Math.max(0, alpha)
         ctx.fillStyle = p.color
         ctx.shadowColor = p.color
-        ctx.shadowBlur = p.ambient ? 4 : 8
+        ctx.shadowBlur = p.ambient ? 4 : 6
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
         ctx.fill()
@@ -307,7 +337,11 @@ export function FxLayer() {
         <div
           key={f.id}
           class={`fx-flight ${f.cls} ${f.gone ? 'gone' : ''}`}
-          style={{ left: f.x + 'px', top: f.y + 'px' }}
+          style={{
+            transform:
+              `translate3d(${f.x}px, ${f.y}px, 0) translate(-50%,-50%)` +
+              (f.gone ? ' scale(0.38) rotate(9deg)' : ''),
+          }}
         >
           {f.label}
         </div>
@@ -340,7 +374,8 @@ function playOne(ev: GameEvent) {
       ringAt(ev.who, '#ff3b5b')
       pulse(ev.who, `fx-recoil-${sideOf(ev.who)}`)
       sfx.hit()
-      if (ev.who === 'p' || ev.who === 'p0' || ev.who === 'p1') fireShake(ev.n >= 10)
+      // Big "ouch" shake only when the LOCAL player takes the hit.
+      if (ev.who === localWho.value) fireShake(ev.n >= 10)
       else if (ev.n >= 14) fireShake(false)
       break
     }
@@ -411,10 +446,18 @@ function playOne(ev: GameEvent) {
   }
 }
 
+let fxEndAt = 0
+
+/** Milliseconds until the last scheduled event beat finishes playing. */
+export function fxRemainingMs(): number {
+  return Math.max(0, fxEndAt - Date.now())
+}
+
 /** Animate a reducer's event list. `delay` offsets the first beat (e.g. to
  * land impacts when a card-flight ghost arrives); `step` paces the beats. */
 export function processEvents(evs: GameEvent[], opts: { delay?: number; step?: number } = {}) {
   const delay = opts.delay ?? 60
   const step = opts.step ?? 110
+  fxEndAt = Math.max(fxEndAt, Date.now() + delay + evs.length * step)
   evs.forEach((ev, i) => setTimeout(() => playOne(ev), delay + i * step))
 }

@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, cardName, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, HpBar, StatusRow } from '../components'
-import { anchorCenter, flyCard, processEvents, registerAnchor, useShake } from '../fx'
+import { anchorCenter, flyCard, fxPulses, localWho, processEvents, registerAnchor, useShake } from '../fx'
 import { screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -32,6 +32,9 @@ export function PvpScreen() {
   const [notice, setNotice] = useState('')
   const [forfeitWin, setForfeitWin] = useState(false)
   const [toast, setToast] = useState('')
+  /** True while a play/end action awaits the server's response — blocks
+   * follow-up actions so hand indices can never race the round-trip. */
+  const [pending, setPending] = useState(false)
   const ws = useRef<WebSocket | null>(null)
   const toastTimer = useRef<number>()
   const shakeCls = useShake()
@@ -69,11 +72,13 @@ export function PvpScreen() {
             break
           case 'match':
             setView(data.view)
+            setPending(false)
             setPhase('playing')
             sfx.win()
             break
           case 'st': {
             setView(data.view)
+            setPending(false)
             processEvents((data.events ?? []) as GameEvent[], { delay: 220, step: 130 })
             if (data.view?.over) {
               setPhase('over')
@@ -81,6 +86,7 @@ export function PvpScreen() {
             break
           }
           case 'err':
+            setPending(false)
             showToast(data.msg ?? 'rejected')
             break
           case 'opp-left':
@@ -98,7 +104,16 @@ export function PvpScreen() {
 
   useEffect(() => () => ws.current?.close(), [])
 
+  const youIdx = view?.you
+  useEffect(() => {
+    if (youIdx !== undefined) localWho.value = 'p' + youIdx
+    return () => {
+      localWho.value = 'p'
+    }
+  }, [youIdx])
+
   const send = (action: PvpAction) => {
+    setPending(true)
     ws.current?.send(JSON.stringify({ t: 'action', action }))
   }
 
@@ -163,7 +178,7 @@ export function PvpScreen() {
   )
 
   const playFromHand = (idx: number, _who: string | undefined, from?: { x: number; y: number }) => {
-    if (!myTurn) return
+    if (!myTurn || pending) return
     const card = hand[idx]
     if (!card) return
     const def = CARDS[card.id]
@@ -196,7 +211,7 @@ export function PvpScreen() {
       </div>
 
       <div class="arena">
-        <div class="player-zone" ref={(el) => registerAnchor('p' + view.you, el)}>
+        <div class={`player-zone ${fxPulses.value[meWho] ?? ''}`} ref={(el) => registerAnchor('p' + view.you, el)}>
           <div class="energy-orb" data-tip={t('energyTip')}>
             {me.energy}/{me.energyMax}
           </div>
@@ -210,7 +225,7 @@ export function PvpScreen() {
           </div>
         </div>
 
-        <div class={`opp-zone ${oppHl}`} ref={(el) => registerAnchor('p' + (1 - view.you), el)}>
+        <div class={`opp-zone ${oppHl} ${fxPulses.value[oppWho] ?? ''}`} ref={(el) => registerAnchor('p' + (1 - view.you), el)}>
           <div class="facedown-row">
             {Array.from({ length: them.handCount }).map((_, i) => (
               <div key={i} class="facedown" />
@@ -257,12 +272,12 @@ export function PvpScreen() {
           <DraggableHand
             cards={hand}
             playable={playableSet}
-            targets={myTurn ? [oppWho] : []}
-            disabled={!myTurn}
+            targets={myTurn && !pending ? [oppWho] : []}
+            disabled={!myTurn || pending}
             onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
             onPlay={playFromHand}
           />
-          <button class="btn pink endturn" disabled={!myTurn} onClick={() => send({ t: 'end' })}>
+          <button class="btn pink endturn" disabled={!myTurn || pending} onClick={() => send({ t: 'end' })}>
             {t('endTurn')}
           </button>
         </div>

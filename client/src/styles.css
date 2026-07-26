@@ -383,13 +383,15 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   to { transform: scale(1.15); opacity: 0; }
 }
 
-/* card-flight ghost: a glowing mini-card streaks to its destination */
+/* card-flight ghost: a glowing mini-card streaks to its destination
+ * (moved purely via transform so it stays on the compositor) */
 .fx-flight {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 114;
   width: 96px;
   height: 134px;
-  margin: -67px 0 0 -48px;
   border-radius: 8px;
   border: 2px solid var(--fc, var(--cyan));
   background: linear-gradient(165deg, rgba(23, 11, 51, 0.95), rgba(12, 6, 32, 0.95));
@@ -403,13 +405,13 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   color: #fff;
   text-shadow: 0 0 8px var(--fc, var(--cyan));
   pointer-events: none;
-  transition: left 0.25s cubic-bezier(0.3, 0.05, 0.45, 1), top 0.25s cubic-bezier(0.3, 0.05, 0.45, 1),
-    transform 0.25s ease-in, opacity 0.25s ease-in;
+  will-change: transform, opacity;
+  transition: transform 0.25s cubic-bezier(0.3, 0.05, 0.45, 1), opacity 0.25s ease-in;
 }
 .fx-flight.attack { --fc: var(--pink); }
 .fx-flight.skill { --fc: var(--cyan); }
 .fx-flight.power { --fc: var(--purple); }
-.fx-flight.gone { transform: scale(0.38) rotate(9deg); opacity: 0.12; }
+.fx-flight.gone { opacity: 0.12; }
 
 .arena {
   flex: 1;
@@ -622,14 +624,18 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   touch-action: none;
 }
 .cardslot .card { cursor: grab; }
-.cardslot:hover {
-  z-index: 40 !important;
-  margin: 0 26px;
-  transform: rotate(0deg);
-}
-.cardslot:hover .card {
-  transform: translateY(-56px) scale(1.22);
-  box-shadow: 0 0 30px color-mix(in srgb, var(--cc) 75%, transparent);
+/* hover-raise only on real hover devices — on touch, :hover sticks after a
+ * tap and reflows the fan mid-gesture */
+@media (hover: hover) and (pointer: fine) {
+  .cardslot:hover {
+    z-index: 40 !important;
+    margin: 0 26px;
+    transform: rotate(0deg);
+  }
+  .cardslot:hover .card {
+    transform: translateY(-56px) scale(1.22);
+    box-shadow: 0 0 30px color-mix(in srgb, var(--cc) 75%, transparent);
+  }
 }
 .cardslot.selected {
   z-index: 41 !important;
@@ -644,19 +650,21 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .cardslot.unplayable .card { filter: saturate(0.25) brightness(0.6); cursor: not-allowed; }
 .cardslot.drag-src .card { visibility: hidden; }
 
-/* drag ghost follows the pointer; spring-back reuses it with a bouncy return */
+/* drag ghost follows the pointer (compositor-only: transform, not left/top) */
 .drag-ghost {
   position: fixed;
+  left: 0;
+  top: 0;
   z-index: 120;
   pointer-events: none;
-  will-change: left, top, transform;
+  will-change: transform;
 }
 .drag-ghost .card {
   box-shadow: 0 22px 54px rgba(0, 0, 0, 0.65), 0 0 36px color-mix(in srgb, var(--cc) 80%, transparent);
   transform: scale(1.18);
 }
 .drag-ghost.returning {
-  transition: left 0.24s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
   opacity: 0.9;
 }
 
@@ -759,11 +767,15 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .pilebtn.left { left: 16px; }
 .pilebtn.right { right: 170px; }
 
+/* Sits above resting cards (inline z ≤ ~10) but below a hovered card (40)
+ * and the drag ghost (120), so it can never be buried by the hand fan. */
 .endturn {
   position: absolute;
   right: 18px;
   bottom: 24px;
-  z-index: 7;
+  z-index: 30;
+  background: rgba(16, 8, 32, 0.94);
+  box-shadow: 0 0 14px rgba(255, 45, 149, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55);
 }
 
 .turnbanner {
