@@ -41,6 +41,7 @@ export const coopConn = signal<'online' | 'reconnecting'>('online')
 export const coopShop = signal<any>(null)
 export const coopEvent = signal<any>(null)
 export const coopRestDeck = signal<any[]>([])
+export const coopBelt = signal<string[]>([])
 export const coopToast = signal('')
 let toastTimer = 0
 export function coopFlash(msg: string) {
@@ -128,6 +129,7 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
         case 'coopst':
           coopYou.value = data.you
           coopView.value = data.view
+          if (data.belt) coopBelt.value = data.belt
           coopPending.value = false
           coopPhase.value = 'combat'
           if (data.played && data.played.who !== data.you) {
@@ -146,7 +148,12 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           break
         case 'coopshop':
           coopShop.value = data
+          if (data.belt) coopBelt.value = data.belt
           coopPhase.value = 'shop'
+          break
+        case 'coopbought':
+          coopFlash(`${data.name} ▸ ${data.id}`)
+          sfx.click()
           break
         case 'coopevent':
           coopEvent.value = data

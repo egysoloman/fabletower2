@@ -8,9 +8,11 @@
 import type { CardInst, CombatState, DeckSide, EnemyC, GameEvent, MoveEffect, StepResult } from './types'
 import { DEBUFFS } from './types'
 import { CARDS } from './cards'
+import { POTIONS } from './potions'
 import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
 import { RELICS } from './relics'
 import {
+  applyEffects,
   applyOverheat,
   applyStatus,
   attack,
@@ -159,7 +161,7 @@ function rollIntents(cs: CoopState) {
   }
 }
 
-function markDeaths(cs: CoopState, evs: GameEvent[]) {
+function coopMarkDeaths(cs: CoopState, evs: GameEvent[]) {
   cs.enemies.forEach((e, i) => {
     if (!e.dead && e.hp <= 0) {
       e.dead = true
@@ -256,7 +258,7 @@ function enemyPhase(cs: CoopState, evs: GameEvent[]) {
           break
         }
       }
-      markDeaths(cs, evs)
+      coopMarkDeaths(cs, evs)
       if (cs.over) return
     }
     e.usedOn[move.id] = cs.turn
@@ -285,14 +287,14 @@ export function coopReduce(prev: CoopState, playerIdx: number, action: CoopActio
         : undefined
     const err = playCardFromHand(cs, me, who, foesOf(cs), action.hand, action.target, evs, ally)
     if (err) return { state: prev, events: [], error: err }
-    markDeaths(cs, evs)
+    coopMarkDeaths(cs, evs)
     return { state: cs, events: evs }
   }
 
   // --- End of this player's turn --------------------------------------------
   const aliveFoes = () => foesOf(cs).filter((x) => !(x.f as EnemyC).dead && x.f.hp > 0)
   endTurnPowers(me, who, aliveFoes(), cs, evs)
-  markDeaths(cs, evs)
+  coopMarkDeaths(cs, evs)
   tickTurnEnd(me, who, evs)
   discardHand(me)
 
@@ -322,7 +324,7 @@ function startPlayerTurn(cs: CoopState, idx: number, evs: GameEvent[]) {
   const who = whoP(idx)
   cs.relics = cs.playerRelics[idx]
   if (tickTurnStart(side, who, evs, false)) {
-    markDeaths(cs, evs)
+    coopMarkDeaths(cs, evs)
     if (cs.over || cs.downed[idx]) {
       const next = aliveIdxs(cs).find((i) => i > idx)
       if (next !== undefined && !cs.over) {
@@ -333,7 +335,7 @@ function startPlayerTurn(cs: CoopState, idx: number, evs: GameEvent[]) {
     }
   }
   const died = applyOverheat(side, who, foesOf(cs).filter((x) => x.f.hp > 0), evs)
-  markDeaths(cs, evs)
+  coopMarkDeaths(cs, evs)
   // A player's first-ever turn still counts as "first turn" for relic hooks.
   if (!died && !cs.over) refillSide(side, cs, who, evs, { firstTurn: cs.turn === 1 })
 }
@@ -342,4 +344,32 @@ function startPlayerTurn(cs: CoopState, idx: number, evs: GameEvent[]) {
 export function coopViewFor(cs: CoopState): Omit<CoopState, 'rng'> & { rng?: undefined } {
   const { rng: _rng, ...rest } = cs
   return rest as Omit<CoopState, 'rng'> & { rng?: undefined }
+}
+
+
+/** Drink a potion mid-fight: same interpreter as cards and solo potions. */
+export function coopUsePotion(
+  prev: CoopState,
+  playerIdx: number,
+  potionId: string,
+  target?: number,
+): StepResult<CoopState> {
+  const def = POTIONS[potionId]
+  if (!def) return { state: prev, events: [], error: 'unknown potion' }
+  if (prev.over) return { state: prev, events: [], error: 'combat is over' }
+  if (prev.downed[playerIdx]) return { state: prev, events: [], error: 'you are down' }
+  const cs: CoopState = structuredClone(prev)
+  const evs: GameEvent[] = []
+  cs.relics = cs.playerRelics[playerIdx]
+  let t = target
+  if (def.target === 'enemy') {
+    const alive = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+    if (t === undefined && alive.length === 1) t = alive[0]
+    if (t === undefined || !cs.enemies[t] || cs.enemies[t].dead) {
+      return { state: prev, events: [], error: 'invalid target' }
+    }
+  }
+  applyEffects(cs, cs.players[playerIdx], 'c' + playerIdx, foesOf(cs), t ?? 0, def.effects, evs)
+  coopMarkDeaths(cs, evs)
+  return { state: cs, events: evs }
 }

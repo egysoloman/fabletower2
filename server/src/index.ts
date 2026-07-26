@@ -16,6 +16,8 @@ import {
   CARDS,
   ENCOUNTERS,
   EVENTS,
+  POTIONS,
+  coopUsePotion,
   STARTER_DECKS,
   STARTER_RELICS,
   cardsByRarity,
@@ -161,6 +163,7 @@ interface CoopPlayer {
   maxHp: number
   deck: CardInst[]
   relics: string[]
+  potions: string[]
   gold: number
   /** Pending per-node reply (reward pick / rest pick). */
   replied: boolean
@@ -181,6 +184,7 @@ interface CoopRoom {
   shop: {
     cards: { id: string; price: number; sold: boolean }[]
     relics: { id: string; price: number; sold: boolean }[]
+    potions: { id: string; price: number; sold: boolean }[]
     removePrice: number
   } | null
   /** Active event node: everyone picks their own way through. */
@@ -264,6 +268,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     maxHp: 75,
     deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
     relics: [STARTER_RELICS[chars[i]]],
+    potions: [],
     gold: 99,
     replied: false,
   }))
@@ -294,7 +299,7 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
     seed: randInt(room.rng, 1, 0x7fffffff),
     uidStart: room.uid,
   })
-  coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!) }))
+  coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!), belt: room.players[i].potions }))
 }
 
 function coopFinishFight(room: CoopRoom) {
@@ -634,11 +639,16 @@ wss.on('connection', (ws) => {
               const def = rpool[randInt(room.rng, 0, rpool.length - 1)]
               return { id: def.id, price: randInt(room.rng, 150, 190), sold: false }
             }),
+            potions: Array.from({ length: 2 }, () => {
+              const pool = Object.values(POTIONS)
+              const def = pool[randInt(room.rng, 0, pool.length - 1)]
+              return { id: def.id, price: randInt(room.rng, 45, 70), sold: false }
+            }),
             removePrice: 80,
           }
           room.shop = stock
           room.players.forEach((p) => (p.replied = false))
-          coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock, gold: room.players[i].gold, deck: room.players[i].deck }))
+          coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock, gold: room.players[i].gold, deck: room.players[i].deck, belt: room.players[i].potions }))
         } else if (node.type === 'event') {
           const pool = EVENTS.filter((ev) =>
             ev.choices.every((ch) =>
@@ -708,14 +718,17 @@ wss.on('connection', (ws) => {
         const idx = room.players.findIndex((p) => p.client === client)
         const player = room.players[idx]
         const kind = String(msg.kind ?? '')
-        if (kind === 'card' || kind === 'relic') {
-          const list = kind === 'card' ? room.shop.cards : room.shop.relics
+        if (kind === 'card' || kind === 'relic' || kind === 'potion') {
+          const list = kind === 'card' ? room.shop.cards : kind === 'relic' ? room.shop.relics : room.shop.potions
           const item = list[Math.floor(Number(msg.idx))]
           if (!item || item.sold || player.gold < item.price) return send(ws, { t: 'err', msg: 'cannot buy' })
+          if (kind === 'potion' && player.potions.length >= 3) return send(ws, { t: 'err', msg: 'belt full' })
           item.sold = true
           player.gold -= item.price
           if (kind === 'card') player.deck.push({ uid: room.uid++, id: item.id, up: false })
-          else player.relics.push(item.id)
+          else if (kind === 'relic') player.relics.push(item.id)
+          else player.potions.push(item.id)
+          coopBroadcast(room, () => ({ t: 'coopbought', name: tagOf(client), kind, id: item.id }))
         } else if (kind === 'remove') {
           if (player.gold < room.shop.removePrice) return send(ws, { t: 'err', msg: 'cannot afford' })
           const uid = Math.floor(Number(msg.uid))
@@ -724,7 +737,7 @@ wss.on('connection', (ws) => {
           player.gold -= room.shop.removePrice
           player.deck.splice(at, 1)
         }
-        coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold, deck: room.players[i].deck }))
+        coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold, deck: room.players[i].deck, belt: room.players[i].potions }))
         break
       }
       case 'coopshopdone': {
@@ -771,6 +784,26 @@ wss.on('connection', (ws) => {
         if (room.players.every((p) => p.replied)) {
           room.event = null
           coopBroadcast(room, (i) => coopMapMsg(room, i))
+        }
+        break
+      }
+      case 'cooppotion': {
+        const room = coopRooms.get(client)
+        if (!room || !room.combat || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const player = room.players[idx]
+        const pi = Math.floor(Number(msg.idx))
+        const pid = player.potions[pi]
+        if (!pid || !POTIONS[pid]) return send(ws, { t: 'err', msg: 'no such potion' })
+        const res = coopUsePotion(room.combat, idx, pid, Number.isInteger(msg.target) ? Number(msg.target) : undefined)
+        if (res.error) return send(ws, { t: 'err', msg: res.error })
+        player.potions.splice(pi, 1)
+        room.combat = res.state
+        coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, belt: i === idx ? player.potions : undefined }))
+        if (room.combat.over === 'win') coopFinishFight(room)
+        else if (room.combat.over === 'lose') {
+          coopBroadcast(room, () => ({ t: 'coopdefeat' }))
+          endCoop(room)
         }
         break
       }

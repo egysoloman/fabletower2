@@ -1,5 +1,6 @@
 /** Tiny WebAudio synth for UI feedback — no audio assets needed. */
 import { signal } from '@preact/signals'
+import { settings } from './settings'
 
 export const muted = signal(localStorage.getItem('ns-mute') === '1')
 
@@ -22,6 +23,8 @@ function ac(): AudioContext | null {
 
 function blip(freq: number, dur: number, type: OscillatorType = 'square', vol = 0.04, slide = 0) {
   if (muted.value) return
+  vol *= settings.value.master * settings.value.sfx
+  if (vol <= 0.0005) return
   const a = ac()
   if (!a) return
   try {
@@ -42,7 +45,15 @@ function blip(freq: number, dur: number, type: OscillatorType = 'square', vol = 
 
 export const sfx = {
   click: () => blip(880, 0.05, 'square', 0.02),
-  play: () => blip(480, 0.12, 'sawtooth', 0.03, 320),
+  tick: () => blip(1400, 0.03, 'square', 0.012),
+  draw: () => blip(760, 0.09, 'sawtooth', 0.016, 420),
+  /** Card play — a distinct tone per card type. */
+  play: (kind?: 'attack' | 'skill' | 'power') =>
+    kind === 'skill'
+      ? blip(560, 0.1, 'triangle', 0.03, 220)
+      : kind === 'power'
+        ? (blip(392, 0.14, 'sine', 0.035, 180), setTimeout(() => blip(588, 0.14, 'sine', 0.03, 120), 90))
+        : blip(480, 0.12, 'sawtooth', 0.03, 320),
   hit: () => blip(170, 0.16, 'sawtooth', 0.05, -90),
   block: () => blip(300, 0.1, 'triangle', 0.05, -60),
   heal: () => blip(620, 0.16, 'sine', 0.04, 240),

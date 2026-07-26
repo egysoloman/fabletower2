@@ -5,6 +5,7 @@
  * pure, and this layer turns their events into juice.
  */
 import { signal } from '@preact/signals'
+import { qualityFactor, settings } from './settings'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { STATUS_INFO, cardBaseName, moveName, statusName, type GameEvent, type StatusId } from '@neonspire/engine'
 import { sfx } from './sfx'
@@ -119,6 +120,7 @@ const CODE_CHARS = '01<>/{}$#;&*'
 
 /** Spray of glowing code glyphs (digital shrapnel). */
 export function glyphSplash(x: number, y: number, color: string, n = 10, glyphSet?: string[]) {
+  n = Math.max(1, Math.round(n * qualityFactor()))
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX_PARTICLES) return
     const a = Math.random() * Math.PI * 2
@@ -302,6 +304,7 @@ export function defeatFx() {
 export const shakeEvent = signal({ id: 0, big: false })
 
 function fireShake(big: boolean) {
+  if (!settings.value.shake) return
   shakeEvent.value = { id: shakeEvent.value.id + 1, big }
 }
 
@@ -353,6 +356,7 @@ const parts: Particle[] = []
 const MAX_PARTICLES = 340
 
 export function burst(x: number, y: number, color: string, n = 14, speed = 3.2) {
+  n = Math.max(1, Math.round(n * qualityFactor()))
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX_PARTICLES) return
     const a = Math.random() * Math.PI * 2
@@ -374,6 +378,7 @@ export function burst(x: number, y: number, color: string, n = 14, speed = 3.2) 
 
 /** Upward sparkle cone (heals, buffs). */
 function burstUp(x: number, y: number, color: string, n = 10, speed = 2.4) {
+  n = Math.max(1, Math.round(n * qualityFactor()))
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX_PARTICLES) return
     const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.1
@@ -504,7 +509,7 @@ export function FxLayer() {
           {f.text}
         </div>
       ))}
-      <div class="scanlines" />
+      {settings.value.quality !== 'low' && <div class="scanlines" />}
     </>
   )
 }

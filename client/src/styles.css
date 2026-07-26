@@ -1485,3 +1485,16 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .shopitem.soldout { opacity: 0.35; filter: grayscale(0.8); }
 details > summary { list-style: none; }
 details .gridcards { margin-top: 10px; max-height: 40vh; overflow-y: auto; }
+
+.setrow { display: flex; align-items: center; gap: 14px; justify-content: space-between; min-width: 300px; font-size: 13px; }
+.setrow input[type='range'] { flex: 1; accent-color: var(--cyan); }
+.setrow b { font-family: var(--font-head); font-size: 12px; min-width: 42px; text-align: right; }
+.setopts { display: flex; gap: 6px; }
+.btn.ghost.on { color: var(--cyan); border-color: var(--cyan); box-shadow: 0 0 10px rgba(0, 229, 255, 0.4); }
+
+/* rest-site ambience: campfire glow breathing behind the panel */
+.restglow { animation: campfire 2.6s ease-in-out infinite; }
+@keyframes campfire {
+  0%, 100% { box-shadow: 0 0 30px rgba(255, 158, 45, 0.16), inset 0 0 26px rgba(255, 158, 45, 0.05); }
+  50% { box-shadow: 0 0 60px rgba(255, 158, 45, 0.34), inset 0 0 40px rgba(255, 158, 45, 0.12); }
+}

@@ -3,6 +3,7 @@ import type { CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
 import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
+import { setSetting, settings } from '../settings'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
 import { SoundIcon } from '../sprites'
@@ -57,6 +58,9 @@ export function MenuScreen() {
           </button>
         </div>
         <div class="seedrow">
+          <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'settings'))}>
+            ⚙ {t('settingsBtn')}
+          </button>
           <button class="btn ghost" onClick={toggleLang}>
             {lang.value === 'zh' ? 'EN' : '中文'}
           </button>
@@ -160,4 +164,67 @@ function hashSeed(s: string): number {
     h = Math.imul(h, 16777619)
   }
   return h >>> 0
+}
+
+/** Settings: audio, animation quality, screen shake, language. */
+export function SettingsScreen() {
+  const st = settings.value
+  const slider = (label: string, key: 'master' | 'sfx') => (
+    <label class="setrow">
+      <span>{label}</span>
+      <input
+        type="range"
+        min="0"
+        max="100"
+        value={Math.round(st[key] * 100)}
+        onInput={(e) => {
+          setSetting(key, Number((e.target as HTMLInputElement).value) / 100)
+          sfx.click()
+        }}
+      />
+      <b>{Math.round(st[key] * 100)}%</b>
+    </label>
+  )
+  return (
+    <div class="screen menu">
+      <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
+        SET<span>UP</span>
+      </div>
+      <div class="panel popin" style={{ minWidth: '340px' }}>
+        {slider(t('setMaster'), 'master')}
+        {slider(t('setSfx'), 'sfx')}
+        <label class="setrow">
+          <span>{t('setQuality')}</span>
+          <span class="setopts">
+            {(['high', 'medium', 'low'] as const).map((q) => (
+              <button key={q} class={`btn ghost ${st.quality === q ? 'on' : ''}`} onClick={() => (setSetting('quality', q), sfx.click())}>
+                {t(('q_' + q) as Parameters<typeof t>[0])}
+              </button>
+            ))}
+          </span>
+        </label>
+        <label class="setrow">
+          <span>{t('setShake')}</span>
+          <button class="btn ghost" onClick={() => (setSetting('shake', !st.shake), sfx.click())}>
+            {st.shake ? t('on') : t('off')}
+          </button>
+        </label>
+        <label class="setrow">
+          <span>{t('setLang')}</span>
+          <button class="btn ghost" onClick={toggleLang}>
+            {lang.value === 'zh' ? 'EN' : '中文'}
+          </button>
+        </label>
+        <label class="setrow">
+          <span>{t('setMute')}</span>
+          <button class="btn ghost" onClick={toggleMute}>
+            <SoundIcon muted={muted.value} />
+          </button>
+        </label>
+      </div>
+      <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
+        {t('back')}
+      </button>
+    </div>
+  )
 }

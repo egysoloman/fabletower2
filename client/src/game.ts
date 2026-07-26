@@ -202,6 +202,7 @@ export function doCombat(action: CombatAction) {
     return
   }
   if (action.t === 'play') sfx.play()
+  if (action.t === 'end') setTimeout(() => sfx.draw(), 600)
   combat.value = res.state
   // End-turn resolves the whole enemy phase at once — pace the beats so each
   // enemy's move reads as its own action.
@@ -259,7 +260,7 @@ export function playCardWithFx(handIdx: number, targetWho?: string, from?: { x: 
     }, 230)
   }
   energyRipple()
-  sfx.play()
+  sfx.play(def.type)
   combat.value = res.state
   processEvents(res.events, { delay: dest ? 250 : 60 })
   saveGame()
