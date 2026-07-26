@@ -1137,7 +1137,7 @@ describe('ascension 6-10 (cycle 8)', () => {
     // A20: bosses armored (A5's +1 plus A20's +1)
     expect(mk(20, 'boss', 'compiler').enemies[0].statuses.artifact).toBe(2)
     expect(restHealAmount(newRun(3, 17))).toBe(Math.floor(newRun(3, 17).maxHp * 0.15))
-    expect(EVENTS.length).toBeGreaterThanOrEqual(30)
+    expect(EVENTS.length).toBeGreaterThanOrEqual(50)
   })
 
   it('A7 drops potions less often', async () => {

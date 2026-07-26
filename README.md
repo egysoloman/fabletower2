@@ -123,7 +123,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Artifact-armored elite and a permanently-stealthed phantom — on a
   Spire-style branching node map:
   combats, elites, rest sites, shops (buy/remove/potions), treasure vaults,
-  and 38 narrative events. Beat Act 3 and choose: jack out with the win, or
+  and 50 narrative events — matching StS event volume. Beat Act 3 and choose: jack out with the win, or
   **descend into THE ROOT** — a fixed gauntlet ending in a true final boss
   that grows stronger every turn — for the deep-clear score bonus.
 - **Smart enemy AI**: enemies pick intents by scoring moves against the actual

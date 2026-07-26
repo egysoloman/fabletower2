@@ -615,6 +615,99 @@ const ART: Record<string, JSX.Element> = {
       {dot(32, 32, 1.8)}
     </>
   ),
+  'ev-karaoke': (
+    <>
+      <circle cx="30" cy="18" r="7" />
+      <path d="M30 25 V44 M30 44 C30 50 22 50 22 46 M36 14 C42 10 48 14 46 20" stroke-width="1.8" />
+      <path d="M42 26 L46 22 M44 32 L50 28" stroke-width="1.2" />
+    </>
+  ),
+  'ev-proxywar': (
+    <>
+      <path d="M16 54 V14 L34 20 L16 26" />
+      <path d="M48 54 V22 L32 28 L48 34" stroke-width="1.6" />
+      <path d="M12 54 H52" stroke-width="1.8" />
+    </>
+  ),
+  'ev-blackbox': (
+    <>
+      <rect x="14" y="22" width="36" height="22" rx="3" />
+      <path d="M20 28 H30 M20 33 H26 M20 38 H34" stroke-width="1.4" />
+      {dot(43, 33, 2.4)}
+      <path d="M14 48 L10 54 M50 48 L54 54" stroke-width="1.4" />
+    </>
+  ),
+  'ev-servergarden': (
+    <>
+      <rect x="14" y="34" width="36" height="20" rx="2" />
+      <path d="M20 40 H28 M20 46 H26" stroke-width="1.3" />
+      <path d="M40 34 V20 M40 26 C34 26 32 20 32 16 M40 22 C46 22 48 16 48 12" stroke-width="1.8" />
+    </>
+  ),
+  'ev-tribunal': (
+    <>
+      <path d="M32 10 V50 M18 18 H46" stroke-width="1.8" />
+      <path d="M18 18 L12 32 A6 6 0 0 0 24 32 Z M46 18 L40 32 A6 6 0 0 0 52 32 Z" stroke-width="1.4" />
+      <path d="M22 54 H42" stroke-width="1.8" />
+    </>
+  ),
+  'ev-blackoutzone': (
+    <>
+      <path d="M38 8 A20 20 0 1 0 38 56 A16 16 0 0 1 38 8 Z" />
+      {dot(18, 20, 1.4)}
+      {dot(14, 34, 1.2)}
+    </>
+  ),
+  'ev-punchcard': (
+    <>
+      <rect x="14" y="16" width="36" height="32" rx="2" />
+      <path d="M50 16 L42 24 V16 Z" stroke-width="1.4" />
+      <rect x="20" y="24" width="5" height="3" stroke-width="1.1" />
+      <rect x="30" y="24" width="5" height="3" stroke-width="1.1" />
+      <rect x="24" y="32" width="5" height="3" stroke-width="1.1" />
+      <rect x="36" y="38" width="5" height="3" stroke-width="1.1" />
+    </>
+  ),
+  'ev-scrapdog': (
+    <>
+      <rect x="16" y="30" width="24" height="14" rx="2" />
+      <rect x="38" y="22" width="12" height="10" rx="2" />
+      <path d="M40 22 L38 16 M48 22 L50 16 M20 44 V52 M34 44 V52" stroke-width="1.6" />
+      <path d="M16 34 C10 32 10 26 14 26" stroke-width="1.4" />
+      {dot(45, 27, 1.4)}
+    </>
+  ),
+  'ev-datawell': (
+    <>
+      <path d="M16 20 C16 14 48 14 48 20 C48 26 16 26 16 20 Z" />
+      <path d="M16 20 V44 C16 50 48 50 48 44 V20" stroke-width="1.6" />
+      <path d="M24 32 H40 M28 40 H36" stroke-width="1.2" />
+    </>
+  ),
+  'ev-ransomnote': (
+    <>
+      <rect x="16" y="12" width="32" height="40" rx="2" />
+      <path d="M22 20 H42 M22 26 H42 M22 32 H36" stroke-width="1.3" />
+      <circle cx="32" cy="42" r="4" />
+      <path d="M32 42 V46" stroke-width="1.6" />
+    </>
+  ),
+  'ev-glitchfest': (
+    <>
+      <path d="M32 8 L36 20 L48 20 L38 28 L42 40 L32 32 L22 40 L26 28 L16 20 L28 20 Z" stroke-dasharray="5 3" />
+      <path d="M10 48 H22 M28 52 H36 M42 48 H54" stroke-width="1.6" />
+    </>
+  ),
+  'ev-lasttrain': (
+    <>
+      <rect x="14" y="18" width="36" height="26" rx="6" />
+      <rect x="20" y="24" width="10" height="8" rx="1" stroke-width="1.4" />
+      <rect x="34" y="24" width="10" height="8" rx="1" stroke-width="1.4" />
+      {dot(22, 39, 1.8)}
+      {dot(42, 39, 1.8)}
+      <path d="M10 50 H54" stroke-width="1.6" />
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />
