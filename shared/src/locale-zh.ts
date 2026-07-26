@@ -93,6 +93,22 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   bootdisk: { name: '引导盘', flavor: '开机第一次读取' },
   residentshell: { name: '常驻外壳', flavor: '永远在跑，从未被见' },
   ghostprocess: { name: '幽灵进程', flavor: '<defunct> 但致命' },
+  phaseblade: { name: '相位刃', flavor: '半在此处，全是锋刃' },
+  cloakfield: { name: '隐匿力场' },
+  redshift: { name: '红移', flavor: '一切都更快，也更糟' },
+  blackout: { name: '灯火管制', flavor: '这个房间忘记了你' },
+  flicker: { name: '闪烁' },
+  slipstream: { name: '滑流' },
+  afterimage: { name: '残影', flavor: '你从未在场' },
+  surgefang: { name: '涌动之牙' },
+  veilstrike: { name: '破幕一击', flavor: '离场时出手' },
+  nullstep: { name: '虚步' },
+  eclipse: { name: '蚀' },
+  shroudloop: { name: '裹尸布循环' },
+  momentumdrive: { name: '动量引擎', flavor: '运动中的物体保持愤怒' },
+  wraithform: { name: '幽魂形态' },
+  deathblossom: { name: '死亡绽放', flavor: '每位见证者只开一次' },
+  dualitycore: { name: '二象核心', flavor: '两者皆是。账单后付。' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
@@ -130,6 +146,11 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   ignition: { name: '点火', desc: '回合结束时获得 {n} 点高热。', powerText: '你的回合结束时，获得 {n} 点高热。' },
   reactor: { name: '反应堆', desc: '过热不再伤害你，而是对所有敌人造成该伤害。', powerText: '过热不再伤害你——改为对所有敌人造成该伤害。' },
   artifact: { name: '人工制品', desc: '抵消接下来 {n} 次减益。', powerText: '获得 {n} 层人工制品：每层抵消下一次施加于你的减益。' },
+  overdrive: { name: '超载', desc: '姿态：攻击伤害提高 50%，但你受到的攻击伤害也提高 50%。' },
+  stealth: { name: '潜行', desc: '姿态：你受到的攻击伤害减半。离开时获得 2 点能量。' },
+  stancewall: { name: '姿态壁垒', desc: '每当你进入姿态，获得 {n} 点格挡。', powerText: '每当你进入一个姿态，获得 {n} 点格挡。' },
+  momentum: { name: '动量', desc: '每当你进入超载，获得 {n} 点力量。', powerText: '每当你进入超载，获得 {n} 点力量。' },
+  tempoloop: { name: '节奏循环', desc: '每当你进入姿态，抽 {n} 张牌。', powerText: '每当你进入一个姿态，抽 {n} 张牌。' },
 }
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {

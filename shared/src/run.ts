@@ -25,6 +25,11 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
     'heatshield', 'heatshield', 'heatshield', 'heatshield',
     'ventblade', 'stoke',
   ],
+  ghost: [
+    'phaseblade', 'phaseblade', 'phaseblade', 'phaseblade',
+    'cloakfield', 'cloakfield', 'cloakfield', 'cloakfield',
+    'redshift', 'blackout',
+  ],
 }
 
 export const MAX_ASC = 10

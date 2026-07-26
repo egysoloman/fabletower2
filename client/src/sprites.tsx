@@ -30,6 +30,15 @@ const ART: Record<string, JSX.Element> = {
     </>
   ),
 
+  ghost: (
+    <>
+      <circle cx="32" cy="20" r="10" />
+      <path d="M25 18 L31 20 M37 17 L41 19" stroke-width="1.6" />
+      <path d="M16 54 C14 34 50 34 48 54 L44 48 L40 55 L36 48 L32 55 L28 48 L24 55 L20 48 Z" />
+      <path d="M50 24 C54 20 56 24 53 27 M53 14 C57 12 58 16 55 18" stroke-width="1.4" />
+    </>
+  ),
+
   // --- act 1 ------------------------------------------------------------
   spambot: (
     <>

@@ -492,6 +492,95 @@ reg(c({
   upEffects: [{ k: 'dmg', n: 24 }, { k: 'status', to: 'self', id: 'heat', n: 4 }],
 }))
 
+// --- GHOST: the stance phaser -----------------------------------------------
+
+reg(c({
+  id: 'phaseblade', name: 'Phase Blade', type: 'attack', rarity: 'starter', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }], upEffects: [{ k: 'dmg', n: 9 }],
+  flavor: 'half here, all edge',
+}))
+reg(c({
+  id: 'cloakfield', name: 'Cloak Field', type: 'skill', rarity: 'starter', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 5 }], upEffects: [{ k: 'block', n: 8 }],
+}))
+reg(c({
+  id: 'redshift', name: 'Redshift', type: 'skill', rarity: 'starter', char: 'ghost', cost: 0, target: 'none',
+  effects: [{ k: 'enterStance', id: 'overdrive' }],
+  upEffects: [{ k: 'enterStance', id: 'overdrive' }, { k: 'draw', n: 1 }],
+  flavor: 'everything gets faster and worse',
+}))
+reg(c({
+  id: 'blackout', name: 'Blackout', type: 'skill', rarity: 'starter', char: 'ghost', cost: 0, target: 'none',
+  effects: [{ k: 'enterStance', id: 'stealth' }],
+  upEffects: [{ k: 'enterStance', id: 'stealth' }, { k: 'block', n: 3 }],
+  flavor: 'the room forgets you',
+}))
+reg(c({
+  id: 'flicker', name: 'Flicker', type: 'attack', rarity: 'common', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmgIfStance', n: 8, bonus: 4 }],
+  upEffects: [{ k: 'dmgIfStance', n: 11, bonus: 5 }],
+}))
+reg(c({
+  id: 'slipstream', name: 'Slipstream', type: 'skill', rarity: 'common', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 5 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'block', n: 8 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'afterimage', name: 'Afterimage', type: 'skill', rarity: 'common', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'enterStance', id: 'stealth' }, { k: 'block', n: 5 }],
+  upEffects: [{ k: 'enterStance', id: 'stealth' }, { k: 'block', n: 8 }],
+  flavor: 'you were never there',
+}))
+reg(c({
+  id: 'surgefang', name: 'Surge Fang', type: 'attack', rarity: 'common', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 7 }, { k: 'enterStance', id: 'overdrive' }],
+  upEffects: [{ k: 'dmg', n: 10 }, { k: 'enterStance', id: 'overdrive' }],
+}))
+reg(c({
+  id: 'veilstrike', name: 'Veil Strike', type: 'attack', rarity: 'common', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }, { k: 'enterStance', id: 'none' }],
+  upEffects: [{ k: 'dmg', n: 9 }, { k: 'enterStance', id: 'none' }],
+  flavor: 'strike on the way out',
+}))
+reg(c({
+  id: 'nullstep', name: 'Null Step', type: 'skill', rarity: 'common', char: 'ghost', cost: 0, target: 'none',
+  effects: [{ k: 'enterStance', id: 'none' }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'enterStance', id: 'none' }, { k: 'draw', n: 2 }],
+}))
+reg(c({
+  id: 'eclipse', name: 'Eclipse', type: 'attack', rarity: 'uncommon', char: 'ghost', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 8, times: 2 }, { k: 'enterStance', id: 'overdrive' }],
+  upEffects: [{ k: 'dmg', n: 10, times: 2 }, { k: 'enterStance', id: 'overdrive' }],
+}))
+reg(c({
+  id: 'shroudloop', name: 'Shroud Loop', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'stancewall', n: 3 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'stancewall', n: 5 }],
+}))
+reg(c({
+  id: 'momentumdrive', name: 'Momentum Drive', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'momentum', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'momentum', n: 2 }],
+  flavor: 'objects in motion stay furious',
+}))
+reg(c({
+  id: 'wraithform', name: 'Wraith Form', type: 'skill', rarity: 'uncommon', char: 'ghost', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'enterStance', id: 'stealth' }, { k: 'block', n: 12 }],
+  upEffects: [{ k: 'enterStance', id: 'stealth' }, { k: 'block', n: 12 }],
+}))
+reg(c({
+  id: 'deathblossom', name: 'Death Blossom', type: 'attack', rarity: 'rare', char: 'ghost', cost: 3, target: 'enemy',
+  effects: [{ k: 'dmgIfStance', n: 14, bonus: 14 }],
+  upEffects: [{ k: 'dmgIfStance', n: 18, bonus: 18 }],
+  flavor: 'blooms once per witness',
+}))
+reg(c({
+  id: 'dualitycore', name: 'Duality Core', type: 'power', rarity: 'rare', char: 'ghost', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'tempoloop', n: 1 }, { k: 'status', to: 'self', id: 'stancewall', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'tempoloop', n: 1 }, { k: 'status', to: 'self', id: 'stancewall', n: 4 }],
+  flavor: 'be both. bill later.',
+}))
+
 // --- Keyword cards: Innate / Retain / Ethereal ------------------------------
 
 reg(c({
@@ -661,6 +750,10 @@ function effTextEn(e: Effect): string {
       return `Vent ALL Heat: gain ${e.mult}× that much Block.`
     case 'dmgHeatBonus':
       return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead with ${e.threshold}+ Heat.`
+    case 'enterStance':
+      return e.id === 'none' ? 'Exit your stance.' : `Enter ${statusName(e.id)}.`
+    case 'dmgIfStance':
+      return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead while in a stance.`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)
@@ -722,6 +815,10 @@ function effTextZh(e: Effect): string {
       return `排出全部高热：获得其 ${e.mult} 倍的格挡。`
     case 'dmgHeatBonus':
       return `造成 ${e.n} 点伤害。若你有 ${e.threshold}+ 点高热，则改为造成 ${e.n + e.bonus} 点。`
+    case 'enterStance':
+      return e.id === 'none' ? '退出你的姿态。' : `进入${statusName(e.id)}。`
+    case 'dmgIfStance':
+      return `造成 ${e.n} 点伤害。若你处于姿态中，则改为造成 ${e.n + e.bonus} 点。`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)

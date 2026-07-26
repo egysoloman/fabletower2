@@ -73,11 +73,14 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ## Game content
 
-- **TWO playable characters** — RUNNER (versatile netdiver) and VECTOR, a
-  volatile overclocker built on the Heat mechanic: attacks ride +1 damage per
+- **THREE playable characters** — RUNNER (versatile netdiver); VECTOR, a
+  volatile overclocker built on the Heat mechanic (attacks ride +1 damage per
   Heat stack, overheating past the threshold burns you for all of it, vent
-  cards cash it out, and the Reactor power turns meltdowns into AoE.
-- **89 playable cards** across per-character pools and three RUNNER build
+  cards cash it out, and the Reactor power turns meltdowns into AoE); and
+  GHOST, a stance phaser who flickers between **Overdrive** (deal ×1.5, take
+  ×1.5) and **Stealth** (take ×0.5, +2 energy on exit), with stance-trigger
+  powers that pay block, Strength, and draws on every switch.
+- **105 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
@@ -98,11 +101,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   narrowed boss picks — with the active modifier described on the menu. Plus
   a **daily seeded run**, an end-of-run **score breakdown**, and local run
   history (with scores).
-- **21 statuses**: Strength, Weak, Vulnerable, Corrupt (poison), Thorns,
+- **26 statuses**: Strength, Weak, Vulnerable, Corrupt (poison), Thorns,
   Plating, Turret, Viral, Overclock, Uplink, Ritual, Regen, Barricade, Kernel,
   Hyperthread, Chronic, **Artifact** (negates the next debuff — late elites
-  and THE ROOT come armored with it), and VECTOR's Heat / Coolant / Ignition /
-  Reactor.
+  and THE ROOT come armored with it), VECTOR's Heat / Coolant / Ignition /
+  Reactor, and GHOST's Overdrive / Stealth stances with Stance Wall, Momentum
+  and Tempo Loop triggers.
 - **Sustain package** for softer runs: Hotfix, Checkpoint, Backup Restore
   (heals), Leech Query (lifesteal), Auto-Repair (Regen power), Nano Medkit /
   Solar Cell relics.

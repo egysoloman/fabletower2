@@ -195,7 +195,7 @@ export function CombatScreen() {
 
       <div class="arena">
         <div
-          class={`player-zone ${run.value?.char === 'vector' ? 'vector' : ''} ${fxPulses.value['p'] ?? ''}`}
+          class={`player-zone ${run.value?.char ?? ''} ${fxPulses.value['p'] ?? ''}`}
           ref={(el) => registerAnchor('p', el)}
         >
           <div
@@ -207,9 +207,11 @@ export function CombatScreen() {
           </div>
           <BlockChip block={p.block} />
           <div class="glyph">
-            <Sprite id={run.value?.char === 'vector' ? 'vector' : 'runner'} size={58} />
+            <Sprite id={run.value?.char ?? 'runner'} size={58} />
           </div>
-          <div class="pname">{run.value?.char === 'vector' ? 'VECTOR' : p.name}</div>
+          <div class="pname">
+            {run.value?.char === 'vector' ? 'VECTOR' : run.value?.char === 'ghost' ? 'GHOST' : p.name}
+          </div>
           <HpBar hp={p.hp} maxHp={p.maxHp} mine />
           <StatusRow statuses={p.statuses} />
         </div>

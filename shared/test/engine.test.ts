@@ -880,6 +880,70 @@ describe('artifact & events (cycle 7)', () => {
   })
 })
 
+describe('GHOST stances (cycle 9)', () => {
+  function rigG(cs: CombatState, ids: string[]) {
+    let uid = 7000
+    cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+    cs.player.energy = 99
+    return cs
+  }
+  const base = () => fixedCombat(['cloakfield', 'cloakfield', 'cloakfield', 'cloakfield', 'cloakfield'], ['golem'])
+
+  it('overdrive multiplies damage both ways; stealth halves incoming', () => {
+    const F = (statuses: Record<string, number>) => ({ statuses }) as any
+    expect(modifiedDamage(10, F({ overdrive: 1 }), F({}))).toBe(15)
+    expect(modifiedDamage(10, F({}), F({ overdrive: 1 }))).toBe(15)
+    expect(modifiedDamage(10, F({}), F({ stealth: 1 }))).toBe(5)
+    expect(modifiedDamage(10, F({ overdrive: 1 }), F({ stealth: 1 }))).toBe(7)
+  })
+
+  it('stances are exclusive and exiting stealth grants 2 energy', () => {
+    const cs = rigG(base(), ['blackout', 'redshift', 'nullstep'])
+    let s = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'blackout') }).state
+    expect(s.player.statuses.stealth).toBe(1)
+    const energyBefore = s.player.energy
+    s = combatReduce(s, { t: 'play', hand: handIdx(s as CombatState, 'redshift') }).state
+    expect(s.player.statuses.stealth).toBeUndefined()
+    expect(s.player.statuses.overdrive).toBe(1)
+    expect(s.player.energy).toBe(energyBefore + 2) // 0-cost card + decloak bonus
+    s = combatReduce(s, { t: 'play', hand: handIdx(s as CombatState, 'nullstep') }).state
+    expect(s.player.statuses.overdrive).toBeUndefined()
+  })
+
+  it('stance-trigger powers fire on entry', () => {
+    const cs = rigG(base(), ['redshift'])
+    cs.player.draw.push({ uid: 7100, id: 'cloakfield', up: false })
+    cs.player.statuses.stancewall = 3
+    cs.player.statuses.momentum = 2
+    cs.player.statuses.tempoloop = 1
+    const handBefore = cs.player.hand.length
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.block).toBe(3)
+    expect(s.player.statuses.str).toBe(2)
+    expect(s.player.hand.length).toBe(handBefore) // played 1, drew 1
+  })
+
+  it('re-entering the same stance is a no-op (no trigger farming)', () => {
+    const cs = rigG(base(), ['redshift', 'redshift'])
+    cs.player.statuses.momentum = 1
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.statuses.str).toBe(1)
+    s = combatReduce(s, { t: 'play', hand: 0 }).state
+    expect(s.player.statuses.str).toBe(1) // unchanged
+  })
+
+  it('ghost pool is exclusive and the starter deck boots with stance cards', () => {
+    const gPool = obtainableCards('ghost').map((c) => c.id)
+    expect(gPool).toContain('flicker')
+    expect(gPool).not.toContain('meltdown')
+    expect(gPool).not.toContain('payload')
+    expect(obtainableCards('runner').map((c) => c.id)).not.toContain('flicker')
+    const run = newRun(1, 0, 'ghost')
+    expect(run.deck.some((c) => c.id === 'redshift')).toBe(true)
+    expect(run.deck.some((c) => c.id === 'blackout')).toBe(true)
+  })
+})
+
 describe('ascension 6-10 (cycle 8)', () => {
   it('A10 doubles the curse and cuts max hp to 60', async () => {
     const { MAX_ASC } = await import('../src/run')

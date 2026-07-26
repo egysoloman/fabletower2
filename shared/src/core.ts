@@ -26,12 +26,15 @@ export interface PlayEnv {
 /** Attack damage after attacker Strength/Weak and defender Vulnerable. */
 export function modifiedDamage(
   base: number,
-  attacker: { statuses: { str?: number; weak?: number; heat?: number } },
-  defender: { statuses: { vuln?: number } },
+  attacker: { statuses: { str?: number; weak?: number; heat?: number; overdrive?: number } },
+  defender: { statuses: { vuln?: number; overdrive?: number; stealth?: number } },
 ): number {
   let d = base + (attacker.statuses.str ?? 0) + (attacker.statuses.heat ?? 0)
   if (attacker.statuses.weak) d = Math.floor(d * 0.75)
+  if (attacker.statuses.overdrive) d = Math.floor(d * 1.5)
   if (defender.statuses.vuln) d = Math.floor(d * 1.5)
+  if (defender.statuses.overdrive) d = Math.floor(d * 1.5)
+  if (defender.statuses.stealth) d = Math.floor(d * 0.5)
   return Math.max(0, d)
 }
 
@@ -433,6 +436,40 @@ function resolveEffect(
       if (target && target.f.hp > 0) {
         const hot = (side.statuses.heat ?? 0) >= eff.threshold
         attack(side, target.f, hot ? eff.n + eff.bonus : eff.n, whoSelf, target.who, evs)
+      }
+      break
+    }
+    case 'enterStance': {
+      const from: 'overdrive' | 'stealth' | 'none' = side.statuses.overdrive
+        ? 'overdrive'
+        : side.statuses.stealth
+          ? 'stealth'
+          : 'none'
+      if (from === eff.id) break // already there: no triggers, no exit bonus
+      delete side.statuses.overdrive
+      delete side.statuses.stealth
+      if (from === 'stealth') {
+        // Decloaking releases stored charge.
+        side.energy += 2
+        evs.push({ e: 'status', who: whoSelf, id: 'energyGain', n: 2 })
+      }
+      if (from !== 'none') evs.push({ e: 'status', who: whoSelf, id: from, n: -1 })
+      if (eff.id !== 'none') {
+        applyStatus(side, eff.id, 1, whoSelf, evs)
+        // Entering a stance fires stance-trigger powers.
+        const wall = side.statuses.stancewall ?? 0
+        if (wall > 0) cardBlock(side, wall, whoSelf, foes, env, evs)
+        const tempo = side.statuses.tempoloop ?? 0
+        if (tempo > 0) drawCards(side, tempo, env, whoSelf, evs)
+        const mom = side.statuses.momentum ?? 0
+        if (mom > 0 && eff.id === 'overdrive') applyStatus(side, 'str', mom, whoSelf, evs)
+      }
+      break
+    }
+    case 'dmgIfStance': {
+      if (target && target.f.hp > 0) {
+        const inStance = !!(side.statuses.overdrive || side.statuses.stealth)
+        attack(side, target.f, inStance ? eff.n + eff.bonus : eff.n, whoSelf, target.who, evs)
       }
       break
     }

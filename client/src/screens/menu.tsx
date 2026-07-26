@@ -53,6 +53,13 @@ export function MenuScreen() {
             <div class="cdesc-h">{t('charVectorDesc')}</div>
           </div>
         </div>
+        <div class={`charcard ghost ${char === 'ghost' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('ghost'))}>
+          <Sprite id="ghost" size={46} />
+          <div>
+            <div class="cname-h">{t('charGhost')}</div>
+            <div class="cdesc-h">{t('charGhostDesc')}</div>
+          </div>
+        </div>
       </div>
 
       <div class="menu-buttons">
