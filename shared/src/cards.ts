@@ -958,6 +958,207 @@ reg(c({
   flavor: 'terms and conditions apply',
 }))
 
+// --- Volume: cycle 23 -------------------------------------------------------
+
+reg(c({
+  id: 'bitflip', name: 'Bit Flip', type: 'attack', rarity: 'common', char: 'runner', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 5 }, { k: 'draw', n: 1 }], upEffects: [{ k: 'dmg', n: 8 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'cachepurge', name: 'Cache Purge', type: 'skill', rarity: 'common', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 6 }], upEffects: [{ k: 'block', n: 8 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'logicbomb', name: 'Logic Bomb', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 8 }, { k: 'status', to: 'target', id: 'corrupt', n: 3 }],
+  upEffects: [{ k: 'dmg', n: 10 }, { k: 'status', to: 'target', id: 'corrupt', n: 4 }],
+}))
+reg(c({
+  id: 'proxychain', name: 'Proxy Chain', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, target: 'enemy',
+  effects: [{ k: 'block', n: 5 }, { k: 'status', to: 'target', id: 'weak', n: 1 }],
+  upEffects: [{ k: 'block', n: 7 }, { k: 'status', to: 'target', id: 'weak', n: 2 }],
+}))
+reg(c({
+  id: 'rootshell', name: 'Root Shell', type: 'power', rarity: 'rare', char: 'runner', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'viral', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'viral', n: 3 }],
+}))
+reg(c({
+  id: 'quicksort', name: 'Quicksort', type: 'skill', rarity: 'common', char: 'runner', cost: 0, target: 'none',
+  effects: [{ k: 'draw', n: 1 }], upEffects: [{ k: 'draw', n: 2 }],
+  flavor: 'O(n log n) or bust',
+}))
+reg(c({
+  id: 'bufferoverflow2', name: 'Buffer Overflow', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmgIfCombo', n: 6, bonus: 6, threshold: 3 }],
+  upEffects: [{ k: 'dmgIfCombo', n: 8, bonus: 8, threshold: 3 }],
+}))
+reg(c({
+  id: 'sysreset', name: 'System Reset', type: 'skill', rarity: 'rare', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'cleanse' }, { k: 'block', n: 8 }], upEffects: [{ k: 'cleanse' }, { k: 'block', n: 12 }],
+}))
+reg(c({
+  id: 'wormhole', name: 'Wormhole', type: 'attack', rarity: 'rare', char: 'runner', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 7 }, { k: 'draw', n: 2 }], upEffects: [{ k: 'dmg', n: 10 }, { k: 'draw', n: 2 }],
+}))
+reg(c({
+  id: 'adminlock', name: 'Admin Lock', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 2, target: 'none',
+  effects: [{ k: 'block', n: 12 }], upEffects: [{ k: 'block', n: 16 }],
+}))
+reg(c({
+  id: 'heatspike', name: 'Heat Spike', type: 'attack', rarity: 'common', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 9 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'moltencore', name: 'Molten Core', type: 'power', rarity: 'rare', char: 'vector', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'str', n: 1 }, { k: 'status', to: 'self', id: 'ignition', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'str', n: 2 }, { k: 'status', to: 'self', id: 'ignition', n: 1 }],
+}))
+reg(c({
+  id: 'ashguard', name: 'Ash Guard', type: 'skill', rarity: 'common', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 5 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'block', n: 8 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'flamewall', name: 'Flame Wall', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 2, target: 'none',
+  effects: [{ k: 'block', n: 10 }, { k: 'status', to: 'self', id: 'thorns', n: 2 }],
+  upEffects: [{ k: 'block', n: 13 }, { k: 'status', to: 'self', id: 'thorns', n: 3 }],
+}))
+reg(c({
+  id: 'cauterize', name: 'Cauterize', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'heal', n: 6 }, { k: 'heatCool', n: 3 }],
+  upEffects: [{ k: 'heal', n: 9 }, { k: 'heatCool', n: 4 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'infernojab', name: 'Inferno Jab', type: 'attack', rarity: 'common', char: 'vector', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 2, times: 2 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 3, times: 2 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'thermallance', name: 'Thermal Lance', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmgHeatBonus', n: 12, bonus: 8, threshold: 4 }],
+  upEffects: [{ k: 'dmgHeatBonus', n: 15, bonus: 10, threshold: 4 }],
+}))
+reg(c({
+  id: 'sunforge', name: 'Sunforge', type: 'power', rarity: 'rare', char: 'vector', cost: 3, upCost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'ignition', n: 2 }, { k: 'status', to: 'self', id: 'coolant', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'ignition', n: 2 }, { k: 'status', to: 'self', id: 'coolant', n: 2 }],
+}))
+reg(c({
+  id: 'veilslip', name: 'Veil Slip', type: 'skill', rarity: 'common', char: 'ghost', cost: 0, target: 'none',
+  effects: [{ k: 'enterStance', id: 'none' }, { k: 'block', n: 4 }],
+  upEffects: [{ k: 'enterStance', id: 'none' }, { k: 'block', n: 6 }],
+}))
+reg(c({
+  id: 'razorflicker', name: 'Razor Flicker', type: 'attack', rarity: 'common', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmgIfStance', n: 9, bonus: 3 }],
+  upEffects: [{ k: 'dmgIfStance', n: 12, bonus: 4 }],
+}))
+reg(c({
+  id: 'duskblade', name: 'Dusk Blade', type: 'attack', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 8 }, { k: 'enterStance', id: 'stealth' }],
+  upEffects: [{ k: 'dmg', n: 11 }, { k: 'enterStance', id: 'stealth' }],
+}))
+reg(c({
+  id: 'dawnbreaker', name: 'Dawnbreaker', type: 'attack', rarity: 'uncommon', char: 'ghost', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 12 }, { k: 'enterStance', id: 'overdrive' }],
+  upEffects: [{ k: 'dmg', n: 16 }, { k: 'enterStance', id: 'overdrive' }],
+}))
+reg(c({
+  id: 'mirrorpalace', name: 'Mirror Palace', type: 'power', rarity: 'rare', char: 'ghost', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'stancewall', n: 4 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'stancewall', n: 6 }],
+}))
+reg(c({
+  id: 'hushfield', name: 'Hush Field', type: 'skill', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  retain: true,
+  effects: [{ k: 'block', n: 7 }], upEffects: [{ k: 'block', n: 10 }],
+}))
+reg(c({
+  id: 'eventide', name: 'Eventide', type: 'skill', rarity: 'rare', char: 'ghost', cost: 1, target: 'none',
+  ethereal: true,
+  effects: [{ k: 'enterStance', id: 'stealth' }, { k: 'draw', n: 2 }],
+  upEffects: [{ k: 'enterStance', id: 'stealth' }, { k: 'draw', n: 3 }],
+}))
+reg(c({
+  id: 'zealcircuit', name: 'Zeal Circuit', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'momentum', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'momentum', n: 3 }],
+}))
+reg(c({
+  id: 'pulsecannon', name: 'Pulse Cannon', type: 'attack', rarity: 'uncommon', char: 'array', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6, times: 2 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 8, times: 2 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+}))
+reg(c({
+  id: 'hexfield', name: 'Hex Field', type: 'skill', rarity: 'uncommon', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'viral', n: 1 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'viral', n: 1 }, { k: 'status', to: 'self', id: 'plating', n: 2 }],
+}))
+reg(c({
+  id: 'reproduce', name: 'Reproduce', type: 'skill', rarity: 'rare', char: 'array', cost: 2, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'sporemite', n: 2 }],
+  upEffects: [{ k: 'summonAlly', id: 'sporeprime', n: 2 }],
+  flavor: 'mitosis as a service',
+}))
+reg(c({
+  id: 'buffernet', name: 'Buffer Net', type: 'skill', rarity: 'common', char: 'array', cost: 0, target: 'none',
+  effects: [{ k: 'block', n: 2 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'block', n: 4 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+}))
+reg(c({
+  id: 'omegashield', name: 'Omega Shield', type: 'skill', rarity: 'rare', char: 'array', cost: 3, target: 'none',
+  effects: [{ k: 'block', n: 8 }, { k: 'doubleBlock' }],
+  upEffects: [{ k: 'block', n: 12 }, { k: 'doubleBlock' }],
+}))
+reg(c({
+  id: 'servolimb', name: 'Servo Limb', type: 'attack', rarity: 'common', char: 'array', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 9 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+}))
+reg(c({
+  id: 'nanospray', name: 'Nano Spray', type: 'attack', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'dmgAll', n: 3 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'dmgAll', n: 5 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+}))
+reg(c({
+  id: 'corecharge', name: 'Core Charge', type: 'skill', rarity: 'uncommon', char: 'array', cost: 0, target: 'none',
+  effects: [{ k: 'energy', n: 1 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  upEffects: [{ k: 'energy', n: 2 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'sidearm', name: 'Sidearm', type: 'attack', rarity: 'common', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 4 }], upEffects: [{ k: 'dmg', n: 7 }],
+}))
+reg(c({
+  id: 'scrapplate', name: 'Scrap Plate', type: 'skill', rarity: 'common', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 6 }], upEffects: [{ k: 'block', n: 9 }],
+}))
+reg(c({
+  id: 'adrenal', name: 'Adrenal Shot', type: 'skill', rarity: 'uncommon', cost: 0, target: 'none',
+  effects: [{ k: 'energy', n: 1 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'energy', n: 1 }, { k: 'draw', n: 1 }],
+  exhaust: true, upExhaust: false,
+}))
+reg(c({
+  id: 'empburst', name: 'EMP Burst', type: 'skill', rarity: 'rare', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'all', id: 'weak', n: 1 }, { k: 'status', to: 'all', id: 'vuln', n: 1 }],
+  upEffects: [{ k: 'status', to: 'all', id: 'weak', n: 2 }, { k: 'status', to: 'all', id: 'vuln', n: 2 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'leadpipe', name: 'Lead Pipe', type: 'attack', rarity: 'common', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 12 }], upEffects: [{ k: 'dmg', n: 16 }],
+  flavor: 'analog solutions',
+}))
+reg(c({
+  id: 'datafeast', name: 'Data Feast', type: 'skill', rarity: 'rare', cost: 2, target: 'none',
+  effects: [{ k: 'draw', n: 4 }], upEffects: [{ k: 'draw', n: 5 }],
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
