@@ -52,7 +52,9 @@ export function MapScreen() {
   const W = 640
   const rowH = 76
   const pad = 42
-  const H = pad * 2 + (MAP_ROWS - 1) * rowH
+  // Height follows the act's actual floor count (Act 4 is a short gauntlet).
+  const actRows = r ? r.map.rows.length : MAP_ROWS
+  const H = pad * 2 + (actRows - 1) * rowH
   const colW = (W - pad * 2) / (MAP_COLS - 1)
   const cx = (n: MapNode) => pad + n.col * colW + (n.type === 'boss' ? 0 : jitter(n.id))
   const cy = (n: MapNode) => H - pad - n.row * rowH

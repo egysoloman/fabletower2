@@ -105,9 +105,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   `⌁ CHEATS` button in the top bar opens full heal, +credits, +max HP,
   upgrade-everything, add-any-card/relic, free card deletion, and in-combat
   kill-all / +energy / draw. Difficulty is a suggestion.
-- **3 acts, 21 enemies, 3 bosses** + elites — summoner broods, phase-shifting
-  bosses — with a Spire-style branching node map: combats, elites, rest sites,
-  shops (buy/remove/potions), treasure vaults, and 11 narrative events.
+- **3 acts + a secret Act 4, 24 enemies, 4 bosses** + elites — summoner
+  broods, phase-shifting bosses — with a Spire-style branching node map:
+  combats, elites, rest sites, shops (buy/remove/potions), treasure vaults,
+  and 11 narrative events. Beat Act 3 and choose: jack out with the win, or
+  **descend into THE ROOT** — a fixed gauntlet ending in a true final boss
+  that grows stronger every turn — for the deep-clear score bonus.
 - **Smart enemy AI**: enemies pick intents by scoring moves against the actual
   board — they go for lethal when it's on the table, turtle when wounded, apply
   Weak when you stack Strength, punish your Vulnerability, and never repeat

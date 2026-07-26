@@ -196,6 +196,40 @@ reg(E({
   ],
 }))
 
+// --- Act 4: THE ROOT --------------------------------------------------------
+
+reg(E({
+  id: 'spearproc', name: 'Spear Process', glyph: '⚚', hp: [88, 88],
+  moves: [
+    { id: 'skewer', name: 'Skewer', weight: 3, effects: [{ k: 'atk', n: 8, times: 3 }] },
+    { id: 'pierce', name: 'Pierce', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 18 }, { k: 'debuff', id: 'vuln', n: 2 }] },
+    { id: 'sharpen', name: 'Sharpen', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 3 }] },
+  ],
+}))
+reg(E({
+  id: 'shieldproc', name: 'Shield Process', glyph: '⛨', hp: [110, 110],
+  traits: { plating: 3 },
+  moves: [
+    { id: 'bulwark', name: 'Bulwark', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 22 }] },
+    { id: 'bashwall', name: 'Wall Bash', weight: 3, effects: [{ k: 'atk', n: 13 }] },
+    { id: 'mend', name: 'Mend', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 14 }, { k: 'block', n: 10 }] },
+    { id: 'suppress', name: 'Suppress', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+  ],
+}))
+reg(E({
+  id: 'theroot', name: 'THE ROOT', glyph: '⌬', hp: [400, 400], boss: true,
+  // Ritual makes it hit harder every single turn — the clock you race.
+  traits: { ritual: 1 },
+  moves: [
+    { id: 'rootpulse', name: 'Root Pulse', weight: 3, effects: [{ k: 'atk', n: 10, times: 2 }] },
+    { id: 'overwrite', name: 'OVERWRITE', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 30 }] },
+    { id: 'nullwave', name: 'Null Wave', weight: 2, cooldown: 2, effects: [{ k: 'debuff', id: 'weak', n: 2 }, { k: 'debuff', id: 'corrupt', n: 4 }] },
+    { id: 'regrow', name: 'Regrow', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 24 }, { k: 'heal', n: 12 }] },
+    { id: 'metastasize', name: 'METASTASIZE', weight: 12, cond: { hpBelow: 0.66, once: true }, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'summon', id: 'botnode', n: 2 }] },
+    { id: 'singularity', name: 'SINGULARITY', weight: 14, cond: { hpBelow: 0.33, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'block', n: 30 }, { k: 'buff', id: 'str', n: 4 }] },
+  ],
+}))
+
 /** Localized enemy display name. */
 export function enemyName(defId: string): string {
   return isZh() ? (ENEMY_ZH[defId]?.name ?? ENEMIES[defId]?.name ?? defId) : (ENEMIES[defId]?.name ?? defId)
@@ -256,6 +290,12 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
     ],
     elite: [['rootdaemon'], ['hivemind', 'wraith']],
     boss: [['architect']],
+  },
+  4: {
+    // The Root's gauntlet has no normal combat floors; table kept for safety.
+    normal: [['nullptr', 'wraith']],
+    elite: [['spearproc', 'shieldproc']],
+    boss: [['theroot']],
   },
 }
 

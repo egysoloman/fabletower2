@@ -13,6 +13,7 @@ const SCORE_KEYS: Record<ScoreLine['k'], Key> = {
   gold: 'scGold',
   asc: 'scAsc',
   win: 'scWin',
+  deep: 'scDeep',
 }
 
 export function FinaleScreen(props: { win: boolean }) {
@@ -37,10 +38,10 @@ export function FinaleScreen(props: { win: boolean }) {
   return (
     <div class="screen finale">
       <div class={`big-title ${props.win ? 'win' : 'lose'}`}>
-        {props.win ? t('spireDeleted') : t('flatlined')}
+        {props.win ? (r && r.act >= 4 ? t('rootSevered') : t('spireDeleted')) : t('flatlined')}
       </div>
       <div class="sub" style={{ color: 'var(--dim)', maxWidth: '480px', lineHeight: 1.6 }}>
-        {props.win ? t('winText') : t('loseText')}
+        {props.win ? (r && r.act >= 4 ? t('deepWinText') : t('winText')) : t('loseText')}
       </div>
       {r && (
         <div class="statgrid">

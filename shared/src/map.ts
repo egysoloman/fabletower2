@@ -13,6 +13,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
  * route reaches the boss.
  */
 export function genActMap(act: number, rng: Rng): ActMap {
+  if (act >= 4) return genRootMap(act)
   const nodes = new Map<string, MapNode>()
   const key = (row: number, col: number) => `a${act}r${row}c${col}`
   const ensure = (row: number, col: number): MapNode => {
@@ -63,6 +64,23 @@ export function genActMap(act: number, rng: Rng): ActMap {
   }
 
   return { act, rows }
+}
+
+/**
+ * Act 4 — THE ROOT. A fixed four-floor gauntlet, no branches: one last rest,
+ * one last shop, the Warden pair, then the true finale.
+ */
+function genRootMap(act: number): ActMap {
+  const col = Math.floor(MAP_COLS / 2)
+  const key = (row: number) => `a${act}r${row}c${col}`
+  const mk = (row: number, type: NodeType): MapNode => ({
+    id: key(row),
+    row,
+    col,
+    type,
+    next: type === 'boss' ? [] : [key(row + 1)],
+  })
+  return { act, rows: [[mk(0, 'rest')], [mk(1, 'shop')], [mk(2, 'elite')], [mk(3, 'boss')]] }
 }
 
 function rollType(row: number, rng: Rng): NodeType {

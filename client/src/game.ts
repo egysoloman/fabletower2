@@ -25,6 +25,7 @@ import {
   withGoldBonus,
   BOOT_EVENT,
   CARDS,
+  FINAL_ACT,
   MAX_ASC,
   MAX_POTIONS,
   POTIONS,
@@ -285,6 +286,14 @@ function finishCombat(cs: CombatState) {
   }
   sfx.win()
   const kind = combatKind.value
+  // Felling THE ROOT ends the run outright — no loot screen after the finale.
+  if (kind === 'boss' && r.act >= 4) {
+    recordRun(true)
+    clearSave()
+    screen.value = 'victory'
+    touch()
+    return
+  }
   const gold = goldReward(r, kind)
   r.gold += gold
   const afterBoss = kind === 'boss'
@@ -381,6 +390,14 @@ export function continueFromReward() {
   if (!b || !r) return
   reward.value = null
   if (b.afterBoss) {
+    // Beating Act 3 opens the way down: the player chooses whether to jack
+    // out with the win or descend into THE ROOT for the true finale.
+    if (r.act === FINAL_ACT) {
+      screen.value = 'descend'
+      touch()
+      saveGame()
+      return
+    }
     if (advanceAct(r) === 'victory') {
       recordRun(true)
       clearSave()
@@ -393,6 +410,28 @@ export function continueFromReward() {
     completedNode.value = r.pos
   }
   screen.value = 'map'
+  touch()
+  saveGame()
+}
+
+/** Take the win at the surface: Act 3 cleared, run over. */
+export function jackOut() {
+  const r = run.value
+  if (!r) return
+  recordRun(true)
+  clearSave()
+  screen.value = 'victory'
+  sfx.win()
+  touch()
+}
+
+/** Descend into THE ROOT: the optional Act 4 gauntlet. */
+export function descendToRoot() {
+  const r = run.value
+  if (!r) return
+  advanceAct(r, true)
+  screen.value = 'map'
+  sfx.click()
   touch()
   saveGame()
 }

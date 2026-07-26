@@ -31,6 +31,8 @@ function rippleFrom(e: MouseEvent, color = '#00e5ff') {
 import {
   chooseEventOption,
   continueFromReward,
+  descendToRoot,
+  jackOut,
   leaveNode,
   restHeal,
   restUpgrade,
@@ -269,6 +271,36 @@ export function RestScreen() {
           >
             {used ? t('continueBtn') : t('skip')}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** Post-Act-3 crossroads: take the win, or descend into THE ROOT. */
+export function DescendScreen() {
+  const r = run.value
+  if (!r) return null
+  return (
+    <div class="screen">
+      <TopBar />
+      <div class="overlay" style={{ position: 'relative', background: 'transparent', flex: 1 }}>
+        <div class="panel">
+          <div class="event-glyph descend-glyph">
+            <Sprite id="ev-descend" size={68} />
+          </div>
+          <h2 class="pink">{t('descendTitle')}</h2>
+          <div class="sub">{t('descendText')}</div>
+          <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div class="bigchoice pink" onClick={() => descendToRoot()}>
+              <div class="t">{t('descendGo')}</div>
+              <div class="d">{t('descendGoDetail')}</div>
+            </div>
+            <div class="bigchoice" onClick={() => jackOut()}>
+              <div class="t">{t('descendLeave')}</div>
+              <div class="d">{t('descendLeaveDetail')}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

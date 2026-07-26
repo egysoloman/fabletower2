@@ -788,3 +788,43 @@ describe('card keywords (cycle 5)', () => {
     expect(describeCard(inst('ghostprocess', 1))).toMatch(/^Ethereal\./)
   })
 })
+
+describe('THE ROOT (act 4)', () => {
+  it('act 4 map is a fixed connected gauntlet', () => {
+    const m = genActMap(4, rngFromSeed(1))
+    expect(m.rows.length).toBe(4)
+    expect(m.rows.map((r) => r[0].type)).toEqual(['rest', 'shop', 'elite', 'boss'])
+    for (let i = 0; i < 3; i++) expect(m.rows[i][0].next).toContain(m.rows[i + 1][0].id)
+  })
+
+  it('act 3 win is a choice: jack out or descend', async () => {
+    const { pickEncounter } = await import('../src/run')
+    const run = newRun(2)
+    run.act = 3
+    expect(advanceAct(run)).toBe('victory')
+    expect(run.act).toBe(3)
+    expect(advanceAct(run, true)).toBe('next')
+    expect(run.act).toBe(4)
+    expect(run.map.rows.length).toBe(4)
+    expect(pickEncounter(run, 'boss')).toEqual(['theroot'])
+    expect(pickEncounter(run, 'elite')).toEqual(['spearproc', 'shieldproc'])
+    expect(advanceAct(run)).toBe('victory')
+  })
+
+  it('the root opens with ritual and ramps strength every turn', () => {
+    const cs = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['theroot'])
+    expect(cs.enemies[0].statuses.ritual).toBe(1)
+    const s = combatReduce(cs, { t: 'end' }).state
+    if (!s.over) expect(s.enemies[0].statuses.str ?? 0).toBeGreaterThanOrEqual(1)
+  })
+
+  it('deep victory earns the score bonus', async () => {
+    const { scoreRun } = await import('../src/run')
+    const run = newRun(3)
+    run.act = 4
+    const sc = scoreRun(run, true)
+    expect(sc.lines.some((l) => l.k === 'deep')).toBe(true)
+    expect(sc.lines.find((l) => l.k === 'deep')?.pts).toBe(150)
+    expect(scoreRun(run, false).lines.some((l) => l.k === 'deep')).toBe(false)
+  })
+})

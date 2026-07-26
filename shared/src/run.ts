@@ -11,6 +11,8 @@ import { startCombat } from './combat'
 import { deriveSeed, pick, randInt, rand, rngFromSeed } from './rng'
 
 export const FINAL_ACT = 3
+/** The optional post-game act: THE ROOT. Entered only by choice. */
+export const TRUE_FINAL_ACT = 4
 
 export const STARTER_DECKS: Record<CharId, string[]> = {
   runner: [
@@ -365,7 +367,7 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
 // --- Score ------------------------------------------------------------------
 
 export interface ScoreLine {
-  k: 'floors' | 'acts' | 'relics' | 'upgrades' | 'gold' | 'asc' | 'win'
+  k: 'floors' | 'acts' | 'relics' | 'upgrades' | 'gold' | 'asc' | 'win' | 'deep'
   n: number
   pts: number
 }
@@ -387,14 +389,20 @@ export function scoreRun(run: RunState, win: boolean): { lines: ScoreLine[]; tot
   add('gold', run.gold, Math.floor(run.gold / 2))
   add('asc', run.asc, run.asc * 40)
   if (win) add('win', 1, 100)
+  if (win && run.act >= TRUE_FINAL_ACT) add('deep', 1, 150)
   return { lines, total: lines.reduce((s, l) => s + l.pts, 0) }
 }
 
 // --- Act transitions --------------------------------------------------------
 
-/** Advance to the next act (or report final victory). Returns 'victory' after the last act. */
-export function advanceAct(run: RunState): 'next' | 'victory' {
-  if (run.act >= FINAL_ACT) return 'victory'
+/**
+ * Advance to the next act (or report final victory). Beating Act 3 wins the
+ * run — unless the player chooses to `descend` into THE ROOT (Act 4), whose
+ * boss is the true finale.
+ */
+export function advanceAct(run: RunState, descend = false): 'next' | 'victory' {
+  if (run.act >= TRUE_FINAL_ACT) return 'victory'
+  if (run.act >= FINAL_ACT && !descend) return 'victory'
   run.act++
   run.map = genActMap(run.act, run.rng)
   run.pos = null

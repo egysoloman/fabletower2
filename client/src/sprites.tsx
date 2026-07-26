@@ -214,6 +214,31 @@ const ART: Record<string, JSX.Element> = {
     </>
   ),
 
+  // --- act 4: the root --------------------------------------------------
+  spearproc: (
+    <>
+      <path d="M14 50 L44 20" />
+      <path d="M40 12 L52 12 L52 24 L38 26 Z" />
+      <path d="M14 50 L20 50 M14 50 L14 44" stroke-width="1.6" />
+      <path d="M24 34 L18 28 M34 24 L28 18" stroke-width="1.4" />
+    </>
+  ),
+  shieldproc: (
+    <>
+      <path d="M32 6 L52 14 V32 C52 46 43 54 32 58 C21 54 12 46 12 32 V14 Z" />
+      <path d="M32 14 V50 M18 30 H46" stroke-width="1.4" />
+      {dot(32, 30, 2.6)}
+    </>
+  ),
+  theroot: (
+    <>
+      <path d="M32 8 L46 16 V32 L32 40 L18 32 V16 Z" />
+      {dot(32, 24, 3)}
+      <path d="M32 40 V48 M32 48 L20 58 M32 48 L44 58 M32 48 V60" stroke-width="1.6" />
+      <path d="M18 32 L8 40 M46 32 L56 40" stroke-width="1.4" />
+    </>
+  ),
+
   // --- map events -------------------------------------------------------
   'ev-server': (
     <>
@@ -303,6 +328,13 @@ const ART: Record<string, JSX.Element> = {
       <path d="M32 8 V28" stroke-width="3" />
       <path d="M20 16 A17 17 0 1 0 44 16" />
       {dot(32, 52, 2.2)}
+    </>
+  ),
+  'ev-descend': (
+    <>
+      <path d="M10 14 H24 V26 H36 V38 H48 V50 H56" />
+      <path d="M32 18 V44 M32 44 L26 37 M32 44 L38 37" stroke-width="1.8" />
+      {dot(52, 56, 2.2)}
     </>
   ),
   glitch: (

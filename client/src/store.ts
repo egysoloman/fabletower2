@@ -10,6 +10,7 @@ export type Screen =
   | 'shop'
   | 'rest'
   | 'event'
+  | 'descend'
   | 'gameover'
   | 'victory'
   | 'pvp'

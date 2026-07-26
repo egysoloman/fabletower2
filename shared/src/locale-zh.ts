@@ -187,6 +187,19 @@ export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, stri
   hivemind: { name: '蜂巢意识', moves: { assimilate: '同化', mindlash: '精神鞭挞', 'sync-all': '同步全域' } },
   rootdaemon: { name: 'ROOT 守护进程', moves: { sudo: 'SUDO', smite: '重惩', chainatk: '连锁攻击' } },
   architect: { name: '架构师', moves: { genesis: '创世构建', deleterow: '删除行', rewrite: '重写', cascade: '级联', awaken: '觉醒' } },
+  spearproc: { name: '长矛进程', moves: { skewer: '穿刺连击', pierce: '贯穿', sharpen: '磨锋' } },
+  shieldproc: { name: '坚盾进程', moves: { bulwark: '壁垒', bashwall: '盾墙猛击', mend: '修补', suppress: '压制' } },
+  theroot: {
+    name: '根源',
+    moves: {
+      rootpulse: '根脉脉冲',
+      overwrite: '覆写',
+      nullwave: '虚无之波',
+      regrow: '再生',
+      metastasize: '转移增殖',
+      singularity: '奇点',
+    },
+  },
 }
 
 export const EVENT_ZH: Record<string, { name: string; text: string; choices: { label: string; detail: string }[] }> = {
