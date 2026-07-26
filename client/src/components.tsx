@@ -25,7 +25,7 @@ import { burst, fxPulses, registerAnchor, statFlash } from './fx'
 import { useEffect, useRef } from 'preact/hooks'
 import { lang, t, tf, toggleLang } from './i18n'
 import { SoundIcon } from './sprites'
-import { abandonRun, discardPotion } from './game'
+import { abandonRun, backToMenu, discardPotion } from './game'
 
 export function CardView(props: {
   card: CardInst
@@ -221,15 +221,28 @@ export function TopBar(props: { showAbandon?: boolean }) {
         <SoundIcon muted={muted.value} />
       </span>
       {props.showAbandon && (
-        <span
-          class="stat linkish"
-          style={{ color: 'var(--dim)' }}
-          onClick={() => {
-            if (window.confirm(t('abandonConfirm'))) abandonRun()
-          }}
-        >
-          {t('abandon')}
-        </span>
+        <>
+          <span
+            class="stat linkish"
+            style={{ color: 'var(--dim)' }}
+            data-tip={t('toMenuTip')}
+            onClick={() => {
+              sfx.click()
+              backToMenu()
+            }}
+          >
+            ⌂ {t('menuBtn')}
+          </span>
+          <span
+            class="stat linkish"
+            style={{ color: 'var(--dim)' }}
+            onClick={() => {
+              if (window.confirm(t('abandonConfirm'))) abandonRun()
+            }}
+          >
+            {t('abandon')}
+          </span>
+        </>
       )}
     </div>
   )

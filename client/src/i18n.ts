@@ -199,6 +199,7 @@ const EN = {
   deckTitle: 'DECK · {n} CARDS',
   abandon: '✕ ABANDON',
   abandonConfirm: 'Abandon this run?',
+  toMenuTip: 'Back to menu — your run is saved, CONTINUE RUN resumes it.',
   // map
   actTitle: '── ACT {act} / 3 ──',
   nodeCombat: 'Hostiles',
@@ -530,6 +531,7 @@ const ZH: Record<Key, string> = {
   deckTitle: '牌组 · {n} 张',
   abandon: '✕ 放弃',
   abandonConfirm: '放弃本次冒险？',
+  toMenuTip: '返回主菜单——冒险已保存，可随时「继续冒险」。',
   actTitle: '── 第 {act} 幕 / 3 ──',
   nodeCombat: '敌人',
   nodeElite: '精英敌人',

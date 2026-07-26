@@ -207,6 +207,10 @@ export function ClimbScreen() {
               {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
                 <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
                   <Sprite id={c} size={34} />
+                  <div>
+                    <div class="cname-h">{t(('char' + c[0].toUpperCase() + c.slice(1)) as Parameters<typeof t>[0])}</div>
+                    <div class="cdesc-h">{t(('char' + c[0].toUpperCase() + c.slice(1) + 'Desc') as Parameters<typeof t>[0])}</div>
+                  </div>
                 </div>
               ))}
             </div>
