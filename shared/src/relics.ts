@@ -464,6 +464,106 @@ reg(R({
   desc: 'Start combats with 1 Stance Wall and 3 Block.',
   hooks: { combatStatuses: { stancewall: 1 }, combatStartBlock: 3 },
 }))
+reg(R({
+  id: 'luckycable', name: 'Lucky Cable', rarity: 'common', sym: '§',
+  desc: 'Earn 15% more credits; rest sites restore 3 more HP.',
+  hooks: { goldBonusPct: 15, restBonus: 3 },
+}))
+reg(R({
+  id: 'groundedboots', name: 'Grounded Boots', rarity: 'common', sym: '⏚',
+  desc: 'Raise your Max HP by 5 and start combats with 3 Block.',
+  hooks: { maxHp: 5, combatStartBlock: 3 },
+}))
+reg(R({
+  id: 'patchharness', name: 'Patch Harness', rarity: 'common', sym: '✜',
+  desc: 'Heal 3 after each combat; rest sites restore 4 more HP.',
+  hooks: { afterCombatHeal: 3, restBonus: 4 },
+}))
+reg(R({
+  id: 'surgeprotector', name: 'Surge Protector', rarity: 'common', sym: '⎓',
+  desc: 'Start combats with 1 Plating and 2 Block.',
+  hooks: { combatStatuses: { plating: 1 }, combatStartBlock: 2 },
+}))
+reg(R({
+  id: 'datamagnet', name: 'Data Magnet', rarity: 'common', sym: '☍',
+  desc: 'Raise your Max HP by 4 and draw 1 more on your first turn.',
+  hooks: { maxHp: 4, firstTurnDraw: 1 },
+}))
+reg(R({
+  id: 'titanframe', name: 'Titan Frame', rarity: 'rare', sym: '⛆',
+  desc: 'Raise your Max HP by 15 and start combats with 5 Block.',
+  hooks: { maxHp: 15, combatStartBlock: 5 },
+}))
+reg(R({
+  id: 'chargecell', name: 'Charge Cell', rarity: 'rare', sym: '⌸',
+  desc: 'On your first turn: +1 Energy. Start combats with 4 Block.',
+  hooks: { firstTurnEnergy: 1, combatStartBlock: 4 },
+}))
+reg(R({
+  id: 'venomlattice', name: 'Venom Lattice', rarity: 'rare', sym: '❋',
+  desc: 'Start with 2 Thorns; enemies start with 2 Corrupt.',
+  hooks: { combatStatuses: { thorns: 2 }, combatStartEnemyStatuses: { corrupt: 2 } },
+}))
+reg(R({
+  id: 'ghostcircuit', name: 'Ghost Circuit', rarity: 'rare', sym: '⌁',
+  desc: 'Whenever your draw pile is shuffled: gain 1 Energy and 4 Block.',
+  hooks: { onShuffleEnergy: 1, onShuffleBlock: 4 },
+}))
+reg(R({
+  id: 'warpcoil', name: 'Warp Coil', rarity: 'rare', sym: '➰',
+  desc: 'Start combats with 1 Strength and draw 1 more on your first turn.',
+  hooks: { combatStatuses: { str: 1 }, firstTurnDraw: 1 },
+}))
+reg(R({
+  id: 'sponsoredcore', name: 'Sponsored Reactor', rarity: 'boss', sym: '™',
+  desc: '+1 Energy every turn… but your sponsor takes 25% of all credits.',
+  hooks: { energyPerTurn: 1, goldBonusPct: -25 },
+}))
+reg(R({
+  id: 'clockworkidol', name: 'Clockwork Idol', rarity: 'rare', sym: '⏱',
+  desc: 'Start each combat with 1 Ritual… at the cost of 5 Max HP.',
+  hooks: { combatStatuses: { ritual: 1 }, maxHp: -5 },
+}))
+reg(R({
+  id: 'daemoncrown', name: 'Daemon Crown', rarity: 'boss', sym: '♔', char: 'array',
+  desc: 'Start each combat with 1 Turret, 1 Plating and 1 Viral.',
+  hooks: { combatStatuses: { turret: 1, plating: 1, viral: 1 } },
+}))
+reg(R({
+  id: 'eternalflame', name: 'Eternal Flame', rarity: 'boss', sym: '♨', char: 'vector',
+  desc: 'Start each combat with 1 Ignition and 3 Coolant.',
+  hooks: { combatStatuses: { ignition: 1, coolant: 3 } },
+}))
+reg(R({
+  id: 'duelistcode', name: 'Duelist Code', rarity: 'boss', sym: '❈', char: 'ghost',
+  desc: 'Start each combat with 1 Momentum and 1 Tempo Loop.',
+  hooks: { combatStatuses: { momentum: 1, tempoloop: 1 } },
+}))
+reg(R({
+  id: 'adminroot', name: 'Admin Root', rarity: 'boss', sym: '♯', char: 'runner',
+  desc: 'Start with 1 Hyperthread; 0-cost cards also grant 2 Block.',
+  hooks: { combatStatuses: { hyper: 1 }, zeroCostBlock: 2 },
+}))
+reg(R({
+  id: 'burnersleeve', name: 'Burner Sleeve', rarity: 'common', sym: '⁂', char: 'vector',
+  desc: 'Start combats with 1 Heat and 3 Block.',
+  hooks: { combatStatuses: { heat: 1 }, combatStartBlock: 3 },
+}))
+reg(R({
+  id: 'spoolthread', name: 'Spool Thread', rarity: 'common', sym: '⌰', char: 'runner',
+  desc: 'Enemies start with 1 Weak; earn 5% more credits.',
+  hooks: { combatStartEnemyStatuses: { weak: 1 }, goldBonusPct: 5 },
+}))
+reg(R({
+  id: 'shadowlens', name: 'Shadow Lens', rarity: 'common', sym: '◐', char: 'ghost',
+  desc: 'Start with 1 Stance Wall and draw 1 more on your first turn.',
+  hooks: { combatStatuses: { stancewall: 1 }, firstTurnDraw: 1 },
+}))
+reg(R({
+  id: 'dronebay', name: 'Drone Bay', rarity: 'rare', sym: '⛫', char: 'array',
+  desc: 'Start each combat with 3 Turret.',
+  hooks: { combatStatuses: { turret: 3 } },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)
