@@ -812,6 +812,119 @@ reg(c({
   flavor: 'flood every lane at once',
 }))
 
+// --- Pool depth: cycle 18 ---------------------------------------------------
+
+reg(c({
+  id: 'nullroutine', name: 'Null Routine', type: 'skill', rarity: 'common', char: 'runner', cost: 1, target: 'enemy',
+  effects: [{ k: 'block', n: 4 }, { k: 'status', to: 'target', id: 'corrupt', n: 2 }],
+  upEffects: [{ k: 'block', n: 6 }, { k: 'status', to: 'target', id: 'corrupt', n: 3 }],
+}))
+reg(c({
+  id: 'tarpit', name: 'Tar Pit', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 4 }, { k: 'status', to: 'all', id: 'weak', n: 1 }],
+  upEffects: [{ k: 'block', n: 6 }, { k: 'status', to: 'all', id: 'weak', n: 2 }],
+}))
+reg(c({
+  id: 'branchpredict', name: 'Branch Predict', type: 'attack', rarity: 'common', char: 'runner', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmgIfCombo', n: 4, bonus: 4, threshold: 2 }],
+  upEffects: [{ k: 'dmgIfCombo', n: 6, bonus: 5, threshold: 2 }],
+  flavor: 'called it',
+}))
+reg(c({
+  id: 'stacksmash', name: 'Stack Smash', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 7, times: 2 }],
+  upEffects: [{ k: 'dmg', n: 9, times: 2 }],
+}))
+reg(c({
+  id: 'hotpatch', name: 'Hot Patch', type: 'skill', rarity: 'common', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'heal', n: 4 }, { k: 'block', n: 3 }],
+  upEffects: [{ k: 'heal', n: 6 }, { k: 'block', n: 4 }],
+}))
+reg(c({
+  id: 'boilover', name: 'Boil Over', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 2, target: 'none',
+  effects: [{ k: 'dmgAll', n: 7 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+  upEffects: [{ k: 'dmgAll', n: 10 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+}))
+reg(c({
+  id: 'pressuretank', name: 'Pressure Tank', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'coolant', n: 3 }, { k: 'block', n: 5 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'coolant', n: 4 }, { k: 'block', n: 7 }],
+}))
+reg(c({
+  id: 'emberdance', name: 'Ember Dance', type: 'attack', rarity: 'common', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 4, times: 2 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 5, times: 2 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'flareout', name: 'Flare Out', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 0, target: 'none',
+  effects: [{ k: 'ventBlock', mult: 1 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'ventBlock', mult: 2 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'supernova', name: 'Supernova', type: 'attack', rarity: 'rare', char: 'vector', cost: 3, target: 'enemy',
+  effects: [{ k: 'dmgHeatBonus', n: 20, bonus: 15, threshold: 6 }],
+  upEffects: [{ k: 'dmgHeatBonus', n: 26, bonus: 18, threshold: 6 }],
+  flavor: 'brightest thing on the block, briefly',
+}))
+reg(c({
+  id: 'shadowfeint', name: 'Shadow Feint', type: 'attack', rarity: 'common', char: 'ghost', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 3 }, { k: 'enterStance', id: 'stealth' }],
+  upEffects: [{ k: 'dmg', n: 5 }, { k: 'enterStance', id: 'stealth' }],
+}))
+reg(c({
+  id: 'blurcut', name: 'Blur Cut', type: 'attack', rarity: 'uncommon', char: 'ghost', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmgIfStance', n: 11, bonus: 6 }],
+  upEffects: [{ k: 'dmgIfStance', n: 14, bonus: 8 }],
+}))
+reg(c({
+  id: 'quickfade', name: 'Quick Fade', type: 'skill', rarity: 'uncommon', char: 'ghost', cost: 0, target: 'none',
+  effects: [{ k: 'enterStance', id: 'stealth' }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'enterStance', id: 'stealth' }, { k: 'draw', n: 2 }],
+}))
+reg(c({
+  id: 'strobeloop', name: 'Strobe Loop', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'momentum', n: 1 }, { k: 'status', to: 'self', id: 'stancewall', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'momentum', n: 1 }, { k: 'status', to: 'self', id: 'stancewall', n: 3 }],
+}))
+reg(c({
+  id: 'finalcurtain', name: 'Final Curtain', type: 'attack', rarity: 'rare', char: 'ghost', cost: 2, target: 'enemy',
+  ethereal: true,
+  effects: [{ k: 'dmg', n: 12, times: 2 }, { k: 'enterStance', id: 'overdrive' }],
+  upEffects: [{ k: 'dmg', n: 15, times: 2 }, { k: 'enterStance', id: 'overdrive' }],
+  flavor: 'no encore',
+}))
+reg(c({
+  id: 'zapdrone', name: 'Zap Drone', type: 'attack', rarity: 'common', char: 'array', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 3 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 5 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+}))
+reg(c({
+  id: 'shieldlattice', name: 'Shield Lattice', type: 'skill', rarity: 'uncommon', char: 'array', cost: 2, target: 'none',
+  effects: [{ k: 'block', n: 8 }, { k: 'status', to: 'self', id: 'plating', n: 2 }],
+  upEffects: [{ k: 'block', n: 10 }, { k: 'status', to: 'self', id: 'plating', n: 3 }],
+}))
+reg(c({
+  id: 'swarmprotocol', name: 'Swarm Protocol', type: 'skill', rarity: 'uncommon', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'turret', n: 1 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [
+    { k: 'status', to: 'self', id: 'turret', n: 1 },
+    { k: 'status', to: 'self', id: 'plating', n: 1 },
+    { k: 'status', to: 'self', id: 'viral', n: 1 },
+  ],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'gridsurge', name: 'Grid Surge', type: 'attack', rarity: 'uncommon', char: 'array', cost: 2, target: 'none',
+  effects: [{ k: 'dmgAll', n: 6 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  upEffects: [{ k: 'dmgAll', n: 8 }, { k: 'status', to: 'self', id: 'turret', n: 2 }],
+}))
+reg(c({
+  id: 'unitytick', name: 'Unity Tick', type: 'attack', rarity: 'rare', char: 'array', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmgPerAuto', base: 6, per: 3 }],
+  upEffects: [{ k: 'dmgPerAuto', base: 8, per: 3 }],
+  flavor: 'one clock, many hammers',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
