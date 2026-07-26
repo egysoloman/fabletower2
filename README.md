@@ -163,6 +163,16 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   and admin tools (list/delete/ban accounts, password resets, open/close
   registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
 
+- **Mod support**: JSON-only content packs in `client/public/mods/` —
+  cards, relics, enemies, potions, events and character-loadout tweaks,
+  validated against the engine's effect vocabulary on load (no code
+  execution, malformed mods ignored with warnings). Enable/disable per
+  mod in Settings; a sample pack ships as a template.
+- **PWA**: installable (manifest + icons + install button), fully
+  offline-capable after first visit via a stale-while-revalidate service
+  worker; admin dashboard at `/admin` and a global daily leaderboard
+  round out the account server.
+
 ## Tech
 
 Preact + `@preact/signals` (tiny, smooth), Vite, self-hosted Orbitron/Share

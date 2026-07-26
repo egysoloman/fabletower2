@@ -6,6 +6,7 @@ import { hasSave, loadGame, screen } from '../store'
 import { screenWipe } from '../fx'
 import { installPrompt, setSetting, settings } from '../settings'
 import { account, login, logout, register, syncMsg, syncUp } from '../account'
+import { loadMods, mods, setModEnabled } from '../mods'
 import { useState as useAccState } from 'preact/hooks'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
@@ -241,8 +242,38 @@ export function SettingsScreen() {
         </button>
       )}
       <AccountPanel />
+      <ModsPanel />
       <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
         {t('back')}
+      </button>
+    </div>
+  )
+}
+
+/** Installed mods: JSON content packs, enable/disable + reload. */
+function ModsPanel() {
+  const list = mods.value
+  return (
+    <div class="panel popin" style={{ minWidth: '340px' }}>
+      <h2>{t('modsTitle')}</h2>
+      <div class="sub" style={{ color: 'var(--gold)' }}>{t('modsWarn')}</div>
+      {list.length === 0 && <div class="sub">{t('modsNone')}</div>}
+      {list.map((m) => (
+        <div key={m.manifest.id} class="setrow" style={{ alignItems: 'flex-start' }}>
+          <span style={{ textAlign: 'left' }}>
+            <b style={{ fontFamily: 'var(--font-head)', fontSize: '12px' }}>
+              {m.manifest.name} <small style={{ color: 'var(--dim)' }}>{m.manifest.version ?? ''}</small>
+            </b>
+            <small style={{ display: 'block', color: 'var(--dim)', maxWidth: '230px' }}>{m.manifest.description ?? ''}</small>
+            {m.report && <small style={{ display: 'block', color: 'var(--green)' }}>{tf('modsAdded', { n: m.report.added.length })}</small>}
+          </span>
+          <button class={`btn ghost ${m.enabled ? 'on' : ''}`} onClick={() => (sfx.click(), setModEnabled(m.manifest.id, !m.enabled))}>
+            {m.enabled ? t('on') : t('off')}
+          </button>
+        </div>
+      ))}
+      <button class="btn ghost" onClick={() => (sfx.click(), void loadMods())}>
+        {t('modsReload')}
       </button>
     </div>
   )

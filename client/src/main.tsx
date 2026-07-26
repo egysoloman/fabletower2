@@ -6,6 +6,7 @@ import '@fontsource/share-tech-mono/400.css'
 import './styles.css'
 import { App } from './app'
 
+import('./mods').then((m) => void m.loadMods())
 render(<App />, document.getElementById('app')!)
 
 // --- PWA: service worker + install prompt + offline indicator ---------------

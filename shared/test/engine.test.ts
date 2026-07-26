@@ -1366,3 +1366,60 @@ describe('ascension 6-10 (cycle 8)', () => {
     expect(count(7)).toBeLessThan(count(0))
   })
 })
+
+describe('mod support (cycle 43)', () => {
+  it('valid mod content registers, describes itself, and unloads cleanly', async () => {
+    const { applyMod, removeMod } = await import('../src/mods')
+    const { POTIONS } = await import('../src/potions')
+    const rep = applyMod({
+      id: 'testmod',
+      name: 'Test Mod',
+      cards: [{ id: 'tm_slash', name: 'TM Slash', type: 'attack', rarity: 'common', cost: 1, target: 'enemy', effects: [{ k: 'dmg', n: 7 }], upEffects: [{ k: 'dmg', n: 10 }] }],
+      relics: [{ id: 'tm_charm', name: 'TM Charm', rarity: 'common', desc: 'Start with 2 Block.', hooks: { combatStartBlock: 2 } }],
+      potions: [{ id: 'tm_juice', name: 'TM Juice', rarity: 'common', target: 'none', effects: [{ k: 'heal', n: 5 }] }],
+    } as any)
+    expect(rep.warnings).toEqual([])
+    expect(rep.added.length).toBe(3)
+    expect(CARDS.tm_slash.name).toBe('TM Slash')
+    expect(describeCard(inst('tm_slash', 1))).toBe('Deal 7 damage.')
+    expect(obtainableCards().some((c) => c.id === 'tm_slash')).toBe(true)
+    expect(RELICS.tm_charm.hooks.combatStartBlock).toBe(2)
+    expect(POTIONS.tm_juice.name).toBe('TM Juice')
+    removeMod('testmod')
+    expect(CARDS.tm_slash).toBeUndefined()
+    expect(RELICS.tm_charm).toBeUndefined()
+    expect(POTIONS.tm_juice).toBeUndefined()
+  })
+
+  it('malformed and malicious entries are rejected with warnings', async () => {
+    const { applyMod, removeMod } = await import('../src/mods')
+    const rep = applyMod({
+      id: 'badmod',
+      name: 'Bad Mod',
+      cards: [
+        { id: 'bm_ok', name: 'OK', type: 'skill', rarity: 'common', cost: 0, target: 'none', effects: [{ k: 'block', n: 4 }] },
+        { id: 'bm_evil', name: 'Evil', type: 'attack', rarity: 'common', cost: 1, target: 'enemy', effects: [{ k: 'eval', code: 'x' }] },
+        { id: 'bm_neg', name: 'Neg', type: 'attack', rarity: 'common', cost: -1, target: 'enemy', effects: [{ k: 'dmg', n: 6 }] },
+        { id: 'strike', name: 'Clobber Base', type: 'attack', rarity: 'common', cost: 1, target: 'enemy', effects: [{ k: 'dmg', n: 99 }] },
+      ],
+      relics: [{ id: 'bm_hook', name: 'Hook', rarity: 'common', desc: 'x', hooks: { proto: 1 } }],
+    } as any)
+    expect(rep.added).toEqual(['card:bm_ok'])
+    expect(rep.warnings.length).toBeGreaterThanOrEqual(4)
+    expect(CARDS.bm_evil).toBeUndefined()
+    expect(CARDS.strike.effects[0]).toEqual({ k: 'dmg', n: 6 }) // base untouched
+    removeMod('badmod')
+  })
+
+  it('character loadout tweaks apply and restore', async () => {
+    const { applyMod, removeMod } = await import('../src/mods')
+    const { STARTER_RELICS } = await import('../src/run')
+    const before = STARTER_RELICS.runner
+    const rep = applyMod({ id: 'loadout', name: 'L', characters: [{ base: 'runner', startingRelic: 'goldchip' }] } as any)
+    expect(rep.added).toEqual(['character:runner'])
+    expect(STARTER_RELICS.runner).toBe('goldchip')
+    expect(newRun(1, 0, 'runner').relics).toEqual(['goldchip'])
+    removeMod('loadout')
+    expect(STARTER_RELICS.runner).toBe(before)
+  })
+})
