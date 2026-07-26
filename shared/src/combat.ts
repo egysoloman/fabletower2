@@ -64,13 +64,15 @@ export function startCombat(o: StartCombatOpts): CombatState {
   const asc = o.asc ?? 0
   const enemies: EnemyC[] = o.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    const hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc))
+    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc))
+    if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
     const statuses = { ...(def.traits ?? {}) }
     for (const [k, v] of Object.entries(enemyStart)) {
       statuses[k as keyof typeof statuses] = (statuses[k as keyof typeof statuses] ?? 0) + v
     }
     if (asc >= 4 && (def.boss || o.kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
     if (asc >= 5 && (def.boss || o.kind === 'elite')) statuses.artifact = (statuses.artifact ?? 0) + 1
+    if (asc >= 11) statuses.str = (statuses.str ?? 0) + 1
     return {
       defId: id,
       name: def.name,

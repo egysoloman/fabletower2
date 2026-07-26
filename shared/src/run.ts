@@ -32,7 +32,7 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
   ],
 }
 
-export const MAX_ASC = 10
+export const MAX_ASC = 15
 
 export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState {
   const rng = rngFromSeed(seed)
@@ -42,6 +42,8 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
   if (asc >= 2) deck.push({ uid: uid++, id: 'lag', up: false })
   if (asc >= 10) deck.push({ uid: uid++, id: 'lag', up: false })
   const maxHp = asc >= 10 ? 60 : asc >= 5 ? 65 : 75
+  // A14+: the climb starts before you're ready.
+  const hp = asc >= 14 ? Math.floor(maxHp * 0.85) : maxHp
   return {
     seed,
     rng,
@@ -49,9 +51,9 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
     map: genActMap(1, rng),
     pos: null,
     path: [],
-    hp: maxHp,
+    hp,
     maxHp,
-    gold: 99,
+    gold: asc >= 12 ? 75 : 99,
     deck,
     relics: ['cortexlink'],
     uid,
@@ -145,8 +147,9 @@ function rollRarity(run: RunState, kind: 'normal' | 'elite' | 'boss'): 'common' 
 
 export function rollCardRewards(run: RunState, kind: 'normal' | 'elite' | 'boss'): string[] {
   const out: string[] = []
+  const want = run.asc >= 15 ? 2 : 3
   let guard = 0
-  while (out.length < 3 && guard++ < 40) {
+  while (out.length < want && guard++ < 40) {
     const pool = cardsByRarity(rollRarity(run, kind), run.char)
     const card = pick(run.rng, pool)
     if (!out.includes(card.id)) out.push(card.id)
