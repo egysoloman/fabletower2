@@ -3,12 +3,48 @@
  * battle-entry screen, and the emote / quick-phrase panel used inside them.
  */
 import { useState } from 'preact/hooks'
-import { emoteList } from '@neonspire/engine'
+import { emoteList, type CharId } from '@neonspire/engine'
 import { account } from '../account'
 import { cloudLabel, emoteText, guestName, lanUrl, mpTarget, setGuestName, setLanUrl, setMpTarget } from '../mp'
 import { mods, modsKey } from '../mods'
 import { t, tf } from '../i18n'
 import { sfx } from '../sfx'
+import { Sprite } from '../sprites'
+import { CharSelect, charColor } from './charselect'
+
+/**
+ * Dedicated character-selection page for multiplayer modes: the same full
+ * selector as solo (lore, difficulty, starter relic, palettes), opened from
+ * a compact button on the battle-entry screens.
+ */
+export function CharSelectPage(props: { value: CharId; onChange: (c: CharId) => void; onDone: () => void }) {
+  return (
+    <div class="screen menu">
+      <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
+        SELECT<span>UNIT</span>
+      </div>
+      <CharSelect value={props.value} onChange={props.onChange} onStart={props.onDone} />
+      <div class="menu-buttons">
+        <button class="btn big pink" onClick={() => (sfx.click(), props.onDone())}>
+          {t('charConfirm')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** Compact "current character" button that opens the selection page. */
+export function CharPickButton(props: { char: CharId; onOpen: () => void }) {
+  const col = charColor(props.char)
+  const label = t(('char' + props.char[0].toUpperCase() + props.char.slice(1)) as Parameters<typeof t>[0])
+  return (
+    <button class="btn charpickbtn" style={{ borderColor: col, color: col }} onClick={() => (sfx.click(), props.onOpen())}>
+      <Sprite id={props.char} size={26} />
+      <b>{label}</b>
+      <span class="cp-change">▸ {t('charChange')}</span>
+    </button>
+  )
+}
 
 /** CLOUD/LAN toggle + the inputs each target actually needs. */
 export function MpConnect() {

@@ -33,7 +33,7 @@ import {
   climbView,
 } from '../climb'
 import { charColor } from './charselect'
-import { EmotePanel, MpConnect } from './mpsetup'
+import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
 import { continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
 import { screen } from '../store'
@@ -44,6 +44,7 @@ import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 export function ClimbScreen() {
   const [char, setChar] = useState<CharId>('runner')
+  const [picking, setPicking] = useState(false)
   const phase = climbPhase.value
   const view = climbView.value
   const shakeCls = useShake()
@@ -186,6 +187,9 @@ export function ClimbScreen() {
   }
 
   // --- Non-duel states -------------------------------------------------------
+  if (picking && phase === 'idle') {
+    return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
+  }
   const opp = climbOppProgress.value
   return (
     <div class="screen menu">
@@ -198,17 +202,7 @@ export function ClimbScreen() {
             <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>
               {t('climbIntro')}
             </div>
-            <div class="charrow">
-              {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
-                <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
-                  <Sprite id={c} size={34} />
-                  <div>
-                    <div class="cname-h">{t(('char' + c[0].toUpperCase() + c.slice(1)) as Parameters<typeof t>[0])}</div>
-                    <div class="cdesc-h">{t(('char' + c[0].toUpperCase() + c.slice(1) + 'Desc') as Parameters<typeof t>[0])}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CharPickButton char={char} onOpen={() => setPicking(true)} />
             <MpConnect />
             <button class="btn big pink" onClick={() => climbQueue(mpName(), char, (seed) => startClimbRun(seed, char))}>
               {t('findRival')}

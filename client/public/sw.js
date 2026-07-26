@@ -1,6 +1,6 @@
 /* NEONSPIRE service worker: precache the shell, stale-while-revalidate for
  * same-origin static assets, network-only for the API and WebSocket. */
-const CACHE = 'neonspire-v1'
+const CACHE = 'neonspire-v2'
 const SHELL = ['.', 'index.html', 'manifest.webmanifest', 'icon.svg']
 
 self.addEventListener('install', (e) => {
@@ -31,8 +31,10 @@ self.addEventListener('fetch', (e) => {
           return res
         })
         .catch(() => cached ?? caches.match('index.html'))
-      // stale-while-revalidate: cached copy now, refresh in the background
-      return cached ?? fresh
+      // Navigations go network-first so a new build shows up on the very next
+      // reload; hashed assets keep stale-while-revalidate for offline speed.
+      const navigation = e.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')
+      return navigation ? fresh : cached ?? fresh
     }),
   )
 })

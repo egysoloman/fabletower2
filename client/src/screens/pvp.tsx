@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, cardName, predictPvpPlay, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow } from '../components'
 import { charColor } from './charselect'
-import { EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
+import { CharPickButton, CharSelectPage, EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
 import { mpName, mpWsUrl } from '../mp'
 import { apiBase } from '../account'
 import {
@@ -46,6 +46,7 @@ function ModeBadgeFetch() {
 
 export function PvpScreen() {
   const [char, setChar] = useState<CharId>('runner')
+  const [picking, setPicking] = useState(false)
   const [chars, setChars] = useState<CharId[]>(['runner', 'runner'])
   const [phase, setPhase] = useState<Phase>('setup')
   const [view, setView] = useState<PvpView | null>(null)
@@ -252,6 +253,9 @@ export function PvpScreen() {
   }
 
   if (phase !== 'playing' && phase !== 'over') {
+    if (picking && phase === 'setup') {
+      return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
+    }
     return (
       <div class="screen menu">
         <div class="logo" style={{ fontSize: 'clamp(30px,6vw,54px)' }}>
@@ -260,17 +264,7 @@ export function PvpScreen() {
         <div class="pvp-status">
           {phase === 'setup' && (
             <>
-              <div class="charrow">
-                {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
-                  <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
-                    <Sprite id={c} size={34} />
-                    <div>
-                      <div class="cname-h">{t(('char' + c[0].toUpperCase() + c.slice(1)) as Parameters<typeof t>[0])}</div>
-                      <div class="cdesc-h">{t(('char' + c[0].toUpperCase() + c.slice(1) + 'Desc') as Parameters<typeof t>[0])}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <CharPickButton char={char} onOpen={() => setPicking(true)} />
               <MpConnect />
               <button class="btn big pink" onClick={connect}>
                 {t('findOpponent')}

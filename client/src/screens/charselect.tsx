@@ -170,7 +170,7 @@ export function CharSelect(props: { value: CharId; onChange: (c: CharId) => void
           <div class="cd-lore">{t(('lore_' + value) as Parameters<typeof t>[0])}</div>
         </div>
         <div class="cd-right">
-          <div class="cd-relic" data-tip={relicDesc(relicId)}>
+          <div class="cd-relic">
             <span class="rsym">{RELICS[relicId]?.sym}</span>
             <span>
               <b>{relicName(relicId)}</b>

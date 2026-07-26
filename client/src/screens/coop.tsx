@@ -35,7 +35,7 @@ import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand } from './hand'
 import { charColor } from './charselect'
-import { EmotePanel, MpConnect } from './mpsetup'
+import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
 
 const NODE_LABEL: Record<string, string> = {
@@ -44,6 +44,7 @@ const NODE_LABEL: Record<string, string> = {
 
 export function CoopScreen() {
   const [char, setChar] = useState<CharId>('runner')
+  const [picking, setPicking] = useState(false)
   const [size, setSize] = useState(2)
   const phase = coopPhase.value
   const shakeCls = useShake()
@@ -197,6 +198,9 @@ export function CoopScreen() {
   }
 
   // --- Map / overlays ---------------------------------------------------------
+  if (picking && phase === 'idle') {
+    return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
+  }
   const m = coopMap.value
   return (
     <div class="screen menu">
@@ -207,17 +211,7 @@ export function CoopScreen() {
         {phase === 'idle' && (
           <>
             <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('coopIntro')}</div>
-            <div class="charrow">
-              {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
-                <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
-                  <Sprite id={c} size={34} />
-                  <div>
-                    <div class="cname-h">{t(('char' + c[0].toUpperCase() + c.slice(1)) as Parameters<typeof t>[0])}</div>
-                    <div class="cdesc-h">{t(('char' + c[0].toUpperCase() + c.slice(1) + 'Desc') as Parameters<typeof t>[0])}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <CharPickButton char={char} onOpen={() => setPicking(true)} />
             <div style={{ display: 'flex', gap: '10px' }}>
               {[2, 3, 4].map((n) => (
                 <button key={n} class={`btn ${size === n ? 'pink' : 'ghost'}`} onClick={() => setSize(n)}>
