@@ -475,6 +475,20 @@ function ParticleCanvas() {
   return <canvas id="fx-canvas" ref={ref} />
 }
 
+export const wipe = signal<{ label: string; color: string } | null>(null)
+let wipeTimer = 0
+
+/**
+ * Soft full-screen transition: a sweep + title card. `mid` fires at the
+ * covered moment (switch screens there) so the change never pops.
+ */
+export function screenWipe(label: string, color: string, mid?: () => void) {
+  clearTimeout(wipeTimer)
+  wipe.value = { label, color }
+  if (mid) setTimeout(mid, 300)
+  wipeTimer = window.setTimeout(() => (wipe.value = null), 820)
+}
+
 /** Fixed layer: particles, floats, rings, card flights, CRT scanlines. */
 export function FxLayer() {
   return (
@@ -509,6 +523,11 @@ export function FxLayer() {
           {f.text}
         </div>
       ))}
+      {wipe.value && (
+        <div class="wipe" style={{ '--wc': wipe.value.color }}>
+          <div class="wipe-label">{wipe.value.label}</div>
+        </div>
+      )}
       {settings.value.quality !== 'low' && <div class="scanlines" />}
     </>
   )

@@ -5,7 +5,7 @@
  */
 import { signal } from '@preact/signals'
 import type { CharId, GameEvent } from '@neonspire/engine'
-import { processEvents } from './fx'
+import { processEvents, screenWipe } from './fx'
 import { screen } from './store'
 import { sfx } from './sfx'
 
@@ -126,6 +126,8 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           if (data.t === 'coopstart' && !data.rejoin) sfx.win()
           break
         case 'coopcombat':
+          if (coopPhase.value !== 'combat') screenWipe('◈', 'var(--green)')
+        // fall through
         case 'coopst':
           coopYou.value = data.you
           coopView.value = data.view
@@ -168,6 +170,7 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           break
         case 'coopvictory':
           coopPhase.value = 'victory'
+          import('./meta').then((m) => m.award('coopwin'))
           sfx.win()
           break
         case 'coopdefeat':

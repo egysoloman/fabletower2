@@ -6,6 +6,7 @@ export type Screen =
   | 'menu'
   | 'newrun'
   | 'settings'
+  | 'codex'
   | 'map'
   | 'combat'
   | 'reward'
@@ -42,6 +43,8 @@ export interface PickerRequest {
 }
 
 export const screen = signal<Screen>('menu')
+export const prefightHp = signal(0)
+export const dailyResult = signal<{ score: number; rank: number } | null>(null)
 export const run = signal<RunState | null>(null)
 export const combat = signal<CombatState | null>(null)
 export const combatKind = signal<'normal' | 'elite' | 'boss'>('normal')

@@ -3,6 +3,7 @@ import type { CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
 import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
+import { screenWipe } from '../fx'
 import { setSetting, settings } from '../settings'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
@@ -35,29 +36,32 @@ export function MenuScreen() {
             {t('continueRun')}
           </button>
         )}
-        <button class="btn big pink" onClick={() => (sfx.click(), (screen.value = 'newrun'))}>
+        <button class="btn big pink" onClick={() => (sfx.click(), screenWipe(t('newRun'), 'var(--pink)', () => (screen.value = 'newrun')))}>
           {t('newRun')}
         </button>
         <div class="mp-row">
-          <button class="btn purple" onClick={() => (sfx.click(), (screen.value = 'pvp'))}>
+          <button class="btn purple" onClick={() => (sfx.click(), screenWipe(t('pvpDuel'), 'var(--purple)', () => (screen.value = 'pvp')))}>
             {t('pvpDuel')}
           </button>
           <button
             class="btn"
             style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
-            onClick={() => (sfx.click(), (screen.value = 'climb'))}
+            onClick={() => (sfx.click(), screenWipe(t('climbRace'), 'var(--gold)', () => (screen.value = 'climb')))}
           >
             {t('climbRace')}
           </button>
           <button
             class="btn"
             style={{ borderColor: 'var(--green)', color: 'var(--green)' }}
-            onClick={() => (sfx.click(), (screen.value = 'coop'))}
+            onClick={() => (sfx.click(), screenWipe(t('coopMode'), 'var(--green)', () => (screen.value = 'coop')))}
           >
             {t('coopMode')}
           </button>
         </div>
         <div class="seedrow">
+          <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'codex'))}>
+            ▤ {t('codexBtn')}
+          </button>
           <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'settings'))}>
             ⚙ {t('settingsBtn')}
           </button>

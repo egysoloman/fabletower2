@@ -38,6 +38,8 @@ import {
 import {
   cheatOpen,
   clearSave,
+  dailyResult,
+  prefightHp,
   combat,
   completedNode,
   combatKind,
@@ -52,12 +54,23 @@ import {
   shop,
   touch,
 } from './store'
-import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processEvents } from './fx'
+import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processEvents, screenWipe } from './fx'
 import { climbActive, climbBossKill, climbDied, climbLeave, climbReport } from './climb'
+import { checkCombat, checkRun, discoverEnemies, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
 // --- Ascension unlock + run history (device-local meta-progression) ---------
+
+export function dailySeed(date = new Date()): number {
+  const str = 'daily-' + date.toISOString().slice(0, 10)
+  let h = 2166136261
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
 
 export function ascUnlocked(): number {
   try {
@@ -91,7 +104,7 @@ function recordRun(win: boolean) {
   if (!r) return
   try {
     const list = runHistory()
-    list.unshift({
+    const rec = {
       d: Date.now(),
       seed: r.seed,
       asc: r.asc,
@@ -100,8 +113,14 @@ function recordRun(win: boolean) {
       win,
       sc: scoreRun(r, win).total,
       ch: r.char,
-    })
+    }
+    list.unshift(rec)
     localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
+    checkRun(rec, r, dailySeed())
+    if (r.seed === dailySeed()) {
+      recordDaily({ score: rec.sc ?? 0, ch: r.char, win, d: Date.now() })
+      dailyResult.value = { score: rec.sc ?? 0, rank: dailyRank((rec.sc ?? 0) + 1) }
+    }
     if (win && r.asc >= ascUnlocked() && ascUnlocked() < MAX_ASC) {
       localStorage.setItem('ns-ascmax', String(r.asc + 1))
     }
@@ -137,7 +156,11 @@ export function abandonRun() {
 function startFight(kind: 'normal' | 'elite' | 'boss') {
   combatKind.value = kind
   combat.value = combatFor(run.value!, kind)
-  screen.value = 'combat'
+  prefightHp.value = combat.value.player.hp
+  discoverEnemies(combat.value)
+  const label = kind === 'boss' ? t('nodeBoss') : kind === 'elite' ? t('nodeElite') : t('nodeCombat')
+  const color = kind === 'boss' ? 'var(--pink)' : kind === 'elite' ? 'var(--gold)' : 'var(--cyan)'
+  screenWipe(label, color, () => (screen.value = 'combat'))
 }
 
 export function clickNode(id: string) {
@@ -147,6 +170,7 @@ export function clickNode(id: string) {
   if (!type) return
   sfx.click()
   climbReport(r)
+  discoverRun(r)
   switch (type) {
     case 'combat':
       startFight('normal')
@@ -204,6 +228,7 @@ export function doCombat(action: CombatAction) {
   if (action.t === 'play') sfx.play()
   if (action.t === 'end') setTimeout(() => sfx.draw(), 600)
   combat.value = res.state
+  checkCombat(res.state)
   // End-turn resolves the whole enemy phase at once — pace the beats so each
   // enemy's move reads as its own action.
   processEvents(res.events, action.t === 'end' ? { delay: 80, step: 150 } : {})
@@ -262,6 +287,7 @@ export function playCardWithFx(handIdx: number, targetWho?: string, from?: { x: 
   energyRipple()
   sfx.play(def.type)
   combat.value = res.state
+  checkCombat(res.state)
   processEvents(res.events, { delay: dest ? 250 : 60 })
   saveGame()
 }
@@ -293,6 +319,11 @@ function finishCombat(cs: CombatState) {
   }
   sfx.win()
   const kind = combatKind.value
+  discoverEnemies(cs)
+  discoverRun(r)
+  if (kind === 'boss' && cs.player.hp >= prefightHp.value) {
+    import('./meta').then((mm) => mm.award('untouchable'))
+  }
   // Felling THE ROOT ends the run outright — no loot screen after the finale.
   if (kind === 'boss' && r.act >= 4) {
     recordRun(true)
@@ -316,7 +347,7 @@ function finishCombat(cs: CombatState) {
     potionTaken: false,
     afterBoss,
   }
-  screen.value = 'reward'
+  screenWipe(t('spoils'), 'var(--gold)', () => (screen.value = 'reward'))
   touch()
   saveGame()
 }
