@@ -39,6 +39,18 @@ const ART: Record<string, JSX.Element> = {
     </>
   ),
 
+  array: (
+    <>
+      <circle cx="32" cy="20" r="10" />
+      <path d="M26 19 H30 M34 19 H38" stroke-width="1.8" />
+      <path d="M14 52 C14 36 50 36 50 52" />
+      <path d="M28 40 L32 46 L36 40" />
+      <circle cx="12" cy="26" r="4" stroke-width="1.6" />
+      <circle cx="52" cy="26" r="4" stroke-width="1.6" />
+      <path d="M15 29 L24 36 M49 29 L40 36" stroke-width="1.2" />
+    </>
+  ),
+
   // --- act 1 ------------------------------------------------------------
   spambot: (
     <>

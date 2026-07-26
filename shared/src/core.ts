@@ -228,16 +228,18 @@ export function endTurnPowers(
   for (const card of side.hand) {
     if (card.id === 'glitch') loseHp(side, 1, whoSelf, evs)
   }
+  // Focus amplifies each ACTIVE automation — it never triggers on its own.
+  const focus = side.statuses.focus ?? 0
   const plating = side.statuses.plating ?? 0
-  if (plating > 0) gainBlock(side, plating, whoSelf, evs)
+  if (plating > 0) gainBlock(side, plating + focus, whoSelf, evs)
   const turret = side.statuses.turret ?? 0
   if (turret > 0 && foes.length > 0) {
     const target = foes[Math.floor(randInt(env.rng, 0, foes.length - 1))]
-    plainDamage(target.f, turret, target.who, evs)
+    plainDamage(target.f, turret + focus, target.who, evs)
   }
   const viral = side.statuses.viral ?? 0
   if (viral > 0) {
-    for (const foe of foes) applyStatus(foe.f, 'corrupt', viral, foe.who, evs)
+    for (const foe of foes) applyStatus(foe.f, 'corrupt', viral + focus, foe.who, evs)
   }
 }
 
@@ -472,6 +474,14 @@ function resolveEffect(
       if (target && target.f.hp > 0) {
         const inStance = !!(side.statuses.overdrive || side.statuses.stealth)
         attack(side, target.f, inStance ? eff.n + eff.bonus : eff.n, whoSelf, target.who, evs)
+      }
+      break
+    }
+    case 'dmgPerAuto': {
+      if (target && target.f.hp > 0) {
+        const autos =
+          (side.statuses.turret ?? 0) + (side.statuses.plating ?? 0) + (side.statuses.viral ?? 0)
+        attack(side, target.f, eff.base + eff.per * autos, whoSelf, target.who, evs)
       }
       break
     }

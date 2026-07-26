@@ -582,6 +582,9 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .player-zone.ghost .glyph { color: #b98cff; }
 .player-zone.ghost .pname { color: #b98cff; }
 .charcard.ghost { border-color: rgba(185, 140, 255, 0.4); background: rgba(185, 140, 255, 0.05); color: #b98cff; }
+.player-zone.array .glyph { color: #3dffa2; }
+.player-zone.array .pname { color: #3dffa2; }
+.charcard.array { border-color: rgba(61, 255, 162, 0.4); background: rgba(61, 255, 162, 0.05); color: #3dffa2; }
 
 .ascrow { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .ascrow .btn { padding: 6px 14px; }

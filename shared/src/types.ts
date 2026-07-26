@@ -31,6 +31,7 @@ export type StatusId =
   | 'stancewall' // gain N block whenever you enter a stance
   | 'momentum' // gain N Strength whenever you enter Overdrive
   | 'tempoloop' // draw N whenever you enter a stance
+  | 'focus' // each of your automations (Turret/Plating/Viral) triggers N harder
 
 export type Statuses = Partial<Record<StatusId, number>>
 
@@ -71,6 +72,7 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   stancewall: { name: 'Stance Wall', sym: '⛉', bad: false, desc: 'Gain {n} Block whenever you enter a stance.', powerText: 'Whenever you enter a stance, gain {n} Block.' },
   momentum: { name: 'Momentum', sym: '⤁', bad: false, desc: 'Gain {n} Strength whenever you enter Overdrive.', powerText: 'Whenever you enter Overdrive, gain {n} Strength.' },
   tempoloop: { name: 'Tempo Loop', sym: '∿', bad: false, desc: 'Draw {n} card(s) whenever you enter a stance.', powerText: 'Whenever you enter a stance, draw {n} card(s).' },
+  focus: { name: 'Focus', sym: '⌖', bad: false, desc: 'Your automations (Turret, Plating, Viral) trigger {n} harder.', powerText: 'Gain {n} Focus: each of your automations (Turret, Plating, Viral) triggers {n} harder.' },
 }
 
 export const DEBUFFS: StatusId[] = ['weak', 'vuln', 'corrupt']
@@ -107,8 +109,9 @@ export type Effect =
   | { k: 'dmgHeatBonus'; n: number; bonus: number; threshold: number }
   | { k: 'enterStance'; id: 'overdrive' | 'stealth' | 'none' }
   | { k: 'dmgIfStance'; n: number; bonus: number }
+  | { k: 'dmgPerAuto'; base: number; per: number }
 
-export type CharId = 'runner' | 'vector' | 'ghost'
+export type CharId = 'runner' | 'vector' | 'ghost' | 'array'
 
 export interface CardDef {
   id: string

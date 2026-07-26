@@ -30,6 +30,11 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
     'cloakfield', 'cloakfield', 'cloakfield', 'cloakfield',
     'redshift', 'blackout',
   ],
+  array: [
+    'pulsebolt', 'pulsebolt', 'pulsebolt', 'pulsebolt',
+    'fieldwall', 'fieldwall', 'fieldwall', 'fieldwall',
+    'deployturret', 'deployplating',
+  ],
 }
 
 export const MAX_ASC = 20

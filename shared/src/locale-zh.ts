@@ -124,6 +124,22 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   brightstep: { name: '耀光步' },
   patchwork: { name: '缝补拼装' },
   saturate: { name: '饱和打击', flavor: '同时灌满每一条通道' },
+  pulsebolt: { name: '脉冲弹', flavor: 'hello_world.exe' },
+  fieldwall: { name: '力场墙' },
+  deployturret: { name: '部署炮塔', flavor: '它只会唱一首歌' },
+  deployplating: { name: '部署镀层' },
+  sparkloop: { name: '电火花回路' },
+  bufferfield: { name: '缓冲力场' },
+  chainzap: { name: '连锁电击' },
+  recalibrate: { name: '重新校准' },
+  patchdrone: { name: '维修无人机' },
+  focuslens: { name: '聚焦透镜', flavor: '更锋利的守护进程，同一条锁链' },
+  viralnode: { name: '病毒节点' },
+  overclockarray: { name: '超频阵列' },
+  daemonstrike: { name: '守护进程打击' },
+  hivecore: { name: '蜂巢核心', flavor: '虫群在同步中做梦' },
+  omegabarrage: { name: '终焉弹幕', flavor: '所有守护进程齐射' },
+  selfassembly: { name: '自我组装', flavor: '工厂建造工厂' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
@@ -172,6 +188,7 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   stancewall: { name: '姿态壁垒', desc: '每当你进入姿态，获得 {n} 点格挡。', powerText: '每当你进入一个姿态，获得 {n} 点格挡。' },
   momentum: { name: '动量', desc: '每当你进入超载，获得 {n} 点力量。', powerText: '每当你进入超载，获得 {n} 点力量。' },
   tempoloop: { name: '节奏循环', desc: '每当你进入姿态，抽 {n} 张牌。', powerText: '每当你进入一个姿态，抽 {n} 张牌。' },
+  focus: { name: '聚焦', desc: '你的自动装置（炮塔、镀层、病毒扩散）触发时增强 {n} 点。', powerText: '获得 {n} 点聚焦：你的每个自动装置（炮塔、镀层、病毒扩散）触发时增强 {n} 点。' },
 }
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
@@ -242,6 +259,8 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   phaseanchor: { name: '相位锚', desc: '每场战斗开始时获得 1 层节奏循环和 2 层姿态壁垒。' },
   rootkitinjector: { name: 'Rootkit 注入器', desc: '敌人在战斗开始时带有 2 层侵蚀，你施加的侵蚀增加 1 层。' },
   packetsniffer: { name: '抓包嗅探器', desc: '第一回合额外抽 1 张牌，信用点收益提高 10%。' },
+  focuscrystal: { name: '聚焦水晶', desc: '每场战斗开始时获得 1 点聚焦（自动装置触发增强 1 点）。' },
+  prefabnest: { name: '预制巢穴', desc: '每场战斗开始时获得 1 层炮塔和 1 层镀层。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {

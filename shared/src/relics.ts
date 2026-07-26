@@ -394,6 +394,16 @@ reg(R({
   desc: 'Draw 1 more on your first turn and earn 10% more credits.',
   hooks: { firstTurnDraw: 1, goldBonusPct: 10 },
 }))
+reg(R({
+  id: 'focuscrystal', name: 'Focus Crystal', rarity: 'rare', sym: '⌖', char: 'array',
+  desc: 'Start each combat with 1 Focus (automations trigger 1 harder).',
+  hooks: { combatStatuses: { focus: 1 } },
+}))
+reg(R({
+  id: 'prefabnest', name: 'Prefab Nest', rarity: 'common', sym: '☖', char: 'array',
+  desc: 'Start each combat with 1 Turret and 1 Plating.',
+  hooks: { combatStatuses: { turret: 1, plating: 1 } },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)

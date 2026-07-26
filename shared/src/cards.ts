@@ -581,6 +581,100 @@ reg(c({
   flavor: 'be both. bill later.',
 }))
 
+// --- ARRAY: the daemon conductor --------------------------------------------
+
+reg(c({
+  id: 'pulsebolt', name: 'Pulse Bolt', type: 'attack', rarity: 'starter', char: 'array', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }], upEffects: [{ k: 'dmg', n: 9 }],
+  flavor: 'hello_world.exe',
+}))
+reg(c({
+  id: 'fieldwall', name: 'Field Wall', type: 'skill', rarity: 'starter', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 5 }], upEffects: [{ k: 'block', n: 8 }],
+}))
+reg(c({
+  id: 'deployturret', name: 'Deploy Turret', type: 'skill', rarity: 'starter', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'turret', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'turret', n: 3 }],
+  flavor: 'it only knows one song',
+}))
+reg(c({
+  id: 'deployplating', name: 'Deploy Plating', type: 'skill', rarity: 'starter', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'plating', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'plating', n: 3 }],
+}))
+reg(c({
+  id: 'sparkloop', name: 'Spark Loop', type: 'attack', rarity: 'common', char: 'array', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 5 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 8 }, { k: 'status', to: 'self', id: 'turret', n: 1 }],
+}))
+reg(c({
+  id: 'bufferfield', name: 'Buffer Field', type: 'skill', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 4 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'block', n: 6 }, { k: 'status', to: 'self', id: 'plating', n: 2 }],
+}))
+reg(c({
+  id: 'chainzap', name: 'Chain Zap', type: 'attack', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'dmgAll', n: 4 }], upEffects: [{ k: 'dmgAll', n: 6 }],
+}))
+reg(c({
+  id: 'recalibrate', name: 'Recalibrate', type: 'skill', rarity: 'common', char: 'array', cost: 0, target: 'none',
+  effects: [{ k: 'block', n: 2 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'block', n: 3 }, { k: 'draw', n: 2 }],
+}))
+reg(c({
+  id: 'patchdrone', name: 'Patch Drone', type: 'skill', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'heal', n: 3 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+  upEffects: [{ k: 'heal', n: 5 }, { k: 'status', to: 'self', id: 'plating', n: 1 }],
+}))
+reg(c({
+  id: 'focuslens', name: 'Focus Lens', type: 'power', rarity: 'uncommon', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'focus', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'focus', n: 2 }],
+  flavor: 'sharper daemons, same leash',
+}))
+reg(c({
+  id: 'viralnode', name: 'Viral Node', type: 'skill', rarity: 'uncommon', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'viral', n: 1 }, { k: 'block', n: 3 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'viral', n: 2 }, { k: 'block', n: 3 }],
+}))
+reg(c({
+  id: 'overclockarray', name: 'Overclock Array', type: 'skill', rarity: 'uncommon', char: 'array', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'turret', n: 3 }, { k: 'status', to: 'self', id: 'plating', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'turret', n: 4 }, { k: 'status', to: 'self', id: 'plating', n: 3 }],
+}))
+reg(c({
+  id: 'daemonstrike', name: 'Daemon Strike', type: 'attack', rarity: 'uncommon', char: 'array', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmgPerAuto', base: 4, per: 2 }],
+  upEffects: [{ k: 'dmgPerAuto', base: 6, per: 2 }],
+}))
+reg(c({
+  id: 'hivecore', name: 'Hive Core', type: 'power', rarity: 'rare', char: 'array', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'focus', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'focus', n: 2 }],
+  flavor: 'the swarm dreams in unison',
+}))
+reg(c({
+  id: 'omegabarrage', name: 'Omega Barrage', type: 'attack', rarity: 'rare', char: 'array', cost: 3, target: 'enemy',
+  effects: [{ k: 'dmgPerAuto', base: 10, per: 3 }],
+  upEffects: [{ k: 'dmgPerAuto', base: 14, per: 3 }],
+  flavor: 'every daemon fires at once',
+}))
+reg(c({
+  id: 'selfassembly', name: 'Self-Assembly', type: 'power', rarity: 'rare', char: 'array', cost: 2, target: 'none',
+  effects: [
+    { k: 'status', to: 'self', id: 'turret', n: 2 },
+    { k: 'status', to: 'self', id: 'plating', n: 2 },
+    { k: 'status', to: 'self', id: 'viral', n: 1 },
+  ],
+  upEffects: [
+    { k: 'status', to: 'self', id: 'turret', n: 3 },
+    { k: 'status', to: 'self', id: 'plating', n: 3 },
+    { k: 'status', to: 'self', id: 'viral', n: 1 },
+  ],
+  flavor: 'the factory builds the factory',
+}))
+
 // --- Keyword cards: Innate / Retain / Ethereal ------------------------------
 
 reg(c({
@@ -837,6 +931,8 @@ function effTextEn(e: Effect): string {
       return e.id === 'none' ? 'Exit your stance.' : `Enter ${statusName(e.id)}.`
     case 'dmgIfStance':
       return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead while in a stance.`
+    case 'dmgPerAuto':
+      return `Deal ${e.base} damage, plus ${e.per} per automation stack (Turret, Plating, Viral).`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)
@@ -902,6 +998,8 @@ function effTextZh(e: Effect): string {
       return e.id === 'none' ? '退出你的姿态。' : `进入${statusName(e.id)}。`
     case 'dmgIfStance':
       return `造成 ${e.n} 点伤害。若你处于姿态中，则改为造成 ${e.n + e.bonus} 点。`
+    case 'dmgPerAuto':
+      return `造成 ${e.base} 点伤害，每层自动装置（炮塔、镀层、病毒扩散）额外 +${e.per} 点。`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)

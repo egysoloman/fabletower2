@@ -210,7 +210,7 @@ export function CombatScreen() {
             <Sprite id={run.value?.char ?? 'runner'} size={58} />
           </div>
           <div class="pname">
-            {run.value?.char === 'vector' ? 'VECTOR' : run.value?.char === 'ghost' ? 'GHOST' : p.name}
+            {run.value?.char && run.value.char !== 'runner' ? run.value.char.toUpperCase() : p.name}
           </div>
           <HpBar hp={p.hp} maxHp={p.maxHp} mine />
           <StatusRow statuses={p.statuses} />

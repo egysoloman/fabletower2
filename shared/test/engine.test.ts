@@ -997,6 +997,47 @@ describe('relic & event volume (cycle 10)', () => {
   })
 })
 
+describe('ARRAY automations (cycle 16)', () => {
+  it('focus amplifies every active automation, never triggers alone', async () => {
+    const { endTurnPowers } = await import('../src/core')
+    const cs = fixedCombat(['fieldwall', 'fieldwall', 'fieldwall', 'fieldwall', 'fieldwall'], ['golem'])
+    cs.player.statuses.focus = 2
+    const evs: any[] = []
+    // focus alone: nothing happens
+    endTurnPowers(cs.player, 'p', [{ f: cs.enemies[0], who: 'e0' }], cs, evs)
+    expect(cs.player.block).toBe(0)
+    expect(cs.enemies[0].hp).toBe(cs.enemies[0].maxHp)
+    // with automations: each triggers +focus harder
+    cs.player.statuses.plating = 1
+    cs.player.statuses.turret = 1
+    const hp0 = cs.enemies[0].hp
+    endTurnPowers(cs.player, 'p', [{ f: cs.enemies[0], who: 'e0' }], cs, evs)
+    expect(cs.player.block).toBe(3) // 1 plating + 2 focus
+    expect(hp0 - cs.enemies[0].hp).toBe(3) // 1 turret + 2 focus
+  })
+
+  it('dmgPerAuto scales with total automation stacks', () => {
+    const cs = fixedCombat(['daemonstrike', 'daemonstrike', 'daemonstrike', 'daemonstrike', 'daemonstrike'], ['golem'])
+    cs.player.statuses.turret = 2
+    cs.player.statuses.plating = 1
+    cs.player.statuses.viral = 1
+    const hp0 = cs.enemies[0].hp
+    const s = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+    expect(hp0 - s.enemies[0].hp).toBe(4 + 2 * 4) // base 4 + per 2 x 4 stacks
+  })
+
+  it('array pool is exclusive and boots with deploy cards', () => {
+    const aPool = obtainableCards('array').map((c) => c.id)
+    expect(aPool).toContain('focuslens')
+    expect(aPool).not.toContain('meltdown')
+    expect(aPool).not.toContain('flicker')
+    expect(obtainableCards('runner').map((c) => c.id)).not.toContain('focuslens')
+    const run = newRun(1, 0, 'array')
+    expect(run.deck.some((c) => c.id === 'deployturret')).toBe(true)
+    expect(run.deck.some((c) => c.id === 'deployplating')).toBe(true)
+  })
+})
+
 describe('boss & enemy variety (cycle 11)', () => {
   it('acts 1-3 rotate between two bosses', async () => {
     const { ENCOUNTERS } = await import('../src/enemies')

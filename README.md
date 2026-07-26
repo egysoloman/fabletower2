@@ -73,14 +73,17 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ## Game content
 
-- **THREE playable characters** — RUNNER (versatile netdiver); VECTOR, a
+- **FOUR playable characters** — RUNNER (versatile netdiver); VECTOR, a
   volatile overclocker built on the Heat mechanic (attacks ride +1 damage per
   Heat stack, overheating past the threshold burns you for all of it, vent
-  cards cash it out, and the Reactor power turns meltdowns into AoE); and
-  GHOST, a stance phaser who flickers between **Overdrive** (deal ×1.5, take
-  ×1.5) and **Stealth** (take ×0.5, +2 energy on exit), with stance-trigger
-  powers that pay block, Strength, and draws on every switch.
-- **120 playable cards** across per-character pools and three RUNNER build
+  cards cash it out, and the Reactor power turns meltdowns into AoE); GHOST,
+  a stance phaser who flickers between **Overdrive** (deal ×1.5, take ×1.5)
+  and **Stealth** (take ×0.5, +2 energy on exit), with stance-trigger powers
+  that pay block, Strength, and draws on every switch; and ARRAY, a daemon
+  conductor who deploys Turret / Plating / Viral automations and amplifies
+  every trigger with **Focus** — then cashes the stacks with per-automation
+  payoff attacks.
+- **136 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
@@ -89,7 +92,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
-- **67 relics** with combat/economy hooks — character-exclusive relics that
+- **69 relics** with combat/economy hooks — character-exclusive relics that
   only appear in the right pools, double-edged boss picks like the Berserker
   Chip (+2 Strength, −10 Max HP) — plus a **choice of boss relics** after
   each act boss and a Neow-style **BOOT SEQUENCE** bonus at run start.
@@ -102,12 +105,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   narrowed boss picks, army-wide Strength, tighter starting credits, fatter bosses, wounded starts, narrowed card rewards — with the active modifier described on the menu. Plus
   a **daily seeded run**, an end-of-run **score breakdown**, and local run
   history (with scores).
-- **26 statuses**: Strength, Weak, Vulnerable, Corrupt (poison), Thorns,
+- **27 statuses**: Strength, Weak, Vulnerable, Corrupt (poison), Thorns,
   Plating, Turret, Viral, Overclock, Uplink, Ritual, Regen, Barricade, Kernel,
   Hyperthread, Chronic, **Artifact** (negates the next debuff — late elites
   and THE ROOT come armored with it), VECTOR's Heat / Coolant / Ignition /
-  Reactor, and GHOST's Overdrive / Stealth stances with Stance Wall, Momentum
-  and Tempo Loop triggers.
+  Reactor, GHOST's Overdrive / Stealth stances with Stance Wall, Momentum and
+  Tempo Loop triggers, and ARRAY's Focus.
 - **Sustain package** for softer runs: Hotfix, Checkpoint, Backup Restore
   (heals), Leech Query (lifesteal), Auto-Repair (Regen power), Nano Medkit /
   Solar Cell relics.
