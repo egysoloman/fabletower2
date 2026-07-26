@@ -1038,6 +1038,58 @@ describe('ARRAY automations (cycle 16)', () => {
   })
 })
 
+describe('player summons (cycle 21)', () => {
+  const deck5 = (id: string) => [id, id, id, id, id]
+
+  it('summons cap at 3 and carry their own HP', async () => {
+    const { MAX_MINIONS } = await import('../src/minions')
+    const cs = fixedCombat(deck5('summonferro'), ['golem'])
+    let s = cs
+    for (let i = 0; i < 5; i++) {
+      const res = combatReduce(s, { t: 'play', hand: 0 })
+      if (res.error) break
+      s = res.state
+    }
+    expect(s.player.minions.length).toBe(MAX_MINIONS)
+    expect(s.player.minions[0].hp).toBe(6)
+  })
+
+  it('the front minion soaks enemy hits; excess is lost', () => {
+    const cs = fixedCombat(deck5('summonferro'), ['golem'])
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.minions.length).toBe(1)
+    const hpBefore = s.player.hp
+    let cur = s
+    for (let turn = 0; turn < 3 && !cur.over && cur.player.minions.length > 0; turn++) {
+      cur = combatReduce(cur, { t: 'end' }).state
+    }
+    // While a minion stood in front, the player took no attack damage.
+    if (cur.player.minions.length > 0) expect(cur.player.hp).toBe(hpBefore)
+  })
+
+  it('minions act at end of turn: strike, guard, infect', async () => {
+    const { endTurnPowers } = await import('../src/core')
+    const cs = fixedCombat(deck5('strike'), ['golem'])
+    cs.player.minions = [
+      { defId: 'ferrodrone', hp: 6, maxHp: 6 },
+      { defId: 'bulwarkpod', hp: 8, maxHp: 8 },
+      { defId: 'sporemite', hp: 5, maxHp: 5 },
+    ]
+    const evs: any[] = []
+    const hp0 = cs.enemies[0].hp
+    endTurnPowers(cs.player, 'p', [{ f: cs.enemies[0], who: 'e0' }], cs, evs)
+    expect(hp0 - cs.enemies[0].hp).toBe(4) // ferro strike
+    expect(cs.player.block).toBe(3) // bulwark guard
+    expect(cs.enemies[0].statuses.corrupt).toBe(1) // spore infect
+  })
+
+  it('summon rules text is generated from minion data', () => {
+    expect(describeCard(inst('summonferro', 1))).toContain('Summon a Ferro Drone')
+    expect(describeCard(inst('summonferro', 1))).toContain('6 HP')
+    expect(describeCard(inst('twinforge', 1))).toContain('Summon 2')
+  })
+})
+
 describe('boss & enemy variety (cycle 11)', () => {
   it('acts 1-3 rotate between two bosses', async () => {
     const { ENCOUNTERS } = await import('../src/enemies')

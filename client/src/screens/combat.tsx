@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
   CARDS,
+  MINIONS,
   cardRetains,
   enemyName,
+  minionDesc,
+  minionName,
   moveName,
   playableCards,
   type EnemyC,
@@ -214,6 +217,18 @@ export function CombatScreen() {
           </div>
           <HpBar hp={p.hp} maxHp={p.maxHp} mine />
           <StatusRow statuses={p.statuses} />
+          {p.minions.length > 0 && (
+            <div class="minionrow">
+              {p.minions.map((m, i) => (
+                <div key={i} class="minion" data-tip={`${minionName(m.defId)}\n${minionDesc(m.defId)}`}>
+                  <span class="msym">{MINIONS[m.defId]?.sym}</span>
+                  <span class="mhp">
+                    {m.hp}/{m.maxHp}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div class="enemies">

@@ -122,6 +122,7 @@ export function loadGame(): boolean {
       s.reward.potionTaken ??= false
     }
     if (s.shop) s.shop.potions ??= []
+    if (s.combat?.player) s.combat.player.minions ??= []
     run.value = s.run
     combat.value = s.combat ?? null
     combatKind.value = s.combatKind ?? 'normal'

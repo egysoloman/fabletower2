@@ -110,6 +110,7 @@ export type Effect =
   | { k: 'enterStance'; id: 'overdrive' | 'stealth' | 'none' }
   | { k: 'dmgIfStance'; n: number; bonus: number }
   | { k: 'dmgPerAuto'; base: number; per: number }
+  | { k: 'summonAlly'; id: string; n?: number }
 
 export type CharId = 'runner' | 'vector' | 'ghost' | 'array'
 
@@ -161,6 +162,13 @@ export interface Fighter {
 }
 
 /** A fighter that plays cards: the PvE player, or either PvP side. */
+/** A summoned ally: acts at the end of its owner's turn, soaks hits first. */
+export interface MinionC {
+  defId: string
+  hp: number
+  maxHp: number
+}
+
 export interface DeckSide extends Fighter {
   energy: number
   energyMax: number
@@ -172,6 +180,7 @@ export interface DeckSide extends Fighter {
   cardsPlayed: number
   /** Cards played since this side's turn began (combo payoffs). */
   cardsThisTurn: number
+  minions: MinionC[]
 }
 
 // ---------------------------------------------------------------------------

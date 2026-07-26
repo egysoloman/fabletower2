@@ -1,6 +1,7 @@
 import type { CardDef, CardInst, CharId, Effect, Rarity } from './types'
 import { ES, isZh, statusName, statusPowerText } from './i18n'
 import { CARD_ZH } from './locale-zh'
+import { minionDesc, minionName } from './minions'
 
 const c = (def: CardDef) => def
 
@@ -925,6 +926,38 @@ reg(c({
   flavor: 'one clock, many hammers',
 }))
 
+// --- Summons ----------------------------------------------------------------
+
+reg(c({
+  id: 'summonferro', name: 'Summon: Ferro', type: 'skill', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'ferrodrone' }],
+  upEffects: [{ k: 'summonAlly', id: 'ferroprime' }],
+  flavor: 'it bites for you now',
+}))
+reg(c({
+  id: 'summonbulwark', name: 'Summon: Bulwark', type: 'skill', rarity: 'common', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'bulwarkpod' }],
+  upEffects: [{ k: 'summonAlly', id: 'bulwarkprime' }],
+}))
+reg(c({
+  id: 'summonspore', name: 'Summon: Spore Mite', type: 'skill', rarity: 'uncommon', char: 'array', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'sporemite' }],
+  upEffects: [{ k: 'summonAlly', id: 'sporeprime' }],
+}))
+reg(c({
+  id: 'twinforge', name: 'Twin Forge', type: 'skill', rarity: 'rare', char: 'array', cost: 2, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'ferrodrone', n: 2 }],
+  upEffects: [{ k: 'summonAlly', id: 'ferroprime', n: 2 }],
+  flavor: 'two of everything, as designed',
+}))
+reg(c({
+  id: 'rentadrone', name: 'Rent-a-Drone', type: 'skill', rarity: 'uncommon', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'ferrodrone' }],
+  upEffects: [{ k: 'summonAlly', id: 'ferroprime' }],
+  exhaust: true, upExhaust: true,
+  flavor: 'terms and conditions apply',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
@@ -1046,6 +1079,10 @@ function effTextEn(e: Effect): string {
       return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead while in a stance.`
     case 'dmgPerAuto':
       return `Deal ${e.base} damage, plus ${e.per} per automation stack (Turret, Plating, Viral).`
+    case 'summonAlly': {
+      const who = `${minionName(e.id)} (${minionDesc(e.id)})`
+      return e.n && e.n > 1 ? `Summon ${e.n} ${who}.` : `Summon a ${who}.`
+    }
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)
@@ -1113,6 +1150,10 @@ function effTextZh(e: Effect): string {
       return `造成 ${e.n} 点伤害。若你处于姿态中，则改为造成 ${e.n + e.bonus} 点。`
     case 'dmgPerAuto':
       return `造成 ${e.base} 点伤害，每层自动装置（炮塔、镀层、病毒扩散）额外 +${e.per} 点。`
+    case 'summonAlly': {
+      const who = `${minionName(e.id)}（${minionDesc(e.id)}）`
+      return e.n && e.n > 1 ? `召唤 ${e.n} 个${who}。` : `召唤一个${who}。`
+    }
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)

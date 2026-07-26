@@ -7,6 +7,7 @@
  * Node server all execute these exact functions.
  */
 import { CARDS, cardCost, cardEffects, cardEthereal, cardExhausts, cardInnate, cardRetains } from './cards'
+import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
 import type { CardInst, DeckSide, Effect, Fighter, GameEvent, StatusId } from './types'
 import { DEBUFFS } from './types'
@@ -124,6 +125,20 @@ export function attack(
   whoDst: string,
   evs: GameEvent[],
 ) {
+  // Summoned allies shield their owner: the front minion soaks the whole
+  // hit (owner block/vuln/stealth don't apply; excess damage is lost).
+  const minions = (dst as DeckSide).minions
+  if (minions && minions.length > 0) {
+    const d = modifiedDamage(base, src, { statuses: {} })
+    const m = minions[0]
+    m.hp -= d
+    evs.push({ e: 'hit', who: whoDst, n: d, id: 'minion' })
+    if (m.hp <= 0) {
+      minions.shift()
+      evs.push({ e: 'die', who: whoDst, id: 'minion' })
+    }
+    return
+  }
   const d = modifiedDamage(base, src, dst)
   const blocked = Math.min(dst.block, d)
   dst.block -= blocked
@@ -240,6 +255,27 @@ export function endTurnPowers(
   const viral = side.statuses.viral ?? 0
   if (viral > 0) {
     for (const foe of foes) applyStatus(foe.f, 'corrupt', viral + focus, foe.who, evs)
+  }
+  // Summoned allies take their actions.
+  for (const m of side.minions) {
+    const def = MINIONS[m.defId]
+    if (!def) continue
+    const alive = foes.filter((x) => x.f.hp > 0)
+    switch (def.act.k) {
+      case 'strike': {
+        if (alive.length > 0) {
+          const target = alive[randInt(env.rng, 0, alive.length - 1)]
+          plainDamage(target.f, def.act.n, target.who, evs)
+        }
+        break
+      }
+      case 'guard':
+        gainBlock(side, def.act.n, whoSelf, evs)
+        break
+      case 'infect':
+        for (const foe of alive) applyStatus(foe.f, 'corrupt', def.act.n, foe.who, evs)
+        break
+    }
   }
 }
 
@@ -485,6 +521,16 @@ function resolveEffect(
       }
       break
     }
+    case 'summonAlly': {
+      for (let i = 0; i < (eff.n ?? 1); i++) {
+        if (side.minions.length >= MAX_MINIONS) break
+        const def = MINIONS[eff.id]
+        if (!def) break
+        side.minions.push({ defId: def.id, hp: def.hp, maxHp: def.hp })
+        evs.push({ e: 'summon', who: whoSelf, name: def.name, id: 'minion' })
+      }
+      break
+    }
   }
 }
 
@@ -583,5 +629,6 @@ export function makeSide(name: string, hp: number, maxHp: number, deck: CardInst
     powersPlayed: 0,
     cardsPlayed: 0,
     cardsThisTurn: 0,
+    minions: [],
   }
 }

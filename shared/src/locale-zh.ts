@@ -156,10 +156,24 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   strobeloop: { name: '频闪回路' },
   finalcurtain: { name: '终幕', flavor: '没有返场' },
   zapdrone: { name: '电击无人机' },
+  summonferro: { name: '召唤：铁噬', flavor: '现在它替你咬人了' },
+  summonbulwark: { name: '召唤：壁垒' },
+  summonspore: { name: '召唤：孢螨' },
+  twinforge: { name: '双子锻造', flavor: '一切成双，如设计所愿' },
+  rentadrone: { name: '租赁无人机', flavor: '附带条款与条件' },
   shieldlattice: { name: '护盾晶格' },
   swarmprotocol: { name: '虫群协议' },
   gridsurge: { name: '电网涌动' },
   unitytick: { name: '同步时钟', flavor: '一个时钟，许多铁锤' },
+}
+
+export const MINION_ZH: Record<string, { name: string }> = {
+  ferrodrone: { name: '铁噬无人机' },
+  ferroprime: { name: '铁噬至尊' },
+  bulwarkpod: { name: '壁垒吊舱' },
+  bulwarkprime: { name: '壁垒至尊' },
+  sporemite: { name: '孢螨' },
+  sporeprime: { name: '孢螨至尊' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
