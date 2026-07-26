@@ -1254,7 +1254,7 @@ describe('boss & enemy variety (cycle 11)', () => {
   it('acts 1-3 rotate between two bosses', async () => {
     const { ENCOUNTERS } = await import('../src/enemies')
     for (const act of [1, 2, 3]) {
-      expect(ENCOUNTERS[act].boss.length, `act ${act}`).toBe(2)
+      expect(ENCOUNTERS[act].boss.length, `act ${act}`).toBeGreaterThanOrEqual(2)
       for (const group of ENCOUNTERS[act].boss) {
         expect(ENEMIES[group[0]].boss).toBe(true)
       }
@@ -1266,7 +1266,7 @@ describe('boss & enemy variety (cycle 11)', () => {
       const run = newRun(seed)
       seen.add(pickEncounter(run, 'boss')[0])
     }
-    expect(seen.size).toBe(2)
+    expect(seen.size).toBeGreaterThanOrEqual(2)
   })
 
   it('phantom takes half damage through permanent stealth', () => {

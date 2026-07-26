@@ -296,6 +296,249 @@ reg(E({
   ],
 }))
 
+// --- Volume: cycle 39 — act 1 ------------------------------------------------
+
+reg(E({ id: 'bitrat', name: 'Bit Rat', glyph: '¤', hp: [14, 18], moves: [
+  { id: 'gnaw', name: 'Gnaw', weight: 3, effects: [{ k: 'atk', n: 4 }] },
+  { id: 'scurry', name: 'Scurry', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 4 }] },
+] }))
+reg(E({ id: 'adfly', name: 'Ad Fly', glyph: '✕', hp: [16, 20], moves: [
+  { id: 'popup', name: 'Pop-Up', weight: 2, maxRepeat: 1, effects: [{ k: 'debuff', id: 'weak', n: 1 }] },
+  { id: 'swarmbite', name: 'Swarm Bite', weight: 3, effects: [{ k: 'atk', n: 3, times: 2 }] },
+] }))
+reg(E({ id: 'cursorghoul', name: 'Cursor Ghoul', glyph: '➤', hp: [26, 32], moves: [
+  { id: 'click', name: 'Click', weight: 3, effects: [{ k: 'atk', n: 6 }] },
+  { id: 'dblclick', name: 'Double Click', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 4, times: 2 }] },
+  { id: 'hover', name: 'Hover', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 6 }] },
+] }))
+reg(E({ id: 'staticjelly', name: 'Static Jelly', glyph: '≋', hp: [30, 36], traits: { thorns: 2 }, moves: [
+  { id: 'wobble', name: 'Wobble', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 7 }] },
+  { id: 'zap', name: 'Zap', weight: 3, effects: [{ k: 'atk', n: 6 }] },
+  { id: 'discharge', name: 'Discharge', weight: 1, cooldown: 2, effects: [{ k: 'atk', n: 9 }, { k: 'buff', id: 'thorns', n: 1 }] },
+] }))
+reg(E({ id: 'packmule', name: 'Pack Mule', glyph: '▦', hp: [38, 44], moves: [
+  { id: 'trample', name: 'Trample', weight: 3, effects: [{ k: 'atk', n: 8 }] },
+  { id: 'unload', name: 'Unload', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 8 }, { k: 'block', n: 6 }] },
+  { id: 'brace', name: 'Brace', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 8 }] },
+] }))
+reg(E({ id: 'popupspawner', name: 'Pop-Up Spawner', glyph: '⧉', hp: [32, 38], moves: [
+  { id: 'spawnad', name: 'Spawn Ad', weight: 3, maxRepeat: 1, effects: [{ k: 'summon', id: 'adfly' }] },
+  { id: 'flashbang', name: 'Flashbang', weight: 2, effects: [{ k: 'atk', n: 5 }, { k: 'debuff', id: 'weak', n: 1 }] },
+] }))
+reg(E({ id: 'lintbeast', name: 'Lint Beast', glyph: '๛', hp: [40, 46], moves: [
+  { id: 'nag', name: 'Nag', weight: 2, effects: [{ k: 'debuff', id: 'vuln', n: 2 }] },
+  { id: 'swat', name: 'Swat', weight: 3, effects: [{ k: 'atk', n: 9 }] },
+  { id: 'strictmode', name: 'Strict Mode', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
+] }))
+reg(E({ id: 'firewallwarden', name: 'Firewall Warden', glyph: '⛩', hp: [72, 80], traits: { artifact: 1 }, moves: [
+  { id: 'gateclose', name: 'Gate Close', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 12 }] },
+  { id: 'sentence', name: 'Sentence', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+  { id: 'judgement', name: 'Judgement', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 7 }, { k: 'debuff', id: 'vuln', n: 2 }] },
+] }))
+
+// --- Volume: cycle 39 — act 2 ------------------------------------------------
+
+reg(E({ id: 'proxyshark', name: 'Proxy Shark', glyph: '⋙', hp: [44, 52], moves: [
+  { id: 'circle', name: 'Circle', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
+  { id: 'breach', name: 'Breach', weight: 3, effects: [{ k: 'atk', n: 12 }] },
+  { id: 'frenzy', name: 'Frenzy', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 5, times: 3 }] },
+] }))
+reg(E({ id: 'tokenthief', name: 'Token Thief', glyph: '¢', hp: [40, 46], moves: [
+  { id: 'skim', name: 'Skim', weight: 3, effects: [{ k: 'atk', n: 7 }, { k: 'debuff', id: 'weak', n: 1 }] },
+  { id: 'vanishcloak', name: 'Vanish', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 10 }] },
+  { id: 'fence', name: 'Fence', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 6 }, { k: 'buff', id: 'str', n: 1 }] },
+] }))
+reg(E({ id: 'voltmoth', name: 'Volt Moth', glyph: '∿', hp: [36, 42], moves: [
+  { id: 'dustshed', name: 'Dust Shed', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 3 }] },
+  { id: 'flutter', name: 'Flutter', weight: 2, effects: [{ k: 'atk', n: 6 }] },
+  { id: 'lamplight', name: 'Lamplight', weight: 1, maxRepeat: 1, effects: [{ k: 'buffAll', id: 'str', n: 1 }] },
+] }))
+reg(E({ id: 'coldstorage', name: 'Cold Storage', glyph: '❆', hp: [56, 64], traits: { plating: 2 }, moves: [
+  { id: 'freeze', name: 'Freeze', weight: 2, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+  { id: 'icefall', name: 'Icefall', weight: 3, effects: [{ k: 'atk', n: 10 }] },
+  { id: 'defrag2', name: 'Defrost', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 10 }] },
+] }))
+reg(E({ id: 'quicksort', name: 'Quicksort', glyph: '⇅', hp: [42, 50], moves: [
+  { id: 'partition', name: 'Partition', weight: 3, effects: [{ k: 'atk', n: 4, times: 3 }] },
+  { id: 'pivot', name: 'Pivot', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 8 }, { k: 'buff', id: 'str', n: 1 }] },
+] }))
+reg(E({ id: 'stackghast', name: 'Stack Ghast', glyph: '≡', hp: [48, 56], moves: [
+  { id: 'pushframe', name: 'Push Frame', weight: 2, effects: [{ k: 'buff', id: 'plating', n: 2 }] },
+  { id: 'popframe', name: 'Pop Frame', weight: 3, effects: [{ k: 'atk', n: 9 }] },
+  { id: 'overflow2', name: 'Overflow', weight: 1, cooldown: 2, effects: [{ k: 'atk', n: 6 }, { k: 'debuff', id: 'corrupt', n: 2 }] },
+] }))
+reg(E({ id: 'loadmaster', name: 'Loadmaster', glyph: '⚓', hp: [88, 96], moves: [
+  { id: 'conscript', name: 'Conscript', weight: 2, maxRepeat: 1, effects: [{ k: 'summon', id: 'bitrat', n: 2 }] },
+  { id: 'crane', name: 'Crane Swing', weight: 3, effects: [{ k: 'atk', n: 13 }] },
+  { id: 'ballast', name: 'Ballast', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 14 }, { k: 'buff', id: 'str', n: 1 }] },
+] }))
+
+// --- Volume: cycle 39 — act 3 / 4 + bosses ----------------------------------
+
+reg(E({ id: 'nullhound', name: 'Null Hound', glyph: '∅', hp: [58, 66], moves: [
+  { id: 'voidbite', name: 'Void Bite', weight: 3, effects: [{ k: 'atk', n: 14 }] },
+  { id: 'erase', name: 'Erase', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 9 }, { k: 'debuff', id: 'weak', n: 2 }] },
+  { id: 'stalk', name: 'Stalk', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 3 }] },
+] }))
+reg(E({ id: 'panicdaemon', name: 'Panic Daemon', glyph: '⁉', hp: [50, 58], moves: [
+  { id: 'lagbomb', name: 'Lag Bomb', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'lag', n: 1 }, { k: 'atk', n: 6 }] },
+  { id: 'shriek', name: 'Shriek', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+  { id: 'jitter', name: 'Jitter', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 10 }] },
+] }))
+reg(E({ id: 'memleech', name: 'Memory Leech', glyph: '⌇', hp: [54, 62], moves: [
+  { id: 'drain', name: 'Drain', weight: 3, effects: [{ k: 'atk', n: 9 }, { k: 'heal', n: 9 }] },
+  { id: 'bloat', name: 'Bloat', weight: 2, maxRepeat: 1, effects: [{ k: 'heal', n: 12 }, { k: 'block', n: 8 }] },
+  { id: 'burst2', name: 'Burst', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 15 }] },
+] }))
+reg(E({ id: 'forkbomblet', name: 'Forklet', glyph: '⑂', hp: [10, 12], moves: [
+  { id: 'pop2', name: 'Pop', weight: 3, effects: [{ k: 'atk', n: 5 }] },
+] }))
+reg(E({ id: 'forkbomb', name: 'Fork Bomb', glyph: '⑃', hp: [46, 54], moves: [
+  { id: 'forkfork', name: 'fork(fork())', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'forkbomblet', n: 2 }] },
+  { id: 'detonate', name: 'Detonate', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 13 }] },
+] }))
+reg(E({ id: 'ossifier', name: 'Ossifier', glyph: '▓', hp: [64, 72], traits: { plating: 3 }, moves: [
+  { id: 'calcify', name: 'Calcify', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 12 }, { k: 'buff', id: 'plating', n: 1 }] },
+  { id: 'stonefist', name: 'Stone Fist', weight: 3, effects: [{ k: 'atk', n: 12 }] },
+  { id: 'petrify', name: 'Petrify', weight: 2, cooldown: 2, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+] }))
+reg(E({ id: 'gatekeeper', name: 'Gatekeeper', glyph: '⌥', hp: [98, 108], traits: { artifact: 2 }, moves: [
+  { id: 'authdeny', name: 'AUTH DENY', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 10, times: 2 }] },
+  { id: 'revoke', name: 'Revoke', weight: 2, effects: [{ k: 'debuff', id: 'vuln', n: 2 }, { k: 'debuff', id: 'weak', n: 1 }] },
+  { id: 'seal', name: 'Seal', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 16 }] },
+  { id: 'purge2', name: 'PURGE', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'str', n: 3 }] },
+] }))
+reg(E({ id: 'rootling', name: 'Rootling', glyph: '⌔', hp: [30, 36], moves: [
+  { id: 'lash', name: 'Lash', weight: 3, effects: [{ k: 'atk', n: 8 }] },
+  { id: 'burrow', name: 'Burrow', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 9 }] },
+] }))
+reg(E({ id: 'sporewall', name: 'Spore Wall', glyph: '▒', hp: [70, 80], traits: { thorns: 3, plating: 2 }, moves: [
+  { id: 'sporeburst', name: 'Spore Burst', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 4 }] },
+  { id: 'wallcrush', name: 'Wall Crush', weight: 3, effects: [{ k: 'atk', n: 13 }] },
+  { id: 'regrow2', name: 'Regrow', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 14 }] },
+] }))
+
+reg(E({ id: 'daemoncore', name: 'DAEMON CORE', glyph: '◉', hp: [118, 118], boss: true, moves: [
+  { id: 'spinup', name: 'Spin Up', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'block', n: 10 }] },
+  { id: 'coreburst', name: 'Core Burst', weight: 3, effects: [{ k: 'atk', n: 6, times: 2 }] },
+  { id: 'meltcheck', name: 'Melt Check', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 14 }, { k: 'debuff', id: 'weak', n: 1 }] },
+  { id: 'overclock2', name: 'OVERCLOCK', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'ritual', n: 1 }, { k: 'block', n: 12 }] },
+] }))
+reg(E({ id: 'garbagecollector', name: 'GARBAGE COLLECTOR', glyph: '♻', hp: [186, 186], boss: true, moves: [
+  { id: 'sweepphase', name: 'Sweep Phase', weight: 3, effects: [{ k: 'atk', n: 9, times: 2 }] },
+  { id: 'markphase', name: 'Mark Phase', weight: 2, effects: [{ k: 'debuff', id: 'vuln', n: 2 }, { k: 'debuff', id: 'corrupt', n: 2 }] },
+  { id: 'compact', name: 'Compact', weight: 2, maxRepeat: 1, effects: [{ k: 'cleanseSelf' }, { k: 'block', n: 16 }] },
+  { id: 'finalize', name: 'FINALIZE', weight: 13, cond: { hpBelow: 0.4, once: true }, effects: [{ k: 'buff', id: 'str', n: 4 }, { k: 'heal', n: 20 }] },
+] }))
+reg(E({ id: 'archivewarden', name: 'ARCHIVE WARDEN', glyph: '⍟', hp: [270, 270], boss: true, traits: { artifact: 1 }, moves: [
+  { id: 'catalog', name: 'Catalog', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 20 }, { k: 'buff', id: 'plating', n: 2 }] },
+  { id: 'redact', name: 'REDACT', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 24 }] },
+  { id: 'index', name: 'Index Strike', weight: 3, effects: [{ k: 'atk', n: 8, times: 3 }] },
+  { id: 'checkout', name: 'Checkout', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'glitch', n: 2 }, { k: 'debuff', id: 'weak', n: 2 }] },
+  { id: 'closestacks', name: 'CLOSE THE STACKS', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'str', n: 3 }, { k: 'summon', id: 'botnode', n: 2 }] },
+] }))
+reg(E({ id: 'singularityshard', name: 'SINGULARITY SHARD', glyph: '✦', hp: [265, 265], boss: true, traits: { artifact: 2, ritual: 1 }, moves: [
+  { id: 'gravwell', name: 'Gravity Well', weight: 3, effects: [{ k: 'atk', n: 11, times: 2 }] },
+  { id: 'lens', name: 'Lens Flare', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'vuln', n: 2 }, { k: 'atk', n: 8 }] },
+  { id: 'accrete', name: 'Accrete', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 18 }, { k: 'heal', n: 10 }] },
+  { id: 'collapse', name: 'COLLAPSE', weight: 13, cond: { hpBelow: 0.33, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'str', n: 5 }, { k: 'block', n: 25 }] },
+] }))
+reg(E({ id: 'rootkernel', name: 'THE ROOT: KERNEL', glyph: '⎈', hp: [420, 420], boss: true, traits: { ritual: 1, artifact: 2, thorns: 3 }, moves: [
+  { id: 'kernelpanic2', name: 'KERNEL PANIC', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 34 }] },
+  { id: 'interrupt', name: 'Interrupt', weight: 3, effects: [{ k: 'atk', n: 12, times: 2 }] },
+  { id: 'syscall', name: 'Syscall', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'lag', n: 1 }, { k: 'debuff', id: 'corrupt', n: 4 }] },
+  { id: 'ringzero', name: 'RING ZERO', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'str', n: 4 }, { k: 'summon', id: 'rootling', n: 2 }] },
+] }))
+
+// --- Volume: cycle 39 — batch 3 ---------------------------------------------
+
+reg(E({ id: 'glitchmite', name: 'Glitch Mite', glyph: '·', hp: [12, 15], moves: [
+  { id: 'nibble', name: 'Nibble', weight: 3, effects: [{ k: 'atk', n: 3 }] },
+  { id: 'staticjolt', name: 'Static Jolt', weight: 1, effects: [{ k: 'debuff', id: 'weak', n: 1 }] },
+] }))
+reg(E({ id: 'wiremouse', name: 'Wire Mouse', glyph: '∽', hp: [18, 22], moves: [
+  { id: 'chew', name: 'Chew', weight: 3, effects: [{ k: 'atk', n: 5 }] },
+  { id: 'shortout', name: 'Short Out', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 3 }, { k: 'debuff', id: 'vuln', n: 1 }] },
+] }))
+reg(E({ id: 'phishfin', name: 'Phish Fin', glyph: '◃', hp: [24, 28], moves: [
+  { id: 'lure', name: 'Lure', weight: 2, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+  { id: 'hookbite', name: 'Hook Bite', weight: 3, effects: [{ k: 'atk', n: 7 }] },
+] }))
+reg(E({ id: 'spamwhale', name: 'Spam Whale', glyph: '◖', hp: [52, 60], moves: [
+  { id: 'broadcast2', name: 'Broadcast', weight: 2, effects: [{ k: 'summon', id: 'glitchmite', n: 2 }] },
+  { id: 'bodyslam', name: 'Body Slam', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+  { id: 'blubber', name: 'Blubber', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 12 }] },
+] }))
+reg(E({ id: 'boltcrab', name: 'Bolt Crab', glyph: '⊃', hp: [34, 40], traits: { plating: 1 }, moves: [
+  { id: 'pinch', name: 'Pinch', weight: 3, effects: [{ k: 'atk', n: 4, times: 2 }] },
+  { id: 'shellup2', name: 'Shell Up', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 10 }] },
+] }))
+reg(E({ id: 'tapeworm', name: 'Tape Worm', glyph: '∫', hp: [40, 46], moves: [
+  { id: 'coil', name: 'Coil', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 2 }] },
+  { id: 'constrict', name: 'Constrict', weight: 3, effects: [{ k: 'atk', n: 8 }] },
+  { id: 'rewind', name: 'Rewind', weight: 1, cooldown: 2, effects: [{ k: 'heal', n: 8 }] },
+] }))
+reg(E({ id: 'keylogger', name: 'Keylogger', glyph: '⌨', hp: [36, 42], moves: [
+  { id: 'record', name: 'Record', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
+  { id: 'playback', name: 'Playback', weight: 3, effects: [{ k: 'atk', n: 9 }] },
+] }))
+reg(E({ id: 'cryptomite', name: 'Cryptomite', glyph: '₿', hp: [30, 36], moves: [
+  { id: 'mine2', name: 'Mine', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'plating', n: 2 }] },
+  { id: 'hashsmash', name: 'Hash Smash', weight: 3, effects: [{ k: 'atk', n: 8 }] },
+] }))
+reg(E({ id: 'junkgolem', name: 'Junk Golem', glyph: '▙', hp: [58, 66], moves: [
+  { id: 'scrapfist', name: 'Scrap Fist', weight: 3, effects: [{ k: 'atk', n: 12 }] },
+  { id: 'reassemble', name: 'Reassemble', weight: 2, cooldown: 2, effects: [{ k: 'heal', n: 10 }, { k: 'block', n: 8 }] },
+] }))
+reg(E({ id: 'sirenode', name: 'Siren Node', glyph: '♫', hp: [42, 48], moves: [
+  { id: 'song', name: 'Sync Song', weight: 2, maxRepeat: 1, effects: [{ k: 'buffAll', id: 'str', n: 1 }, { k: 'block', n: 6 }] },
+  { id: 'screech', name: 'Screech', weight: 3, effects: [{ k: 'atk', n: 9 }, { k: 'debuff', id: 'weak', n: 1 }] },
+] }))
+reg(E({ id: 'hexbat', name: 'Hex Bat', glyph: '⌵', hp: [28, 34], moves: [
+  { id: 'divebomb', name: 'Dive Bomb', weight: 3, effects: [{ k: 'atk', n: 8 }] },
+  { id: 'hexdust', name: 'Hex Dust', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 3 }] },
+] }))
+reg(E({ id: 'ratking', name: 'Rat King', glyph: '♛', hp: [80, 90], moves: [
+  { id: 'command', name: 'Command', weight: 2, maxRepeat: 1, effects: [{ k: 'summon', id: 'bitrat', n: 2 }] },
+  { id: 'crownbite', name: 'Crown Bite', weight: 3, effects: [{ k: 'atk', n: 12 }] },
+  { id: 'tangle', name: 'Tangle', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+] }))
+reg(E({ id: 'coilviper', name: 'Coil Viper', glyph: '§', hp: [46, 54], moves: [
+  { id: 'venom', name: 'Venom', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 4 }] },
+  { id: 'strikefast', name: 'Strike', weight: 3, effects: [{ k: 'atk', n: 6, times: 2 }] },
+] }))
+reg(E({ id: 'brokerimp', name: 'Broker Imp', glyph: '¥', hp: [38, 44], moves: [
+  { id: 'shortsell', name: 'Short Sell', weight: 2, effects: [{ k: 'debuff', id: 'vuln', n: 2 }] },
+  { id: 'margincall', name: 'Margin Call', weight: 3, effects: [{ k: 'atk', n: 10 }] },
+] }))
+reg(E({ id: 'chainhound', name: 'Chain Hound', glyph: '⛓', hp: [56, 64], moves: [
+  { id: 'linkbite', name: 'Link Bite', weight: 3, effects: [{ k: 'atk', n: 7, times: 2 }] },
+  { id: 'shackle', name: 'Shackle', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+] }))
+reg(E({ id: 'vaultmimic', name: 'Vault Mimic', glyph: '▣', hp: [62, 70], traits: { artifact: 1 }, moves: [
+  { id: 'lidslam', name: 'Lid Slam', weight: 3, effects: [{ k: 'atk', n: 13 }] },
+  { id: 'goldglint', name: 'Gold Glint', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 11 }, { k: 'buff', id: 'str', n: 1 }] },
+] }))
+reg(E({ id: 'echoshade', name: 'Echo Shade', glyph: '⌐', hp: [50, 58], moves: [
+  { id: 'mirrorhit', name: 'Mirror Hit', weight: 3, effects: [{ k: 'atk', n: 10 }] },
+  { id: 'fade2', name: 'Fade', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 12 }] },
+  { id: 'reverb', name: 'Reverb', weight: 1, cooldown: 2, effects: [{ k: 'atk', n: 5, times: 3 }] },
+] }))
+reg(E({ id: 'plagueherald', name: 'Plague Herald', glyph: '☨', hp: [66, 74], moves: [
+  { id: 'toll', name: 'Toll', weight: 2, effects: [{ k: 'debuff', id: 'corrupt', n: 5 }] },
+  { id: 'scythe', name: 'Scythe', weight: 3, effects: [{ k: 'atk', n: 14 }] },
+  { id: 'lastrites', name: 'Last Rites', weight: 1, cooldown: 2, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'heal', n: 8 }] },
+] }))
+reg(E({ id: 'ironbarnacle', name: 'Iron Barnacle', glyph: '◍', hp: [44, 52], traits: { thorns: 4 }, moves: [
+  { id: 'clamp', name: 'Clamp', weight: 3, effects: [{ k: 'atk', n: 7 }] },
+  { id: 'encrust', name: 'Encrust', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 10 }, { k: 'buff', id: 'thorns', n: 1 }] },
+] }))
+reg(E({ id: 'nullnun', name: 'Null Nun', glyph: '✝', hp: [54, 62], moves: [
+  { id: 'silence', name: 'Silence', weight: 2, effects: [{ k: 'debuff', id: 'weak', n: 2 }, { k: 'debuff', id: 'vuln', n: 1 }] },
+  { id: 'litany', name: 'Litany', weight: 3, effects: [{ k: 'atk', n: 9 }] },
+  { id: 'benediction', name: 'Benediction', weight: 1, maxRepeat: 1, effects: [{ k: 'buffAll', id: 'str', n: 1 }, { k: 'heal', n: 6 }] },
+] }))
+
 /** Localized enemy display name. */
 export function enemyName(defId: string): string {
   return isZh() ? (ENEMY_ZH[defId]?.name ?? ENEMIES[defId]?.name ?? defId) : (ENEMIES[defId]?.name ?? defId)
@@ -324,16 +567,36 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['golem'],
       ['drone', 'spambot'],
       ['kiddie', 'spambot'],
+      ['bitrat', 'bitrat', 'adfly'],
+      ['cursorghoul'],
+      ['staticjelly'],
+      ['packmule'],
+      ['popupspawner', 'bitrat'],
+      ['lintbeast'],
+      ['glitchmite', 'glitchmite', 'wiremouse'],
+      ['phishfin', 'bitrat'],
+      ['boltcrab'],
+      ['spamwhale'],
       ['hatchery'],
       ['hatchery', 'spambot'],
       ['leech'],
       ['leech', 'spambot'],
     ],
-    elite: [['hound'], ['hatchery', 'kiddie']],
-    boss: [['compiler'], ['watchdog']],
+    elite: [['hound'], ['hatchery', 'kiddie'], ['firewallwarden'], ['ratking']],
+    boss: [['compiler'], ['watchdog'], ['daemoncore']],
   },
   2: {
     normal: [
+      ['proxyshark'],
+      ['tokenthief', 'voltmoth'],
+      ['coldstorage'],
+      ['quicksort', 'quicksort'],
+      ['stackghast'],
+      ['tapeworm', 'hexbat'],
+      ['keylogger', 'cryptomite'],
+      ['junkgolem'],
+      ['sirenode', 'boltcrab'],
+      ['coilviper'],
       ['ice', 'ice'],
       ['netrunner'],
       ['daemon'],
@@ -345,11 +608,21 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['minelayer'],
       ['minelayer', 'ice'],
     ],
-    elite: [['blackice'], ['loadbalancer', 'sentry'], ['overseer']],
-    boss: [['mainframe'], ['botnetlord']],
+    elite: [['loadmaster'], ['blackice'], ['loadbalancer', 'sentry'], ['overseer']],
+    boss: [['mainframe'], ['botnetlord'], ['garbagecollector']],
   },
   3: {
     normal: [
+      ['nullhound'],
+      ['panicdaemon', 'forkbomblet'],
+      ['memleech'],
+      ['forkbomb'],
+      ['ossifier'],
+      ['brokerimp', 'chainhound'],
+      ['vaultmimic'],
+      ['echoshade', 'echoshade'],
+      ['plagueherald'],
+      ['ironbarnacle', 'nullnun'],
       ['nullptr'],
       ['wraith'],
       ['botnode', 'botnode', 'botnode'],
@@ -360,14 +633,14 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['phantom'],
       ['phantom', 'botnode'],
     ],
-    elite: [['rootdaemon'], ['hivemind', 'wraith']],
-    boss: [['architect'], ['nullmonarch']],
+    elite: [['gatekeeper'], ['rootdaemon'], ['hivemind', 'wraith']],
+    boss: [['architect'], ['nullmonarch'], ['archivewarden'], ['singularityshard']],
   },
   4: {
     // The Root's gauntlet has no normal combat floors; table kept for safety.
-    normal: [['nullptr', 'wraith']],
+    normal: [['rootling', 'rootling'], ['sporewall']],
     elite: [['spearproc', 'shieldproc']],
-    boss: [['theroot']],
+    boss: [['theroot'], ['rootkernel']],
   },
 }
 
