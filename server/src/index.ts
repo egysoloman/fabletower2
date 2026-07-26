@@ -169,9 +169,13 @@ function notifyPeerConn(c: Client, online: boolean) {
 
 // --- Co-op: shared climb, shared battles -------------------------------------
 
+/** Fixed palette; party slot i gets PLAYER_COLORS[i]. */
+const PLAYER_COLORS = ['#00e5ff', '#ff2d95', '#ffd166', '#3dffa2', '#ff9e2d', '#a855f7']
+
 interface CoopPlayer {
   client: Client
   char: CharId
+  color: string
   hp: number
   maxHp: number
   deck: CardInst[]
@@ -202,6 +206,8 @@ interface CoopRoom {
   } | null
   /** Active event node: everyone picks their own way through. */
   event: { id: string; picked: (number | null)[] } | null
+  /** Advisory path votes: player index -> node id. Cleared on each pick. */
+  votes: Record<number, string>
   lastEncounter: string
   ended: boolean
 }
@@ -231,7 +237,7 @@ function broadcastForm(party: PendingParty) {
     send(c.ws, {
       t: 'coopform',
       size: party.size,
-      members: party.clients.map((m, i) => ({ tag: tagOf(m), char: party.chars[i], ready: party.ready[i] })),
+      members: party.clients.map((m, i) => ({ tag: tagOf(m), char: party.chars[i], color: PLAYER_COLORS[i % PLAYER_COLORS.length], ready: party.ready[i] })),
     })
   }
 }
@@ -265,8 +271,9 @@ function coopMapMsg(room: CoopRoom, idx: number) {
     pos: room.pos,
     map: room.map,
     party: room.players.map((p) => ({
-      name: tagOf(p.client), char: p.char, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
+      name: tagOf(p.client), char: p.char, color: p.color, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
     })),
+    votes: voteList(room),
   }
 }
 
@@ -277,6 +284,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
   const players: CoopPlayer[] = clients.map((client, i) => ({
     client,
     char: chars[i],
+    color: PLAYER_COLORS[i % PLAYER_COLORS.length],
     hp: 75,
     maxHp: 75,
     deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
@@ -288,10 +296,18 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
   const room: CoopRoom = {
     players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null,
     map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, event: null,
-    lastEncounter: '', ended: false,
+    votes: {}, lastEncounter: '', ended: false,
   }
   for (const c of clients) coopRooms.set(c, room)
   coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed, token: mintToken(room.players[i].client) }))
+}
+
+function voteList(room: CoopRoom) {
+  return room.players.map((p, i) => ({ i, name: tagOf(p.client), color: p.color, id: room.votes[i] ?? null }))
+}
+
+function broadcastVotes(room: CoopRoom) {
+  coopBroadcast(room, () => ({ t: 'coopvotes', votes: voteList(room) }))
 }
 
 function coopAvailable(room: CoopRoom): string[] {
@@ -633,12 +649,25 @@ wss.on('connection', (ws) => {
         }
         break
       }
+      case 'coopvote': {
+        // Advisory path vote from any party member; captain still decides.
+        const room = coopRooms.get(client)
+        if (!room || room.ended || room.combat || room.rewards) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const id = String(msg.id ?? '')
+        if (!coopAvailable(room).includes(id)) return send(ws, { t: 'err', msg: 'invalid node' })
+        room.votes[idx] = id
+        broadcastVotes(room)
+        break
+      }
       case 'cooppick': {
         const room = coopRooms.get(client)
         if (!room || room.ended || room.combat || room.rewards) break
         if (room.players[0].client !== client) return send(ws, { t: 'err', msg: 'only the host picks the path' })
         const id = String(msg.id ?? '')
         if (!coopAvailable(room).includes(id)) return send(ws, { t: 'err', msg: 'invalid node' })
+        room.votes = {}
+        broadcastVotes(room)
         const node = nodeById(room.map, id)
         if (!node) break
         room.pos = id

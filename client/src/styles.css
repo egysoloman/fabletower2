@@ -1574,3 +1574,37 @@ details .gridcards { margin-top: 10px; max-height: 40vh; overflow-y: auto; }
 }
 .modebadge.hybrid { color: var(--green); }
 .modebadge.strict { color: var(--gold); }
+
+/* solo map: your character stands on the current node */
+.map-wrap { position: relative; }
+.char-token {
+  position: absolute; transform: translate(-50%, -115%); pointer-events: auto;
+  filter: drop-shadow(0 0 8px currentColor); cursor: help;
+  animation: tokenBob 2.2s ease-in-out infinite alternate;
+}
+@keyframes tokenBob { from { margin-top: 0; } to { margin-top: -7px; } }
+
+/* co-op map: the whole party orbits the current node */
+.orbitwrap { position: relative; width: 120px; height: 74px; margin: 2px auto 6px; cursor: help; }
+.orbit-core {
+  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 1px solid var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 255, 0.6);
+}
+.orbit-token {
+  position: absolute; left: 50%; top: 50%;
+  animation: orbit 8s linear infinite;
+  filter: drop-shadow(0 0 6px var(--oc, var(--cyan)));
+}
+@keyframes orbit {
+  from { transform: translate(-50%, -50%) rotate(0deg) translateX(42px) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg) translateX(42px) rotate(-360deg); }
+}
+/* voting */
+.coopnode { position: relative; }
+.voterow { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }
+.votedot {
+  width: 9px; height: 9px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 6px currentColor; animation: popIn 0.2s ease backwards;
+}
+.votecount { color: var(--dim); font-size: 10px; }

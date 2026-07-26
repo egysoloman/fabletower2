@@ -18,6 +18,7 @@ import {
   coopReward,
   coopSend,
   coopView,
+  coopVotes,
   coopYou,
   coopConn,
   coopBelt,
@@ -91,7 +92,10 @@ export function CoopScreen() {
         <div class="topbar">
           <span class="stat" style={{ color: 'var(--green)' }}>{t('coopParty')}</span>
           <span class="spacer" />
-          <span class={`turn-indicator ${myTurn ? 'you' : 'them'}`}>
+          <span
+            class={`turn-indicator ${myTurn ? 'you' : 'them'}`}
+            style={{ color: coopMap.value?.party?.[v.active]?.color }}
+          >
             {myTurn ? t('yourTurn') : tf('theirTurn', { name: v.players[v.active]?.name ?? '…' })}
           </span>
           <span class="spacer" />
@@ -102,12 +106,13 @@ export function CoopScreen() {
               <div
                 key={i}
                 class={`player-zone coopmate ${v.downed[i] ? 'downed' : ''} ${fxPulses.value['c' + i] ?? ''}`}
+                style={{ borderColor: coopMap.value?.party?.[i]?.color }}
                 ref={(el) => registerAnchor('c' + i, el)}
               >
                 {i === v.active && !v.over && <div class="turnchip">▶</div>}
                 <BlockChip block={p.block} />
-                <div class="glyph" style={{ opacity: v.downed[i] ? 0.3 : 1 }}>
-                  <Sprite id="runner" size={44} />
+                <div class="glyph" style={{ opacity: v.downed[i] ? 0.3 : 1, color: coopMap.value?.party?.[i]?.color }}>
+                  <Sprite id={coopMap.value?.party?.[i]?.char ?? 'runner'} size={44} />
                 </div>
                 <div class="pname">{p.name}{i === you ? ' ★' : ''}</div>
                 <HpBar hp={p.hp} maxHp={p.maxHp} mine={i === you} />
@@ -280,28 +285,52 @@ export function CoopScreen() {
             <div class="sub" style={{ color: 'var(--gold)' }}>
               {tf('actFloor', { act: m.act, floor: m.floor })} · {coopHost.value ? t('coopYouLead') : t('coopHostLeads')}
             </div>
+            <div class="orbitwrap" data-tip={t('partyHere')}>
+              {m.party.map((p: any, i: number) => (
+                <div
+                  key={i}
+                  class="orbit-token"
+                  style={{ '--oc': p.color, animationDelay: `${(-8 * i) / m.party.length}s` }}
+                  data-tip={p.name}
+                >
+                  <span style={{ color: p.color }}>
+                    <Sprite id={p.char} size={26} />
+                  </span>
+                </div>
+              ))}
+              <div class="orbit-core" />
+            </div>
             <div class="coopnodes">
               {(m.pos === null
                 ? m.map.rows[0].map((n: any) => n.id)
                 : (m.map.rows.flat().find((n: any) => n.id === m.pos)?.next ?? [])
               ).map((id: string) => {
                 const node = m.map.rows.flat().find((n: any) => n.id === id)
+                const voters = coopVotes.value.filter((v) => v.id === id)
                 return (
                   <button
                     key={id}
-                    class="btn"
-                    disabled={!coopHost.value}
-                    onClick={() => coopSend({ t: 'cooppick', id })}
+                    class="btn coopnode"
+                    onClick={() => coopSend(coopHost.value ? { t: 'cooppick', id } : { t: 'coopvote', id })}
                   >
                     {NODE_LABEL[node?.type ?? 'combat']} {t(('node_' + (node?.type ?? 'combat')) as Parameters<typeof t>[0])}
+                    {voters.length > 0 && (
+                      <span class="voterow">
+                        {voters.map((v) => (
+                          <span key={v.i} class="votedot" style={{ background: v.color }} data-tip={v.name} />
+                        ))}
+                        {coopHost.value && <small class="votecount">{tf('votesN', { n: voters.length })}</small>}
+                      </span>
+                    )}
                   </button>
                 )
               })}
             </div>
+            {!coopHost.value && <div class="sub" style={{ fontSize: '11px' }}>{t('voteHint')}</div>}
             <div class="coopparty-list">
               {m.party.map((p: any, i: number) => (
-                <div key={i} class="hrow">
-                  <span>{p.name}{i === m.you ? ' ★' : ''}</span>
+                <div key={i} class="hrow" style={{ borderLeft: `3px solid ${p.color ?? 'transparent'}`, paddingLeft: '8px' }}>
+                  <span style={{ color: p.color }}>{p.name}{i === m.you ? ' ★' : ''}</span>
                   <span>{p.hp}/{p.maxHp}</span>
                   <span>¤{p.gold}</span>
                   <span>{tf('deckN', { n: p.deckSize })}</span>

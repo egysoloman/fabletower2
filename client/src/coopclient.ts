@@ -42,6 +42,8 @@ export const coopShop = signal<any>(null)
 export const coopEvent = signal<any>(null)
 export const coopRestDeck = signal<any[]>([])
 export const coopBelt = signal<string[]>([])
+/** Advisory path votes: one row per player {i, name, color, id|null}. */
+export const coopVotes = signal<{ i: number; name: string; color: string; id: string | null }[]>([])
 export const coopToast = signal('')
 let toastTimer = 0
 export function coopFlash(msg: string) {
@@ -112,6 +114,9 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           coopNotice.value = data.online ? `${data.name} reconnected` : `${data.name} connection lost…`
           setTimeout(() => (coopNotice.value = ''), 2600)
           break
+        case 'coopvotes':
+          coopVotes.value = data.votes ?? []
+          break
         case 'coopstart':
         case 'coopmap':
           if (data.token) token = data.token
@@ -121,6 +126,7 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           coopYou.value = data.you
           coopHost.value = data.you === data.host
           coopMap.value = data
+          if (data.votes) coopVotes.value = data.votes
           coopReward.value = null
           coopPhase.value = 'map'
           if (data.t === 'coopstart' && !data.rejoin) sfx.win()
