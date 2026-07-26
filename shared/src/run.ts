@@ -1,5 +1,5 @@
 /** Run/meta layer: deck-building, map traversal, rewards, shops, events. */
-import type { CardInst, CombatState, NodeType, RunState, ShopStock } from './types'
+import type { CardInst, CharId, CombatState, NodeType, RunState, ShopStock } from './types'
 import { CARDS, cardBaseName, cardsByRarity, obtainableCards } from './cards'
 import { POTIONS, potionName } from './potions'
 import { RELICS, obtainableRelics, relicName } from './relics'
@@ -11,18 +11,26 @@ import { startCombat } from './combat'
 import { deriveSeed, pick, randInt, rand, rngFromSeed } from './rng'
 
 export const FINAL_ACT = 3
-export const STARTER_DECK: string[] = [
-  'strike', 'strike', 'strike', 'strike', 'strike',
-  'defend', 'defend', 'defend', 'defend',
-  'spike',
-]
+
+export const STARTER_DECKS: Record<CharId, string[]> = {
+  runner: [
+    'strike', 'strike', 'strike', 'strike', 'strike',
+    'defend', 'defend', 'defend', 'defend',
+    'spike',
+  ],
+  vector: [
+    'spark', 'spark', 'spark', 'spark',
+    'heatshield', 'heatshield', 'heatshield', 'heatshield',
+    'ventblade', 'stoke',
+  ],
+}
 
 export const MAX_ASC = 5
 
-export function newRun(seed: number, asc = 0): RunState {
+export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState {
   const rng = rngFromSeed(seed)
   let uid = 1
-  const deck = STARTER_DECK.map((id): CardInst => ({ uid: uid++, id, up: false }))
+  const deck = STARTER_DECKS[char].map((id): CardInst => ({ uid: uid++, id, up: false }))
   const maxHp = asc >= 5 ? 65 : 75
   return {
     seed,
@@ -43,6 +51,7 @@ export function newRun(seed: number, asc = 0): RunState {
     seenEvents: [],
     potions: [],
     asc,
+    char,
   }
 }
 
@@ -128,7 +137,7 @@ export function rollCardRewards(run: RunState, kind: 'normal' | 'elite' | 'boss'
   const out: string[] = []
   let guard = 0
   while (out.length < 3 && guard++ < 40) {
-    const pool = cardsByRarity(rollRarity(run, kind))
+    const pool = cardsByRarity(rollRarity(run, kind), run.char)
     const card = pick(run.rng, pool)
     if (!out.includes(card.id)) out.push(card.id)
   }
@@ -210,7 +219,7 @@ export function genShop(run: RunState): ShopStock {
   while (cards.length < 5 && guard++ < 60) {
     const r = rand(run.rng)
     const rarity = r < 0.1 ? 'rare' : r < 0.5 ? 'uncommon' : 'common'
-    const def = pick(run.rng, cardsByRarity(rarity))
+    const def = pick(run.rng, cardsByRarity(rarity, run.char))
     if (cards.some((c) => c.id === def.id)) continue
     const [lo, hi] = CARD_PRICE[rarity]
     cards.push({ id: def.id, price: randInt(run.rng, lo, hi), sold: false })
@@ -309,7 +318,7 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
         break
       }
       case 'cardRandom': {
-        const def = pick(run.rng, obtainableCards().filter((c) => c.rarity === o.rarity))
+        const def = pick(run.rng, obtainableCards(run.char).filter((c) => c.rarity === o.rarity))
         addCardToDeck(run, def.id)
         lines.push(ES.addedCard(cardBaseName(def.id)))
         break

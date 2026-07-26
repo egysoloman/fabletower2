@@ -190,7 +190,10 @@ export function CombatScreen() {
       )}
 
       <div class="arena">
-        <div class={`player-zone ${fxPulses.value['p'] ?? ''}`} ref={(el) => registerAnchor('p', el)}>
+        <div
+          class={`player-zone ${run.value?.char === 'vector' ? 'vector' : ''} ${fxPulses.value['p'] ?? ''}`}
+          ref={(el) => registerAnchor('p', el)}
+        >
           <div
             class={`energy-orb ${fxPulses.value['orb'] ?? ''}`}
             data-tip={t('energyTip')}
@@ -200,9 +203,9 @@ export function CombatScreen() {
           </div>
           <BlockChip block={p.block} />
           <div class="glyph">
-            <Sprite id="runner" size={58} />
+            <Sprite id={run.value?.char === 'vector' ? 'vector' : 'runner'} size={58} />
           </div>
-          <div class="pname">{p.name}</div>
+          <div class="pname">{run.value?.char === 'vector' ? 'VECTOR' : p.name}</div>
           <HpBar hp={p.hp} maxHp={p.maxHp} mine />
           <StatusRow statuses={p.statuses} />
         </div>

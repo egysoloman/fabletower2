@@ -96,9 +96,9 @@ function recordRun(win: boolean) {
   }
 }
 
-export function newGame(seed?: number, asc = 0) {
+export function newGame(seed?: number, asc = 0, char: import('@neonspire/engine').CharId = 'runner') {
   const s = seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0)
-  run.value = newRun(s, asc)
+  run.value = newRun(s, asc, char)
   combat.value = null
   reward.value = null
   shop.value = null

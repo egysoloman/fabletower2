@@ -26,13 +26,44 @@ export interface PlayEnv {
 /** Attack damage after attacker Strength/Weak and defender Vulnerable. */
 export function modifiedDamage(
   base: number,
-  attacker: { statuses: { str?: number; weak?: number } },
+  attacker: { statuses: { str?: number; weak?: number; heat?: number } },
   defender: { statuses: { vuln?: number } },
 ): number {
-  let d = base + (attacker.statuses.str ?? 0)
+  let d = base + (attacker.statuses.str ?? 0) + (attacker.statuses.heat ?? 0)
   if (attacker.statuses.weak) d = Math.floor(d * 0.75)
   if (defender.statuses.vuln) d = Math.floor(d * 1.5)
   return Math.max(0, d)
+}
+
+export const OVERHEAT_BASE = 8
+
+export function overheatThreshold(f: Fighter): number {
+  return OVERHEAT_BASE + (f.statuses.coolant ?? 0)
+}
+
+/**
+ * VECTOR's risk mechanic: at the start of your turn, Heat at or past the
+ * threshold burns you for its full value and resets — unless a Reactor
+ * redirects the blast into every enemy. Returns true if the side died.
+ */
+export function applyOverheat(
+  side: DeckSide,
+  whoSelf: string,
+  foes: { f: Fighter; who: string }[],
+  evs: GameEvent[],
+): boolean {
+  const heat = side.statuses.heat ?? 0
+  if (heat < overheatThreshold(side)) return false
+  delete side.statuses.heat
+  evs.push({ e: 'status', who: whoSelf, id: 'heat', n: -heat })
+  if (side.statuses.reactor) {
+    for (const foe of foes) {
+      if (foe.f.hp > 0) plainDamage(foe.f, heat, foe.who, evs)
+    }
+  } else {
+    loseHp(side, heat, whoSelf, evs)
+  }
+  return side.hp <= 0
 }
 
 export function applyStatus(f: Fighter, id: StatusId, n: number, who: string, evs: GameEvent[]) {
@@ -161,6 +192,8 @@ export function tickTurnEnd(f: Fighter, who: string, evs: GameEvent[]) {
   }
   const ritual = f.statuses.ritual ?? 0
   if (ritual > 0) applyStatus(f, 'str', ritual, who, evs)
+  const ignition = f.statuses.ignition ?? 0
+  if (ignition > 0) applyStatus(f, 'heat', ignition, who, evs)
 }
 
 /**
@@ -337,6 +370,46 @@ function resolveEffect(
         const card: CardInst = { uid: env.uid++, id: eff.id, up: false }
         if (eff.where === 'discard') side.discard.push(card)
         else side.draw.splice(randInt(env.rng, 0, side.draw.length), 0, card)
+      }
+      break
+    }
+    case 'heatCool': {
+      const cur = side.statuses.heat ?? 0
+      const cooled = Math.min(cur, eff.n)
+      if (cooled > 0) applyStatus(side, 'heat', -cooled, whoSelf, evs)
+      break
+    }
+    case 'ventDmg': {
+      const heat = side.statuses.heat ?? 0
+      if (target && target.f.hp > 0 && heat > 0) {
+        delete side.statuses.heat // vent BEFORE the hit so heat isn't double-counted
+        attack(side, target.f, heat * eff.mult, whoSelf, target.who, evs)
+        evs.push({ e: 'status', who: whoSelf, id: 'heat', n: -heat })
+      }
+      break
+    }
+    case 'ventDmgAll': {
+      const heat = side.statuses.heat ?? 0
+      if (heat > 0) {
+        delete side.statuses.heat
+        for (const foe of aliveFoes()) attack(side, foe.f, heat * eff.mult, whoSelf, foe.who, evs)
+        evs.push({ e: 'status', who: whoSelf, id: 'heat', n: -heat })
+      }
+      break
+    }
+    case 'ventBlock': {
+      const heat = side.statuses.heat ?? 0
+      if (heat > 0) {
+        delete side.statuses.heat
+        cardBlock(side, heat * eff.mult, whoSelf, foes, env, evs)
+        evs.push({ e: 'status', who: whoSelf, id: 'heat', n: -heat })
+      }
+      break
+    }
+    case 'dmgHeatBonus': {
+      if (target && target.f.hp > 0) {
+        const hot = (side.statuses.heat ?? 0) >= eff.threshold
+        attack(side, target.f, hot ? eff.n + eff.bonus : eff.n, whoSelf, target.who, evs)
       }
       break
     }

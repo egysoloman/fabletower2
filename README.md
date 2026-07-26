@@ -73,7 +73,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ## Game content
 
-- **61 playable cards** (50+ obtainable) across three build archetypes —
+- **TWO playable characters** — RUNNER (versatile netdiver) and VECTOR, a
+  volatile overclocker built on the Heat mechanic: attacks ride +1 damage per
+  Heat stack, overheating past the threshold burns you for all of it, vent
+  cards cash it out, and the Reactor power turns meltdowns into AoE.
+- **81 playable cards** across per-character pools and three RUNNER build
+  archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
   (Hyperthread, Burst Compile) — every card with a distinct upgrade. Junk

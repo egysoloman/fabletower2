@@ -113,6 +113,7 @@ export function loadGame(): boolean {
     // Back-compat with saves from before potions/ascension/boss-choice.
     s.run.potions ??= []
     s.run.asc ??= 0
+    s.run.char ??= 'runner'
     if (s.reward) {
       s.reward.bossChoices ??= s.reward.bossRelic ? [s.reward.bossRelic] : []
       s.reward.bossChoiceTaken ??= !!s.reward.bossRelicTaken

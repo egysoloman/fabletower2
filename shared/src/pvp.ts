@@ -5,6 +5,7 @@
  */
 import type { CardInst, DeckSide, GameEvent, PvpAction, PvpState, Statuses, StepResult } from './types'
 import {
+  applyOverheat,
   discardHand,
   endTurnPowers,
   makeSide,
@@ -82,8 +83,16 @@ export function pvpReduce(prev: PvpState, playerIdx: 0 | 1, action: PvpAction): 
     if (tickTurnStart(next, whoNext, evs, !!me.statuses.chronic)) {
       checkDeaths(ps, evs)
     } else {
+      const nextFoe = ps.sides[(1 - ps.active) as 0 | 1]
+      const died = applyOverheat(
+        next,
+        whoNext,
+        nextFoe.hp > 0 ? [{ f: nextFoe, who: 'p' + (1 - ps.active) }] : [],
+        evs,
+      )
+      checkDeaths(ps, evs)
       // Going second is a tempo loss; the classic +1 energy makes up for it.
-      refillSide(next, ps, whoNext, evs, { bonusEnergy: ps.turn === 2 ? 1 : 0 })
+      if (!died && !ps.over) refillSide(next, ps, whoNext, evs, { bonusEnergy: ps.turn === 2 ? 1 : 0 })
     }
   }
 

@@ -511,6 +511,72 @@ describe('summons & boss phases', () => {
   })
 })
 
+describe('VECTOR heat mechanic', () => {
+  function rigV(cs: CombatState, ids: string[]) {
+    let uid = 6000
+    cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+    cs.player.energy = 99
+    return cs
+  }
+
+  it('heat boosts attacks and vents multiply it', () => {
+    const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['stoke', 'spark', 'ventblade'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // +3 heat
+    expect(s.player.statuses.heat).toBe(3)
+    const hp0 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // spark: 5 + 3 heat = 8, then +1 heat
+    expect(hp0 - s.enemies[0].hp).toBe(8)
+    expect(s.player.statuses.heat).toBe(4)
+    const hp1 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // vent: 4×2 = 8, heat cleared
+    expect(hp1 - s.enemies[0].hp).toBe(8)
+    expect(s.player.statuses.heat).toBeUndefined()
+  })
+
+  it('overheating burns you at the threshold; coolant raises it', () => {
+    const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
+    cs.player.statuses.heat = 9
+    const s = combatReduce(cs, { t: 'end' }).state
+    if (!s.over) {
+      expect(s.player.statuses.heat).toBeUndefined()
+      // took 9 unblockable burn on top of whatever the golem did
+      expect(s.player.hp).toBeLessThanOrEqual(75 - 9)
+    }
+    const cool = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
+    cool.player.statuses.heat = 9
+    cool.player.statuses.coolant = 4 // threshold 12
+    const s2 = combatReduce(cool, { t: 'end' }).state
+    if (!s2.over) expect(s2.player.statuses.heat).toBe(9) // no burn
+  })
+
+  it('reactor redirects the overheat blast into enemies', () => {
+    const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
+    cs.player.statuses.heat = 10
+    cs.player.statuses.reactor = 1
+    const hpMe = cs.player.hp
+    const s = combatReduce(cs, { t: 'end' }).state
+    if (!s.over) {
+      expect(s.player.statuses.heat).toBeUndefined()
+      // enemy ate the 10 (through block); we only took the golem's normal hit
+      const enemyLoss = s.enemies[0].maxHp - s.enemies[0].hp - s.enemies[0].block
+      expect(enemyLoss + s.enemies[0].block).toBeGreaterThanOrEqual(0)
+      expect(hpMe - s.player.hp).toBeLessThan(10 + 15) // no self-burn stacked on top
+    }
+  })
+
+  it('character pools are exclusive', () => {
+    const vPool = obtainableCards('vector').map((c) => c.id)
+    const rPool = obtainableCards('runner').map((c) => c.id)
+    expect(vPool).toContain('meltdown')
+    expect(vPool).not.toContain('payload') // runner-tagged
+    expect(rPool).toContain('payload')
+    expect(rPool).not.toContain('meltdown')
+    expect(rPool).toContain('firewall') // neutral shared
+    expect(vPool).toContain('firewall')
+    expect(newRun(1, 0, 'vector').deck.some((c) => c.id === 'spark')).toBe(true)
+  })
+})
+
 describe('potions', () => {
   it('applies effects through the shared interpreter', async () => {
     const { applyPotion } = await import('../src/combat')

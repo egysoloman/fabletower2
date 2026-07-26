@@ -1,4 +1,4 @@
-import type { CardDef, CardInst, CardType, Effect, Rarity } from './types'
+import type { CardDef, CardInst, CharId, Effect, Rarity } from './types'
 import { ES, isZh, statusName, statusPowerText } from './i18n'
 import { CARD_ZH } from './locale-zh'
 
@@ -285,17 +285,17 @@ reg(c({
   upEffects: [{ k: 'status', to: 'all', id: 'corrupt', n: 4 }],
 }))
 reg(c({
-  id: 'payload', name: 'Payload Burst', type: 'attack', rarity: 'uncommon', cost: 1, target: 'enemy',
+  id: 'payload', name: 'Payload Burst', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 1, target: 'enemy',
   effects: [{ k: 'dmgPerCorrupt', mult: 2 }], upEffects: [{ k: 'dmgPerCorrupt', mult: 3 }],
   flavor: 'detonate the infection',
 }))
 reg(c({
-  id: 'forkvirus', name: 'Fork Virus', type: 'skill', rarity: 'uncommon', cost: 1, upCost: 0, target: 'enemy',
+  id: 'forkvirus', name: 'Fork Virus', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, upCost: 0, target: 'enemy',
   effects: [{ k: 'doubleCorrupt' }], upEffects: [{ k: 'doubleCorrupt' }],
   flavor: 'replicates on contact',
 }))
 reg(c({
-  id: 'chronicinj', name: 'Chronic Injector', type: 'power', rarity: 'rare', cost: 2, upCost: 1, target: 'none',
+  id: 'chronicinj', name: 'Chronic Injector', type: 'power', rarity: 'rare', char: 'runner', cost: 2, upCost: 1, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'chronic', n: 1 }],
   upEffects: [{ k: 'status', to: 'self', id: 'chronic', n: 1 }],
   flavor: 'no patch is coming',
@@ -309,17 +309,17 @@ reg(c({
   upEffects: [{ k: 'block', n: 9 }, { k: 'draw', n: 1 }],
 }))
 reg(c({
-  id: 'doublebuffer', name: 'Double Buffer', type: 'skill', rarity: 'uncommon', cost: 2, upCost: 1, target: 'none',
+  id: 'doublebuffer', name: 'Double Buffer', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 2, upCost: 1, target: 'none',
   effects: [{ k: 'doubleBlock' }], upEffects: [{ k: 'doubleBlock' }],
 }))
 reg(c({
-  id: 'firmware', name: 'Firmware Lock', type: 'power', rarity: 'rare', cost: 2, upCost: 1, target: 'none',
+  id: 'firmware', name: 'Firmware Lock', type: 'power', rarity: 'rare', char: 'runner', cost: 2, upCost: 1, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'barricade', n: 1 }],
   upEffects: [{ k: 'status', to: 'self', id: 'barricade', n: 1 }],
   flavor: 'write-protected',
 }))
 reg(c({
-  id: 'kernelpanic', name: 'Kernel Panic', type: 'power', rarity: 'rare', cost: 2, target: 'none',
+  id: 'kernelpanic', name: 'Kernel Panic', type: 'power', rarity: 'rare', char: 'runner', cost: 2, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'kernel', n: 3 }],
   upEffects: [{ k: 'status', to: 'self', id: 'kernel', n: 5 }],
   flavor: 'the wall fights back',
@@ -343,12 +343,12 @@ reg(c({
   exhaust: true, upExhaust: true,
 }))
 reg(c({
-  id: 'burstcompile', name: 'Burst Compile', type: 'attack', rarity: 'uncommon', cost: 0, target: 'enemy',
+  id: 'burstcompile', name: 'Burst Compile', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 0, target: 'enemy',
   effects: [{ k: 'dmgIfCombo', n: 4, bonus: 6, threshold: 3 }],
   upEffects: [{ k: 'dmgIfCombo', n: 6, bonus: 8, threshold: 3 }],
 }))
 reg(c({
-  id: 'hyperthread', name: 'Hyperthread', type: 'power', rarity: 'rare', cost: 1, target: 'none',
+  id: 'hyperthread', name: 'Hyperthread', type: 'power', rarity: 'rare', char: 'runner', cost: 1, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'hyper', n: 1 }],
   upEffects: [{ k: 'status', to: 'self', id: 'hyper', n: 2 }],
   flavor: 'more lanes, same silicon',
@@ -378,6 +378,118 @@ reg(c({
   effects: [{ k: 'dmgAll', n: 4 }, { k: 'addCard', id: 'glitch', where: 'discard', n: 1 }],
   upEffects: [{ k: 'dmgAll', n: 7 }, { k: 'addCard', id: 'glitch', where: 'discard', n: 1 }],
   flavor: 'collateral corruption',
+}))
+
+// --- VECTOR: the Heat character ---------------------------------------------
+
+reg(c({
+  id: 'spark', name: 'Spark.sh', type: 'attack', rarity: 'starter', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 5 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 8 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  flavor: 'ignition sequence',
+}))
+reg(c({
+  id: 'heatshield', name: 'Heat Shield', type: 'skill', rarity: 'starter', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 5 }], upEffects: [{ k: 'block', n: 8 }],
+}))
+reg(c({
+  id: 'emberjab', name: 'Ember Jab', type: 'attack', rarity: 'common', char: 'vector', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 3 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 5 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'stoke', name: 'Stoke', type: 'skill', rarity: 'common', char: 'vector', cost: 0, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'heat', n: 3 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'heat', n: 4 }, { k: 'draw', n: 1 }],
+  flavor: 'feed the furnace',
+}))
+reg(c({
+  id: 'ventblade', name: 'Vent', type: 'attack', rarity: 'common', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'ventDmg', mult: 2 }], upEffects: [{ k: 'ventDmg', mult: 3 }],
+  flavor: 'pressure release',
+}))
+reg(c({
+  id: 'heatsinkfins', name: 'Sink Fins', type: 'skill', rarity: 'common', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'ventBlock', mult: 2 }], upEffects: [{ k: 'ventBlock', mult: 3 }],
+}))
+reg(c({
+  id: 'flarewhip', name: 'Flare Whip', type: 'attack', rarity: 'common', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 7 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+  upEffects: [{ k: 'dmg', n: 10 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+}))
+reg(c({
+  id: 'insulate', name: 'Insulate', type: 'skill', rarity: 'common', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 6 }, { k: 'heatCool', n: 2 }],
+  upEffects: [{ k: 'block', n: 9 }, { k: 'heatCool', n: 3 }],
+}))
+reg(c({
+  id: 'cinderspray', name: 'Cinder Spray', type: 'attack', rarity: 'common', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'dmgAll', n: 4 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmgAll', n: 6 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'backdraft', name: 'Backdraft', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'ventDmgAll', mult: 2 }], upEffects: [{ k: 'ventDmgAll', mult: 2 }],
+}))
+reg(c({
+  id: 'plasmalance', name: 'Plasma Lance', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmgHeatBonus', n: 10, bonus: 8, threshold: 5 }],
+  upEffects: [{ k: 'dmgHeatBonus', n: 14, bonus: 10, threshold: 5 }],
+}))
+reg(c({
+  id: 'turbopump', name: 'Turbo Pump', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 0, target: 'none',
+  effects: [{ k: 'energy', n: 1 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+  upEffects: [{ k: 'energy', n: 2 }, { k: 'status', to: 'self', id: 'heat', n: 3 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'afterburner', name: 'Afterburner', type: 'power', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'ignition', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'ignition', n: 3 }],
+}))
+reg(c({
+  id: 'radiator', name: 'Radiator', type: 'power', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'coolant', n: 3 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'coolant', n: 5 }],
+}))
+reg(c({
+  id: 'quench', name: 'Quench', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 0, target: 'none',
+  effects: [{ k: 'heatCool', n: 99 }, { k: 'draw', n: 2 }],
+  upEffects: [{ k: 'heatCool', n: 99 }, { k: 'draw', n: 3 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'scorch', name: 'Scorch', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 9 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 12 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'meltdown', name: 'Meltdown', type: 'attack', rarity: 'rare', char: 'vector', cost: 3, target: 'none',
+  effects: [{ k: 'ventDmgAll', mult: 3 }], upEffects: [{ k: 'ventDmgAll', mult: 4 }],
+  flavor: 'containment is a suggestion',
+}))
+reg(c({
+  id: 'reactorcore', name: 'Reactor Core', type: 'power', rarity: 'rare', char: 'vector', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'reactor', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'reactor', n: 1 }],
+  flavor: 'meltdown, weaponized',
+}))
+reg(c({
+  id: 'redline', name: 'Redline', type: 'power', rarity: 'rare', char: 'vector', cost: 2, target: 'none',
+  effects: [
+    { k: 'status', to: 'self', id: 'ignition', n: 2 },
+    { k: 'status', to: 'self', id: 'energyGain', n: 1 },
+  ],
+  upEffects: [
+    { k: 'status', to: 'self', id: 'ignition', n: 3 },
+    { k: 'status', to: 'self', id: 'energyGain', n: 1 },
+  ],
+  flavor: 'the tachometer is a liar',
+}))
+reg(c({
+  id: 'whiteout', name: 'Whiteout', type: 'attack', rarity: 'rare', char: 'vector', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 18 }, { k: 'status', to: 'self', id: 'heat', n: 4 }],
+  upEffects: [{ k: 'dmg', n: 24 }, { k: 'status', to: 'self', id: 'heat', n: 4 }],
 }))
 
 // --- Status/junk cards ------------------------------------------------------
@@ -462,6 +574,16 @@ function effTextEn(e: Effect): string {
       return 'Remove your debuffs.'
     case 'addCard':
       return `Shuffle ${e.n > 1 ? e.n + ' ' + CARDS[e.id].name + 's' : 'a ' + CARDS[e.id].name} into your ${e.where} pile.`
+    case 'heatCool':
+      return e.n >= 99 ? 'Cool ALL Heat.' : `Cool ${e.n} Heat.`
+    case 'ventDmg':
+      return `Vent ALL Heat: deal ${e.mult}× that much damage.`
+    case 'ventDmgAll':
+      return `Vent ALL Heat: deal ${e.mult}× that much damage to ALL enemies.`
+    case 'ventBlock':
+      return `Vent ALL Heat: gain ${e.mult}× that much Block.`
+    case 'dmgHeatBonus':
+      return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead with ${e.threshold}+ Heat.`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)
@@ -513,6 +635,16 @@ function effTextZh(e: Effect): string {
       const count = e.n > 1 ? `${e.n} 张` : '一张'
       return `将${count}「${cardBaseName(e.id)}」洗入你的${pile}。`
     }
+    case 'heatCool':
+      return e.n >= 99 ? '冷却全部高热。' : `冷却 ${e.n} 点高热。`
+    case 'ventDmg':
+      return `排出全部高热：造成其 ${e.mult} 倍的伤害。`
+    case 'ventDmgAll':
+      return `排出全部高热：对所有敌人造成其 ${e.mult} 倍的伤害。`
+    case 'ventBlock':
+      return `排出全部高热：获得其 ${e.mult} 倍的格挡。`
+    case 'dmgHeatBonus':
+      return `造成 ${e.n} 点伤害。若你有 ${e.threshold}+ 点高热，则改为造成 ${e.n + e.bonus} 点。`
     case 'status': {
       if (e.to === 'self') {
         const power = statusPowerText(e.id)
@@ -545,11 +677,16 @@ export function describeCard(card: CardInst): string {
   return parts.join(' ')
 }
 
-export function cardsByRarity(rarity: Rarity, type?: CardType): CardDef[] {
-  return Object.values(CARDS).filter((c) => c.rarity === rarity && (!type || c.type === type))
+/** Card is in `char`'s pool (untagged cards are neutral, shared by all). */
+function inPool(c: CardDef, char?: CharId): boolean {
+  return !char || !c.char || c.char === char
 }
 
-/** All cards that can appear as rewards/shop stock. */
-export function obtainableCards(): CardDef[] {
-  return Object.values(CARDS).filter((c) => c.rarity !== 'special' && c.rarity !== 'starter')
+export function cardsByRarity(rarity: Rarity, char?: CharId): CardDef[] {
+  return Object.values(CARDS).filter((c) => c.rarity === rarity && inPool(c, char))
+}
+
+/** All cards that can appear as rewards/shop stock (for a character). */
+export function obtainableCards(char?: CharId): CardDef[] {
+  return Object.values(CARDS).filter((c) => c.rarity !== 'special' && c.rarity !== 'starter' && inPool(c, char))
 }

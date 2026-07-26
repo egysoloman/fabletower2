@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
-import { MAX_ASC } from '@neonspire/engine'
+import type { CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
+import { Sprite } from '../sprites'
 import { hasSave, loadGame, screen } from '../store'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
@@ -9,6 +10,7 @@ import { SoundIcon } from '../sprites'
 export function MenuScreen() {
   const [seedText, setSeedText] = useState('')
   const [asc, setAsc] = useState(0)
+  const [char, setChar] = useState<CharId>('runner')
   const canContinue = hasSave()
   const maxAsc = ascUnlocked()
   const history = runHistory().slice(0, 5)
@@ -16,13 +18,13 @@ export function MenuScreen() {
   const start = () => {
     sfx.click()
     const trimmed = seedText.trim()
-    newGame(trimmed ? hashSeed(trimmed) : undefined, Math.min(asc, maxAsc))
+    newGame(trimmed ? hashSeed(trimmed) : undefined, Math.min(asc, maxAsc), char)
   }
 
   const startDaily = () => {
     sfx.click()
     const today = new Date().toISOString().slice(0, 10)
-    newGame(hashSeed('daily-' + today), 0)
+    newGame(hashSeed('daily-' + today), 0, char)
   }
 
   return (
@@ -33,6 +35,23 @@ export function MenuScreen() {
         </div>
         <div class="tagline" style={{ textAlign: 'center', marginTop: '10px' }}>
           {t('tagline')}
+        </div>
+      </div>
+
+      <div class="charrow">
+        <div class={`charcard runner ${char === 'runner' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('runner'))}>
+          <Sprite id="runner" size={46} />
+          <div>
+            <div class="cname-h">{t('charRunner')}</div>
+            <div class="cdesc-h">{t('charRunnerDesc')}</div>
+          </div>
+        </div>
+        <div class={`charcard vector ${char === 'vector' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('vector'))}>
+          <Sprite id="vector" size={46} />
+          <div>
+            <div class="cname-h">{t('charVector')}</div>
+            <div class="cdesc-h">{t('charVectorDesc')}</div>
+          </div>
         </div>
       </div>
 

@@ -15,6 +15,7 @@ import { POTIONS } from './potions'
 import { RELICS } from './relics'
 import {
   applyEffects,
+  applyOverheat,
   applyStatus,
   attack,
   discardHand,
@@ -250,7 +251,9 @@ export function combatReduce(prev: CombatState, action: CombatAction): StepResul
     if (tickTurnStart(cs.player, 'p', evs)) {
       markDeaths(cs, evs)
     } else {
-      refillSide(cs.player, cs, 'p', evs)
+      const died = applyOverheat(cs.player, 'p', aliveFoes(), evs)
+      markDeaths(cs, evs) // reactor redirection can kill; overheat can kill us
+      if (!died && !cs.over) refillSide(cs.player, cs, 'p', evs)
     }
   }
 

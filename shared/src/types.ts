@@ -21,6 +21,10 @@ export type StatusId =
   | 'kernel' // when a card gives you block, deal N to a random foe
   | 'hyper' // when you play a 0-cost card, draw N
   | 'chronic' // corrupt you apply to foes no longer wears off
+  | 'heat' // attacks deal +N; at turn start, N >= threshold burns you for N
+  | 'coolant' // overheat threshold +N
+  | 'ignition' // gain N heat at end of own turn
+  | 'reactor' // overheat damages ALL enemies instead of you
 
 export type Statuses = Partial<Record<StatusId, number>>
 
@@ -51,6 +55,10 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   kernel: { name: 'Kernel', sym: '☲', bad: false, desc: 'When a card grants Block, deals {n} damage to a random enemy.', powerText: 'Whenever a card grants you Block, deal {n} damage to a random enemy.' },
   hyper: { name: 'Hyperthread', sym: '⋙', bad: false, desc: 'Draws {n} card(s) when a 0-cost card is played.', powerText: 'Whenever you play a 0-cost card, draw {n} card(s).' },
   chronic: { name: 'Chronic', sym: '∞', bad: false, desc: 'Corrupt on enemies no longer wears off.', powerText: 'Corrupt on enemies no longer wears off.' },
+  heat: { name: 'Heat', sym: '♨', bad: false, desc: 'Attacks deal +{n}. At the start of your turn, Heat at or past your threshold (8) burns you for {n} and resets.' },
+  coolant: { name: 'Coolant', sym: '❄', bad: false, desc: 'Overheat threshold raised by {n}.', powerText: 'Raise your overheat threshold by {n}.' },
+  ignition: { name: 'Ignition', sym: 'Δ', bad: false, desc: 'Gains {n} Heat at end of turn.', powerText: 'At the end of your turn, gain {n} Heat.' },
+  reactor: { name: 'Reactor', sym: '☢', bad: false, desc: 'Overheating damages ALL enemies instead of you.', powerText: 'Overheating no longer hurts you — it deals the damage to ALL enemies instead.' },
 }
 
 export const DEBUFFS: StatusId[] = ['weak', 'vuln', 'corrupt']
@@ -80,12 +88,21 @@ export type Effect =
   | { k: 'status'; to: 'self' | 'target' | 'all'; id: StatusId; n: number }
   | { k: 'cleanse' }
   | { k: 'addCard'; id: string; where: 'discard' | 'draw'; n: number }
+  | { k: 'heatCool'; n: number }
+  | { k: 'ventDmg'; mult: number }
+  | { k: 'ventDmgAll'; mult: number }
+  | { k: 'ventBlock'; mult: number }
+  | { k: 'dmgHeatBonus'; n: number; bonus: number; threshold: number }
+
+export type CharId = 'runner' | 'vector'
 
 export interface CardDef {
   id: string
   name: string
   type: CardType
   rarity: Rarity
+  /** Character-exclusive card; undefined = neutral (any character). */
+  char?: CharId
   cost: number
   upCost?: number
   /** 'enemy' cards need a target; 'none' cards resolve immediately. */
@@ -305,4 +322,6 @@ export interface RunState {
   potions: string[]
   /** Ascension level of this run (0-5). */
   asc: number
+  /** Playable character for this run. */
+  char: CharId
 }
