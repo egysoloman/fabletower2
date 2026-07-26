@@ -15,6 +15,7 @@ import { WebSocket, WebSocketServer } from 'ws'
 import {
   CARDS,
   ENCOUNTERS,
+  EVENTS,
   STARTER_DECKS,
   STARTER_RELICS,
   cardsByRarity,
@@ -176,6 +177,14 @@ interface CoopRoom {
   combat: CoopState | null
   kind: 'normal' | 'elite' | 'boss'
   rewards: { cards: string[]; relic: string | null; gold: number }[] | null
+  /** Shared shop inventory: first come, first served. */
+  shop: {
+    cards: { id: string; price: number; sold: boolean }[]
+    relics: { id: string; price: number; sold: boolean }[]
+    removePrice: number
+  } | null
+  /** Active event node: everyone picks their own way through. */
+  event: { id: string; picked: (number | null)[] } | null
   lastEncounter: string
   ended: boolean
 }
@@ -220,16 +229,9 @@ function dissolveForm(party: PendingParty, gone: Client | null) {
   broadcastLobby(party.size)
 }
 
-/** Co-op map profile: no per-player shops/events in v1 — retype to keep the party together. */
+/** Co-op climbs now use the untouched solo map — every node type included. */
 function coopMap(act: number, rng: Rng): ActMap {
-  const map = genActMap(act, rng)
-  for (const row of map.rows) {
-    for (const n of row) {
-      if (n.type === 'shop') n.type = 'rest'
-      else if (n.type === 'event') n.type = 'combat'
-    }
-  }
-  return map
+  return genActMap(act, rng)
 }
 
 function coopBroadcast(room: CoopRoom, msg: (idx: number) => unknown) {
@@ -267,7 +269,8 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
   }))
   const room: CoopRoom = {
     players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null,
-    map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, lastEncounter: '', ended: false,
+    map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, event: null,
+    lastEncounter: '', ended: false,
   }
   for (const c of clients) coopRooms.set(c, room)
   coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed, token: mintToken(room.players[i].client) }))
@@ -617,6 +620,35 @@ wss.on('connection', (ws) => {
         room.floor++
         if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
           coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
+        } else if (node.type === 'shop') {
+          const stock = {
+            cards: Array.from({ length: 6 }, () => {
+              const who = room.players[randInt(room.rng, 0, room.players.length - 1)]
+              const r = randInt(room.rng, 1, 100)
+              const rarity = r <= 10 ? 'rare' : r <= 45 ? 'uncommon' : 'common'
+              const def = pick(room.rng, cardsByRarity(rarity as any, who.char))
+              return { id: def.id, price: randInt(room.rng, rarity === 'rare' ? 130 : rarity === 'uncommon' ? 75 : 45, rarity === 'rare' ? 160 : rarity === 'uncommon' ? 95 : 60), sold: false }
+            }),
+            relics: Array.from({ length: 2 }, () => {
+              const rpool = obtainableRelics([], false)
+              const def = rpool[randInt(room.rng, 0, rpool.length - 1)]
+              return { id: def.id, price: randInt(room.rng, 150, 190), sold: false }
+            }),
+            removePrice: 80,
+          }
+          room.shop = stock
+          room.players.forEach((p) => (p.replied = false))
+          coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock, gold: room.players[i].gold, deck: room.players[i].deck }))
+        } else if (node.type === 'event') {
+          const pool = EVENTS.filter((ev) =>
+            ev.choices.every((ch) =>
+              ch.outcomes.every((o) => ['gold', 'damage', 'heal', 'maxhp', 'cardRandom', 'cardGlitch', 'curse', 'upgradeRandom', 'cardSpecific', 'potion'].includes(o.k)),
+            ),
+          )
+          const ev = pick(room.rng, pool)
+          room.event = { id: ev.id, picked: room.players.map(() => null) }
+          room.players.forEach((p) => (p.replied = false))
+          coopBroadcast(room, (i) => ({ t: 'coopevent', you: i, id: ev.id, gold: room.players[i].gold }))
         } else if (node.type === 'treasure') {
           room.players.forEach((p) => {
             p.gold += randInt(room.rng, 22, 40)
@@ -626,7 +658,7 @@ wss.on('connection', (ws) => {
         } else {
           // rest: every player chooses heal / heal-an-ally / upgrade
           room.players.forEach((p) => (p.replied = false))
-          coopBroadcast(room, (i) => ({ t: 'cooprest', you: i }))
+          coopBroadcast(room, (i) => ({ t: 'cooprest', you: i, deck: room.players[i].deck }))
         }
         break
       }
@@ -637,10 +669,14 @@ wss.on('connection', (ws) => {
         const a = msg.action as CoopAction
         const valid = a && typeof a === 'object' && ((a.t === 'play' && Number.isInteger(a.hand)) || a.t === 'end')
         if (!valid) return send(ws, { t: 'err', msg: 'malformed action' })
+        const played =
+          a.t === 'play' && room.combat.players[idx]?.hand[a.hand]
+            ? { who: idx, card: room.combat.players[idx].hand[a.hand] }
+            : null
         const res = coopReduce(room.combat, idx, a)
         if (res.error) return send(ws, { t: 'err', msg: res.error })
         room.combat = res.state
-        coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events }))
+        coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, played }))
         if (room.combat.over === 'win') coopFinishFight(room)
         else if (room.combat.over === 'lose') {
           coopBroadcast(room, () => ({ t: 'coopdefeat' }))
@@ -666,6 +702,89 @@ wss.on('connection', (ws) => {
         coopMaybeAdvance(room)
         break
       }
+      case 'coopbuy': {
+        const room = coopRooms.get(client)
+        if (!room || !room.shop || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const player = room.players[idx]
+        const kind = String(msg.kind ?? '')
+        if (kind === 'card' || kind === 'relic') {
+          const list = kind === 'card' ? room.shop.cards : room.shop.relics
+          const item = list[Math.floor(Number(msg.idx))]
+          if (!item || item.sold || player.gold < item.price) return send(ws, { t: 'err', msg: 'cannot buy' })
+          item.sold = true
+          player.gold -= item.price
+          if (kind === 'card') player.deck.push({ uid: room.uid++, id: item.id, up: false })
+          else player.relics.push(item.id)
+        } else if (kind === 'remove') {
+          if (player.gold < room.shop.removePrice) return send(ws, { t: 'err', msg: 'cannot afford' })
+          const uid = Math.floor(Number(msg.uid))
+          const at = player.deck.findIndex((c) => c.uid === uid)
+          if (at < 0) return send(ws, { t: 'err', msg: 'no such card' })
+          player.gold -= room.shop.removePrice
+          player.deck.splice(at, 1)
+        }
+        coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold, deck: room.players[i].deck }))
+        break
+      }
+      case 'coopshopdone': {
+        const room = coopRooms.get(client)
+        if (!room || !room.shop || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        room.players[idx].replied = true
+        if (room.players.every((p) => p.replied)) {
+          room.shop = null
+          coopBroadcast(room, (i) => coopMapMsg(room, i))
+        }
+        break
+      }
+      case 'coopeventpick': {
+        const room = coopRooms.get(client)
+        if (!room || !room.event || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const player = room.players[idx]
+        if (player.replied) break
+        const ev = EVENTS.find((e) => e.id === room.event!.id)
+        if (!ev) break
+        const ci = Math.floor(Number(msg.choice))
+        const ch = ev.choices[ci]
+        if (!ch) return send(ws, { t: 'err', msg: 'bad choice' })
+        if (ch.needGold && player.gold < ch.needGold) return send(ws, { t: 'err', msg: 'cannot afford' })
+        // apply the supported outcome subset to this party member
+        for (const o of ch.outcomes) {
+          if (o.k === 'gold') player.gold = Math.max(0, player.gold + o.n)
+          else if (o.k === 'damage') player.hp = Math.max(1, player.hp - o.n)
+          else if (o.k === 'heal') player.hp = Math.min(player.maxHp, player.hp + o.n)
+          else if (o.k === 'maxhp') { player.maxHp += o.n; player.hp = Math.min(player.maxHp, player.hp + Math.max(0, o.n)) }
+          else if (o.k === 'cardRandom') player.deck.push({ uid: room.uid++, id: pick(room.rng, cardsByRarity(o.rarity, player.char)).id, up: false })
+          else if (o.k === 'cardGlitch') player.deck.push({ uid: room.uid++, id: 'glitch', up: false })
+          else if (o.k === 'curse') player.deck.push({ uid: room.uid++, id: 'lag', up: false })
+          else if (o.k === 'cardSpecific') player.deck.push({ uid: room.uid++, id: o.id, up: false })
+          else if (o.k === 'upgradeRandom') {
+            const cand = player.deck.filter((c) => !c.up && CARDS[c.id]?.rarity !== 'special')
+            if (cand.length) pick(room.rng, cand).up = true
+          }
+        }
+        player.replied = true
+        room.event.picked[idx] = ci
+        coopBroadcast(room, () => ({ t: 'coopeventpicked', who: idx, choice: ci, name: tagOf(player.client) }))
+        if (room.players.every((p) => p.replied)) {
+          room.event = null
+          coopBroadcast(room, (i) => coopMapMsg(room, i))
+        }
+        break
+      }
+      case 'coopcomm': {
+        const room = coopRooms.get(client)
+        if (!room || room.ended) break
+        const k = String(msg.k ?? '')
+        if (!['go', 'wait', 'help', 'gg'].includes(k)) break
+        const now = Date.now()
+        if (((client as any).lastComm ?? 0) > now - 1500) break
+        ;(client as any).lastComm = now
+        coopBroadcast(room, () => ({ t: 'coopcomm', k, name: tagOf(client) }))
+        break
+      }
       case 'cooprestpick': {
         const room = coopRooms.get(client)
         if (!room || room.ended || room.combat) break
@@ -684,6 +803,10 @@ wss.on('connection', (ws) => {
           const uid = Math.floor(Number(msg.uid))
           const card = player.deck.find((c) => c.uid === uid)
           if (card && !card.up && CARDS[card.id]?.rarity !== 'special') card.up = true
+        } else if (what === 'remove') {
+          const uid = Math.floor(Number(msg.uid))
+          const at = player.deck.findIndex((c) => c.uid === uid)
+          if (at >= 0 && player.deck.length > 6) player.deck.splice(at, 1)
         } else {
           player.hp = Math.min(player.maxHp, player.hp + Math.floor(player.maxHp * 0.3))
         }

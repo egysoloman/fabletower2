@@ -4,8 +4,8 @@
  * Everything is server-authoritative; this file only renders and asks.
  */
 import { useState } from 'preact/hooks'
-import { CARDS, cardCost, cardName, type CharId } from '@neonspire/engine'
-import { BlockChip, CardView, HpBar, StatusRow } from '../components'
+import { CARDS, EVENTS, cardCost, cardName, eventChoiceDetail, eventChoiceLabel, eventName, eventText, relicName, type CharId } from '@neonspire/engine'
+import { BlockChip, CardById, CardView, HpBar, StatusRow } from '../components'
 import { anchorCenter, flyCard, fxPulses, registerAnchor, useShake } from '../fx'
 import {
   coopExit,
@@ -20,9 +20,13 @@ import {
   coopView,
   coopYou,
   coopConn,
+  coopEvent,
   coopForm,
   coopLobby,
   coopReady,
+  coopRestDeck,
+  coopShop,
+  coopToast,
 } from '../coopclient'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -224,6 +228,20 @@ export function CoopScreen() {
             </button>
           </div>
         )}
+        {coopToast.value && (
+          <div class="turnbanner" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
+            {coopToast.value}
+          </div>
+        )}
+        {(phase === 'map' || phase === 'combat') && (
+          <div class="commrow">
+            {(['go', 'wait', 'help', 'gg'] as const).map((k) => (
+              <button key={k} class="btn ghost" onClick={() => coopSend({ t: 'coopcomm', k })}>
+                {t(('comm_' + k) as Parameters<typeof t>[0])}
+              </button>
+            ))}
+          </div>
+        )}
         {phase === 'map' && m && (
           <>
             <div class="sub" style={{ color: 'var(--gold)' }}>
@@ -282,6 +300,26 @@ export function CoopScreen() {
               <button class="btn" onClick={() => coopSend({ t: 'cooprestpick', what: 'heal' })}>
                 {t('coopRestHeal')}
               </button>
+              <details>
+                <summary class="btn" style={{ display: 'inline-block', cursor: 'pointer' }}>{t('patch')}</summary>
+                <div class="gridcards" style={{ maxWidth: '640px' }}>
+                  {coopRestDeck.value.filter((c: any) => !c.up && CARDS[c.id]?.rarity !== 'special').map((c: any, i: number) => (
+                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={() => coopSend({ t: 'cooprestpick', what: 'upgrade', uid: c.uid })}>
+                      <CardView card={c} />
+                    </div>
+                  ))}
+                </div>
+              </details>
+              <details>
+                <summary class="btn ghost" style={{ display: 'inline-block', cursor: 'pointer' }}>{t('removeTitle')}</summary>
+                <div class="gridcards" style={{ maxWidth: '640px' }}>
+                  {coopRestDeck.value.map((c: any, i: number) => (
+                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={() => coopSend({ t: 'cooprestpick', what: 'remove', uid: c.uid })}>
+                      <CardView card={c} />
+                    </div>
+                  ))}
+                </div>
+              </details>
               {m.party.map((p: any, i: number) =>
                 i === m.you ? null : (
                   <button key={i} class="btn ghost" onClick={() => coopSend({ t: 'cooprestpick', what: 'ally', ally: i })}>
@@ -292,6 +330,70 @@ export function CoopScreen() {
             </div>
           </div>
         )}
+        {phase === 'shop' && coopShop.value && (
+          <div class="phase-in">
+            <h2 style={{ color: 'var(--gold)' }}>{t('blackMarket')}</h2>
+            <div class="sub">¤{coopShop.value.gold}</div>
+            <div class="cardrow" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {coopShop.value.stock.cards.map((it: any, i: number) => (
+                <div key={i} class={`shopitem ${it.sold ? 'soldout' : ''}`} style={{ '--reveal': `${i * 70}ms` } as never}>
+                  <CardById id={it.id} />
+                  <button class="btn" disabled={it.sold || coopShop.value.gold < it.price} onClick={() => coopSend({ t: 'coopbuy', kind: 'card', idx: i })}>
+                    {it.sold ? t('sold') : `${it.price}¤`}
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {coopShop.value.stock.relics.map((it: any, i: number) => (
+                <button key={i} class="btn" disabled={it.sold || coopShop.value.gold < it.price} onClick={() => coopSend({ t: 'coopbuy', kind: 'relic', idx: i })}>
+                  {it.sold ? t('sold') : `${relicName(it.id)} · ${it.price}¤`}
+                </button>
+              ))}
+              <details>
+                <summary class="btn ghost" style={{ display: 'inline-block', cursor: 'pointer' }}>
+                  {tf('purgeBtn', { n: coopShop.value.stock.removePrice })}
+                </summary>
+                <div class="gridcards" style={{ maxWidth: '640px' }}>
+                  {(coopShop.value.deck ?? []).map((c: any, i: number) => (
+                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={() => coopSend({ t: 'coopbuy', kind: 'remove', uid: c.uid })}>
+                      <CardView card={c} />
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+            <button class="btn pink" onClick={() => coopSend({ t: 'coopshopdone' })}>
+              {t('leave')}
+            </button>
+          </div>
+        )}
+        {phase === 'event' && coopEvent.value && (() => {
+          const ev = EVENTS.find((e) => e.id === coopEvent.value.id)
+          if (!ev) return null
+          return (
+            <div class="phase-in panel popin">
+              <div class="event-glyph">
+                <Sprite id={'ev-' + ev.id} size={60} />
+              </div>
+              <h2 class="pink">{eventName(ev)}</h2>
+              <div class="sub">{eventText(ev)}</div>
+              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                {ev.choices.map((ch, i) => (
+                  <div
+                    key={i}
+                    class={`bigchoice ${i % 2 ? 'pink' : ''} ${ch.needGold && coopEvent.value.gold < ch.needGold ? 'disabled' : ''}`}
+                    onClick={() => (coopSend({ t: 'coopeventpick', choice: i }), sfx.click())}
+                  >
+                    <div class="t">{eventChoiceLabel(ev, i)}</div>
+                    <div class="d">{eventChoiceDetail(ev, i)}</div>
+                  </div>
+                ))}
+              </div>
+              <div class="sub" style={{ fontSize: '11px' }}>{t('coopEventEach')}</div>
+            </div>
+          )
+        })()}
         {(phase === 'victory' || phase === 'defeat' || phase === 'ended' || phase === 'error') && (
           <>
             <h2 class={phase === 'victory' ? '' : 'pink'}>

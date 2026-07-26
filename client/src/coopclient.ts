@@ -12,6 +12,8 @@ import { sfx } from './sfx'
 export type CoopPhase =
   | 'idle'
   | 'form'
+  | 'shop'
+  | 'event'
   | 'connecting'
   | 'queued'
   | 'map'
@@ -36,6 +38,16 @@ export const coopLobby = signal<{ members: string[]; need: number } | null>(null
 /** Formation stage: full party gathered, waiting on READY from everyone. */
 export const coopForm = signal<{ tag: string; char: string; ready: boolean }[] | null>(null)
 export const coopConn = signal<'online' | 'reconnecting'>('online')
+export const coopShop = signal<any>(null)
+export const coopEvent = signal<any>(null)
+export const coopRestDeck = signal<any[]>([])
+export const coopToast = signal('')
+let toastTimer = 0
+export function coopFlash(msg: string) {
+  coopToast.value = msg
+  clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => (coopToast.value = ''), 2400)
+}
 
 let ws: WebSocket | null = null
 let token: string | null = null
@@ -118,6 +130,9 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           coopView.value = data.view
           coopPending.value = false
           coopPhase.value = 'combat'
+          if (data.played && data.played.who !== data.you) {
+            coopFlash(`◈ ally ▸ ${data.played.card.id}${data.played.card.up ? '+' : ''}`)
+          }
           if (data.events) processEvents(data.events as GameEvent[], { delay: 200, step: 120 })
           break
         case 'coopreward':
@@ -126,7 +141,23 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           sfx.win()
           break
         case 'cooprest':
+          coopRestDeck.value = data.deck ?? []
           coopPhase.value = 'rest'
+          break
+        case 'coopshop':
+          coopShop.value = data
+          coopPhase.value = 'shop'
+          break
+        case 'coopevent':
+          coopEvent.value = data
+          coopPhase.value = 'event'
+          break
+        case 'coopeventpicked':
+          coopFlash(`${data.name} ▸ #${(data.choice ?? 0) + 1}`)
+          break
+        case 'coopcomm':
+          coopFlash(`${data.name}: ${data.k.toUpperCase()}`)
+          sfx.click()
           break
         case 'coopvictory':
           coopPhase.value = 'victory'
@@ -197,6 +228,8 @@ export function coopLeave() {
   retryUntil = 0
   coopLobby.value = null
   coopForm.value = null
+  coopShop.value = null
+  coopEvent.value = null
   try {
     ws?.close()
   } catch {

@@ -59,6 +59,11 @@ const EN = {
   readyBtn: 'READY',
   readyYes: '✓ READY',
   readyWait: '…',
+  coopEventEach: 'every runner makes their own call — picks are announced to the party',
+  comm_go: 'GO!',
+  comm_wait: 'WAIT',
+  comm_help: 'HELP!',
+  comm_gg: 'GG',
   climbRace: 'CLIMB RACE',
   climbIntro:
     'Race a rival up the same Spire: identical maps, separate climbs. Fell your act boss to reach the checkpoint — then duel with your real run decks. Winner keeps climbing.',
@@ -311,6 +316,11 @@ const ZH: Record<Key, string> = {
   readyBtn: '准备',
   readyYes: '✓ 已准备',
   readyWait: '…',
+  coopEventEach: '每位行者各自抉择——选择会向全队播报',
+  comm_go: '上！',
+  comm_wait: '等等',
+  comm_help: '救我！',
+  comm_gg: '好局',
   climbRace: '竞速攀塔',
   climbIntro:
     '与对手攀登同一座尖塔：地图相同，各自攀爬。击败本幕首领即抵达检查点——然后用你们真实的冒险牌组决斗。胜者继续攀登。',
