@@ -12,7 +12,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
-import { pvpReduce, newPvp, viewFor, type PvpAction, type PvpState } from '@neonspire/engine'
+import { CARDS, pvpReduce, newPvp, viewFor, type PvpAction, type PvpState } from '@neonspire/engine'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -59,6 +59,8 @@ const http = createServer((req, res) => serveStatic(req.url ?? '/', res))
 
 // --- Matchmaking + rooms -----------------------------------------------------
 
+type Mode = 'duel' | 'climb'
+
 interface Client {
   ws: WebSocket
   name: string
@@ -66,12 +68,22 @@ interface Client {
   alive: boolean
 }
 
-interface Room {
-  players: [Client, Client]
-  state: PvpState
+interface ClimbDeckEntry {
+  id: string
+  up: boolean
 }
 
-let waiting: Client | null = null
+interface Room {
+  mode: Mode
+  players: [Client, Client]
+  /** Active duel state (direct mode: always; climb mode: at the checkpoint). */
+  state: PvpState | null
+  /** Climb race only. */
+  seed: number
+  ready: [{ deck: ClimbDeckEntry[]; hp: number } | null, { deck: ClimbDeckEntry[]; hp: number } | null]
+}
+
+const waiting: Record<Mode, Client | null> = { duel: null, climb: null }
 
 function send(ws: WebSocket, msg: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
@@ -82,14 +94,36 @@ function cleanName(raw: unknown): string {
   return s || 'RUNNER'
 }
 
-function startMatch(a: Client, b: Client) {
+/** Climb duels use client-submitted run decks — sanitize hard. */
+function cleanDeck(raw: unknown): ClimbDeckEntry[] | null {
+  if (!Array.isArray(raw) || raw.length < 5 || raw.length > 120) return null
+  const out: ClimbDeckEntry[] = []
+  for (const c of raw) {
+    const id = String((c as any)?.id ?? '')
+    if (!CARDS[id]) return null
+    out.push({ id, up: !!(c as any)?.up })
+  }
+  return out
+}
+
+function startMatch(a: Client, b: Client, mode: Mode) {
   const seed = randomBytes(4).readUInt32LE(0)
-  const state = newPvp(seed, [a.name, b.name])
-  const room: Room = { players: [a, b], state }
+  if (mode === 'duel') {
+    const state = newPvp(seed, [a.name, b.name])
+    const room: Room = { mode, players: [a, b], state, seed, ready: [null, null] }
+    a.room = room
+    b.room = room
+    room.players.forEach((p, i) => {
+      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1) })
+    })
+    return
+  }
+  // Climb race: both players run the SAME seed solo; the duel comes later.
+  const room: Room = { mode, players: [a, b], state: null, seed, ready: [null, null] }
   a.room = room
   b.room = room
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1) })
+    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name })
   })
 }
 
@@ -97,9 +131,28 @@ function endRoom(room: Room) {
   for (const p of room.players) if (p.room === room) p.room = null
 }
 
+/** The checkpoint duel fires once both racers have felled their act boss. */
+function maybeStartClimbDuel(room: Room) {
+  const [a, b] = room.ready
+  if (!a || !b || room.state) return
+  room.state = newPvp(room.seed ^ 0x9e3779b9, [room.players[0].name, room.players[1].name], [
+    { deck: a.deck, hp: a.hp },
+    { deck: b.deck, hp: b.hp },
+  ])
+  room.players.forEach((p, i) => {
+    send(p.ws, { t: 'duelstart', you: i, view: viewFor(room.state!, i as 0 | 1) })
+  })
+}
+
+function finishClimb(room: Room, winnerIdx: 0 | 1, reason: string) {
+  send(room.players[winnerIdx].ws, { t: 'climbwin', reason })
+  send(room.players[1 - winnerIdx].ws, { t: 'climbloss', reason })
+  endRoom(room)
+}
+
 function handleAction(client: Client, rawAction: unknown) {
   const room = client.room
-  if (!room) return send(client.ws, { t: 'err', msg: 'not in a match' })
+  if (!room || !room.state) return send(client.ws, { t: 'err', msg: 'not in a match' })
   const idx = room.players.indexOf(client) as 0 | 1
   const a = rawAction as PvpAction
   const valid =
@@ -112,9 +165,15 @@ function handleAction(client: Client, rawAction: unknown) {
 
   room.state = res.state
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'st', view: viewFor(room.state, i as 0 | 1), events: res.events })
+    send(p.ws, { t: 'st', view: viewFor(room.state!, i as 0 | 1), events: res.events })
   })
-  if (room.state.over) endRoom(room)
+  if (room.state.over) {
+    if (room.mode === 'climb') {
+      finishClimb(room, room.state.over.winner, room.state.over.reason)
+    } else {
+      endRoom(room)
+    }
+  }
 }
 
 const wss = new WebSocketServer({ server: http })
@@ -135,37 +194,85 @@ wss.on('connection', (ws) => {
       case 'queue': {
         if (client.room) return send(ws, { t: 'err', msg: 'already in a match' })
         client.name = cleanName(msg.name)
-        if (waiting === client) return
-        if (waiting && waiting.ws.readyState === WebSocket.OPEN) {
-          const opponent = waiting
-          waiting = null
-          startMatch(opponent, client)
+        const mode: Mode = msg.mode === 'climb' ? 'climb' : 'duel'
+        if (waiting[mode] === client) return
+        if (waiting[mode] && waiting[mode]!.ws.readyState === WebSocket.OPEN) {
+          const opponent = waiting[mode]!
+          waiting[mode] = null
+          startMatch(opponent, client, mode)
         } else {
-          waiting = client
-          send(ws, { t: 'queued' })
+          if (waiting.duel === client) waiting.duel = null
+          if (waiting.climb === client) waiting.climb = null
+          waiting[mode] = client
+          send(ws, { t: 'queued', mode })
         }
         break
       }
       case 'cancel': {
-        if (waiting === client) waiting = null
+        if (waiting.duel === client) waiting.duel = null
+        if (waiting.climb === client) waiting.climb = null
         send(ws, { t: 'cancelled' })
         break
       }
       case 'action':
         handleAction(client, msg.action)
         break
+      case 'progress': {
+        // Climb race telemetry: relay the racer's position to the rival.
+        const room = client.room
+        if (!room || room.mode !== 'climb') break
+        const other = room.players.find((p) => p !== client)
+        if (other) {
+          send(other.ws, {
+            t: 'opp',
+            act: Number(msg.act) || 1,
+            floor: Number(msg.floor) || 0,
+            hp: Number(msg.hp) || 0,
+          })
+        }
+        break
+      }
+      case 'bosskill': {
+        // Racer reached the checkpoint: submit the run deck for the duel.
+        const room = client.room
+        if (!room || room.mode !== 'climb') return send(ws, { t: 'err', msg: 'not in a climb race' })
+        if (room.state) return send(ws, { t: 'err', msg: 'duel already running' })
+        const idx = room.players.indexOf(client) as 0 | 1
+        const deck = cleanDeck(msg.deck)
+        if (!deck) return send(ws, { t: 'err', msg: 'invalid deck' })
+        const hp = Math.max(1, Math.min(999, Math.floor(Number(msg.maxHp) || 1)))
+        room.ready[idx] = { deck, hp }
+        const other = room.players.find((p) => p !== client)
+        if (other) send(other.ws, { t: 'oppready' })
+        send(ws, { t: 'checkpoint' })
+        maybeStartClimbDuel(room)
+        break
+      }
+      case 'died': {
+        // Racer flatlined mid-climb: the rival takes the race.
+        const room = client.room
+        if (!room || room.mode !== 'climb' || room.state) break
+        const idx = room.players.indexOf(client) as 0 | 1
+        finishClimb(room, (1 - idx) as 0 | 1, `${client.name} flatlined on the climb`)
+        break
+      }
       default:
         send(ws, { t: 'err', msg: 'unknown message type' })
     }
   })
 
   ws.on('close', () => {
-    if (waiting === client) waiting = null
+    if (waiting.duel === client) waiting.duel = null
+    if (waiting.climb === client) waiting.climb = null
     const room = client.room
     if (room) {
+      const over = room.state?.over
       endRoom(room)
       const other = room.players.find((p) => p !== client)
-      if (other && !room.state.over) send(other.ws, { t: 'opp-left' })
+      if (other && !over) {
+        if (room.mode === 'climb') send(other.ws, { t: 'climbwin', reason: `${client.name} disconnected` })
+        else send(other.ws, { t: 'opp-left' })
+      }
     }
   })
 })

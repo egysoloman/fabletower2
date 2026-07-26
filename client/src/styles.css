@@ -585,6 +585,21 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .player-zone.array .glyph { color: #3dffa2; }
 .player-zone.array .pname { color: #3dffa2; }
 
+.rivalhud {
+  position: fixed;
+  top: 54px;
+  right: 14px;
+  z-index: 40;
+  padding: 5px 12px;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  border: 1px solid rgba(255, 209, 102, 0.4);
+  background: rgba(30, 20, 0, 0.75);
+  border-radius: 3px;
+  animation: fadeSlide 0.3s ease backwards;
+}
+
 .minionrow { display: flex; gap: 6px; margin-top: 4px; }
 .minion {
   display: flex;

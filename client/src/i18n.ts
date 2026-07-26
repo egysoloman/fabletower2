@@ -46,6 +46,18 @@ const EN = {
   bossCachePick: 'Choose ONE boss relic:',
   cheatPotion: '+ POTION',
   dropPotion: 'Toss this potion',
+  climbRace: 'CLIMB RACE',
+  climbIntro:
+    'Race a rival up the same Spire: identical maps, separate climbs. Fell your act boss to reach the checkpoint — then duel with your real run decks. Winner keeps climbing.',
+  findRival: 'FIND A RIVAL',
+  checkpointDuel: 'CHECKPOINT DUEL',
+  checkpointWait: 'CHECKPOINT REACHED — WAITING FOR YOUR RIVAL',
+  rivalReady: 'Your rival is at the checkpoint. Syncing…',
+  rivalAt: 'RIVAL {name} · ACT {act} · FLOOR {floor} · {hp} HP',
+  rivalClimbing: 'RIVAL {name} is climbing…',
+  rivalEliminated: 'RIVAL ELIMINATED',
+  continueClimb: 'CONTINUE THE CLIMB',
+  raceLost: 'RACE LOST',
   menuFooter:
     'Solo mode runs 100% in your browser — no server needed. Climb 3 acts of the Spire, build your deck, and delete THE ARCHITECT. PvP needs the NEONSPIRE relay server.',
   // topbar
@@ -235,6 +247,18 @@ const ZH: Record<Key, string> = {
   bossCachePick: '选择一件首领遗物：',
   cheatPotion: '+ 药剂',
   dropPotion: '丢弃这瓶药剂',
+  climbRace: '竞速攀塔',
+  climbIntro:
+    '与对手攀登同一座尖塔：地图相同，各自攀爬。击败本幕首领即抵达检查点——然后用你们真实的冒险牌组决斗。胜者继续攀登。',
+  findRival: '寻找对手',
+  checkpointDuel: '检查点决斗',
+  checkpointWait: '已抵达检查点——等待你的对手',
+  rivalReady: '对手已抵达检查点。同步中……',
+  rivalAt: '对手 {name} · 第 {act} 幕 · 第 {floor} 层 · {hp} 生命',
+  rivalClimbing: '对手 {name} 正在攀登……',
+  rivalEliminated: '对手已被淘汰',
+  continueClimb: '继续攀登',
+  raceLost: '竞速失败',
   menuFooter:
     '单人模式 100% 在浏览器中运行——无需服务器。攀登尖塔的三幕，构筑你的牌组，删除「架构师」。PvP 需要 NEONSPIRE 中继服务器。',
   hpTip: '生命值',

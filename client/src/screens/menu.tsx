@@ -111,6 +111,16 @@ export function MenuScreen() {
         >
           {t('pvpDuel')}
         </button>
+        <button
+          class="btn big"
+          style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
+          onClick={() => {
+            sfx.click()
+            screen.value = 'climb'
+          }}
+        >
+          {t('climbRace')}
+        </button>
         <div class="seedrow">
           <input
             class="neon"

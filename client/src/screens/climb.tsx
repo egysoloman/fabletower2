@@ -1,0 +1,275 @@
+/**
+ * Climb-race screens: queue setup, checkpoint waiting room, the
+ * server-validated rival duel, and the race result. The solo climb between
+ * these states is the ordinary offline game with a rival HUD.
+ */
+import { useEffect, useState } from 'preact/hooks'
+import { CARDS, MINIONS, cardName, type CharId, type PvpAction } from '@neonspire/engine'
+import { BlockChip, HpBar, StatusRow } from '../components'
+import {
+  anchorCenter,
+  defeatFx,
+  energyRipple,
+  flyCard,
+  fxPulses,
+  localWho,
+  registerAnchor,
+  useShake,
+  victoryFx,
+} from '../fx'
+import {
+  climbLeave,
+  climbNotice,
+  climbOpp,
+  climbOppProgress,
+  climbOppReady,
+  climbPending,
+  climbPhase,
+  climbQueue,
+  climbSendAction,
+  climbView,
+} from '../climb'
+import { continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
+import { screen } from '../store'
+import { sfx } from '../sfx'
+import { t, tf } from '../i18n'
+import { Sprite } from '../sprites'
+import { DraggableHand, dragHoverWho, dragMode } from './hand'
+
+function defaultWsUrl(): string {
+  const loc = window.location
+  if (loc.protocol.startsWith('http')) {
+    const dev = loc.port === '5173' || loc.port === '4173'
+    if (dev) return `ws://${loc.hostname}:8787`
+    return `${loc.protocol === 'https:' ? 'wss:' : 'ws:'}//${loc.host}`
+  }
+  return 'ws://localhost:8787'
+}
+
+export function ClimbScreen() {
+  const [url, setUrl] = useState(defaultWsUrl())
+  const [name, setName] = useState('RUNNER')
+  const [char, setChar] = useState<CharId>('runner')
+  const phase = climbPhase.value
+  const view = climbView.value
+  const shakeCls = useShake()
+
+  const youIdx = view?.you
+  useEffect(() => {
+    if (phase === 'duel' && youIdx !== undefined) localWho.value = 'p' + youIdx
+    return () => {
+      localWho.value = 'p'
+    }
+  }, [phase, youIdx])
+
+  const winner = view?.over?.winner
+  useEffect(() => {
+    if (winner === undefined || youIdx === undefined) return
+    if (winner === youIdx) victoryFx(true)
+    else defeatFx()
+  }, [winner])
+
+  // --- Duel ------------------------------------------------------------------
+  if (phase === 'duel' && view) {
+    const me = view.sides[view.you]
+    const them = view.sides[1 - view.you]
+    const myTurn = view.active === view.you && !view.over
+    const hand = me.hand ?? []
+    const pending = climbPending.value
+    const meWho = 'p' + view.you
+    const oppWho = 'p' + (1 - view.you)
+    const playableSet = new Set(
+      myTurn
+        ? hand
+            .map((c, i) => {
+              const def = CARDS[c.id]
+              const cost = c.up && def.upCost !== undefined ? def.upCost : def.cost
+              return !def.unplayable && me.energy >= cost ? i : -1
+            })
+            .filter((i) => i >= 0)
+        : [],
+    )
+    const playFromHand = (idx: number, _who: string | undefined, from?: { x: number; y: number }) => {
+      if (!myTurn || pending) return
+      const card = hand[idx]
+      if (!card) return
+      const def = CARDS[card.id]
+      const dest = anchorCenter(def.target === 'enemy' ? oppWho : meWho)
+      const src = from ?? anchorCenter(meWho)
+      if (src && dest) {
+        flyCard(src, dest, def.type, cardName(card))
+        sfx.whoosh()
+      }
+      energyRipple()
+      sfx.play()
+      climbSendAction({ t: 'play', hand: idx })
+    }
+    const send = (a: PvpAction) => climbSendAction(a)
+    const oppHl = dragMode.value === 'target' ? (dragHoverWho.value === oppWho ? 'snap' : 'targetable') : ''
+
+    return (
+      <div class={`combat screen ${shakeCls}`}>
+        <div class="topbar">
+          <span class="stat" style={{ color: 'var(--gold)' }}>
+            {t('checkpointDuel')}
+          </span>
+          <span class="spacer" />
+          <span class={`turn-indicator ${myTurn ? 'you' : 'them'}`}>
+            {myTurn ? t('yourTurn') : tf('theirTurn', { name: them.name })}
+          </span>
+          <span class="spacer" />
+        </div>
+        <div class="arena">
+          <div class={`player-zone ${fxPulses.value[meWho] ?? ''}`} ref={(el) => registerAnchor(meWho, el)}>
+            <div class={`energy-orb ${fxPulses.value['orb'] ?? ''}`} ref={(el) => registerAnchor('orb', el)}>
+              {me.energy}/{me.energyMax}
+            </div>
+            <BlockChip block={me.block} />
+            <div class="glyph">
+              <Sprite id={char} size={58} />
+            </div>
+            <div class="pname">{tf('youSuffix', { name: me.name })}</div>
+            <HpBar hp={me.hp} maxHp={me.maxHp} mine />
+            <StatusRow statuses={me.statuses} />
+            {me.minions.length > 0 && (
+              <div class="minionrow">
+                {me.minions.map((m, i) => (
+                  <div key={i} class="minion">
+                    <span class="msym">{MINIONS[m.defId]?.sym}</span>
+                    <span class="mhp">
+                      {m.hp}/{m.maxHp}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div class={`opp-zone ${oppHl} ${fxPulses.value[oppWho] ?? ''}`} ref={(el) => registerAnchor(oppWho, el)}>
+            <div class="facedown-row">
+              {Array.from({ length: them.handCount }).map((_, i) => (
+                <div key={i} class="facedown" />
+              ))}
+            </div>
+            <BlockChip block={them.block} />
+            <div class="glyph" style={{ color: '#ff7fc0' }}>
+              <Sprite id="netrunner" size={54} />
+            </div>
+            <div class="ename" style={{ fontFamily: 'var(--font-head)', fontSize: '12px', color: '#ffb8d9' }}>
+              {them.name}
+            </div>
+            <HpBar hp={them.hp} maxHp={them.maxHp} />
+            <StatusRow statuses={them.statuses} />
+            {them.minions.length > 0 && (
+              <div class="minionrow">
+                {them.minions.map((m, i) => (
+                  <div key={i} class="minion">
+                    <span class="msym">{MINIONS[m.defId]?.sym}</span>
+                    <span class="mhp">
+                      {m.hp}/{m.maxHp}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div class="dock">
+          <DraggableHand
+            cards={hand}
+            playable={playableSet}
+            targets={myTurn && !pending ? [oppWho] : []}
+            disabled={!myTurn || pending}
+            onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
+            onPlay={playFromHand}
+          />
+          <button class="btn pink endturn" disabled={!myTurn || pending} onClick={() => send({ t: 'end' })}>
+            {t('endTurn')}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // --- Non-duel states -------------------------------------------------------
+  const opp = climbOppProgress.value
+  return (
+    <div class="screen menu">
+      <div class="logo" style={{ fontSize: 'clamp(30px,6vw,54px)' }}>
+        CLIMB<span>RACE</span>
+      </div>
+      <div class="pvp-status">
+        {phase === 'idle' && (
+          <>
+            <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>
+              {t('climbIntro')}
+            </div>
+            <div class="charrow">
+              {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
+                <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
+                  <Sprite id={c} size={34} />
+                </div>
+              ))}
+            </div>
+            <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder={t('handlePlaceholder')} />
+            <input class="neon" style={{ width: '300px' }} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} placeholder="ws://server:8787" />
+            <button class="btn big pink" onClick={() => climbQueue(url, name, (seed) => startClimbRun(seed, char))}>
+              {t('findRival')}
+            </button>
+          </>
+        )}
+        {(phase === 'connecting' || phase === 'queued') && <div class="pulse">{t('scanning')}</div>}
+        {phase === 'waiting' && (
+          <>
+            <div class="pulse" style={{ color: 'var(--gold)' }}>
+              {t('checkpointWait')}
+            </div>
+            <div class="sub">
+              {climbOppReady.value
+                ? t('rivalReady')
+                : opp
+                  ? tf('rivalAt', { name: climbOpp.value, act: opp.act, floor: opp.floor, hp: opp.hp })
+                  : tf('rivalClimbing', { name: climbOpp.value })}
+            </div>
+          </>
+        )}
+        {phase === 'won' && (
+          <>
+            <h2 style={{ color: 'var(--gold)' }}>{t('rivalEliminated')}</h2>
+            <div class="sub">{climbNotice.value}</div>
+            <button class="btn big pink" onClick={continueClimbAfterWin}>
+              {t('continueClimb')}
+            </button>
+          </>
+        )}
+        {phase === 'lost' && (
+          <>
+            <h2 class="pink">{t('raceLost')}</h2>
+            <div class="sub">{climbNotice.value}</div>
+            <button class="btn" onClick={loseClimb}>
+              {t('menuBtn')}
+            </button>
+          </>
+        )}
+        {phase === 'error' && (
+          <>
+            <div style={{ color: 'var(--red)', maxWidth: '440px', textAlign: 'center', lineHeight: 1.6 }}>{climbNotice.value}</div>
+            <button class="btn" onClick={() => climbLeave()}>
+              {t('retry')}
+            </button>
+          </>
+        )}
+        {(phase === 'idle' || phase === 'error' || phase === 'connecting' || phase === 'queued') && (
+          <button
+            class="btn ghost"
+            onClick={() => {
+              climbLeave()
+              screen.value = 'menu'
+            }}
+          >
+            {t('back')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

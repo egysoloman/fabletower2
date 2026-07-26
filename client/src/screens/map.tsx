@@ -3,6 +3,7 @@ import { MAP_COLS, MAP_ROWS, allNodes, availableNodeIds, type MapNode, type Node
 import { TopBar } from '../components'
 import { clickNode } from '../game'
 import { burst, uiRipple } from '../fx'
+import { climbActive, climbOpp, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -116,6 +117,18 @@ export function MapScreen() {
   return (
     <div class="screen">
       <TopBar showAbandon />
+      {climbActive() && (
+        <div class="rivalhud">
+          {climbOppProgress.value
+            ? tf('rivalAt', {
+                name: climbOpp.value,
+                act: climbOppProgress.value.act,
+                floor: climbOppProgress.value.floor,
+                hp: climbOppProgress.value.hp,
+              })
+            : tf('rivalClimbing', { name: climbOpp.value })}
+        </div>
+      )}
       <div class="act-title">{tf('actTitle', { act: r.act })}</div>
       <div class="map-wrap">
         <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={svgRef}>

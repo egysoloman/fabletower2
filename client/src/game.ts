@@ -53,6 +53,7 @@ import {
   touch,
 } from './store'
 import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processEvents } from './fx'
+import { climbActive, climbBossKill, climbDied, climbLeave, climbReport } from './climb'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
@@ -143,6 +144,7 @@ export function clickNode(id: string) {
   const type = moveTo(r, id)
   if (!type) return
   sfx.click()
+  climbReport(r)
   switch (type) {
     case 'combat':
       startFight('normal')
@@ -276,7 +278,9 @@ function finishCombat(cs: CombatState) {
   cheatOpen.value = false
   applyCombatResult(r, cs)
   combat.value = null
+  climbReport(r)
   if (cs.over === 'lose') {
+    if (climbActive()) climbDied()
     recordRun(false)
     sfx.lose()
     clearSave()
@@ -390,6 +394,13 @@ export function continueFromReward() {
   if (!b || !r) return
   reward.value = null
   if (b.afterBoss) {
+    // Climb race: an act boss IS the checkpoint — submit the run deck and
+    // wait for the rival instead of advancing.
+    if (climbActive()) {
+      climbBossKill(r)
+      touch()
+      return
+    }
     // Beating Act 3 opens the way down: the player chooses whether to jack
     // out with the win or descend into THE ROOT for the true finale.
     if (r.act === FINAL_ACT) {
@@ -422,6 +433,44 @@ export function discardPotion(i: number) {
   sfx.click()
   touch()
   saveGame()
+}
+
+// --- Climb race --------------------------------------------------------------
+
+/** Both racers climb the SAME seed; character is chosen at queue time. */
+export function startClimbRun(seed: number, char: import('@neonspire/engine').CharId) {
+  newGame(seed, 0, char)
+}
+
+/** Checkpoint duel won: the rival is out — keep climbing. */
+export function continueClimbAfterWin() {
+  const r = run.value
+  climbLeave()
+  if (!r) {
+    screen.value = 'menu'
+    return
+  }
+  if (advanceAct(r) === 'victory') {
+    clearSave()
+    screen.value = 'victory'
+    sfx.win()
+    touch()
+    return
+  }
+  screen.value = 'map'
+  sfx.win()
+  touch()
+  saveGame()
+}
+
+/** Checkpoint duel lost (or rival won the race): the run is over. */
+export function loseClimb() {
+  climbLeave()
+  run.value = null
+  combat.value = null
+  clearSave()
+  screen.value = 'menu'
+  touch()
 }
 
 /** Take the win at the surface: Act 3 cleared, run over. */

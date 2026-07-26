@@ -14,6 +14,7 @@ export type Screen =
   | 'gameover'
   | 'victory'
   | 'pvp'
+  | 'climb'
 
 export interface RewardBundle {
   gold: number
@@ -73,7 +74,9 @@ export function saveGame() {
     localStorage.setItem(
       SAVE_KEY,
       JSON.stringify({
-        screen: screen.value === 'pvp' ? 'menu' : screen.value,
+        // Multiplayer screens can't be resurrected from a save — a restored
+        // climb continues as an ordinary solo run from the map.
+        screen: screen.value === 'pvp' ? 'menu' : screen.value === 'climb' ? 'map' : screen.value,
         run: run.value,
         combat: combat.value,
         combatKind: combatKind.value,

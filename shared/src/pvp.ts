@@ -3,7 +3,7 @@
  * interpreter as PvE. Runs on the server (authoritative validation) and the
  * client renders the redacted views it gets back.
  */
-import type { CardInst, DeckSide, GameEvent, PvpAction, PvpState, Statuses, StepResult } from './types'
+import type { CardInst, DeckSide, GameEvent, MinionC, PvpAction, PvpState, Statuses, StepResult } from './types'
 import {
   applyOverheat,
   discardHand,
@@ -27,13 +27,24 @@ export const PVP_DECK: string[] = [
   'holodecoy', 'cachehit', 'overvolt', 'neoncore', 'nanoplating',
 ]
 
-export function newPvp(seed: number, names: [string, string]): PvpState {
+export interface PvpDuelistOpts {
+  /** Custom deck (climb-race duels use the players' real run decks). */
+  deck?: { id: string; up: boolean }[]
+  hp?: number
+}
+
+export function newPvp(seed: number, names: [string, string], custom?: [PvpDuelistOpts, PvpDuelistOpts]): PvpState {
   const rng = rngFromSeed(seed)
   let uid = 1
-  const mkDeck = () => PVP_DECK.map((id): CardInst => ({ uid: uid++, id, up: false }))
+  const mkDeck = (i: 0 | 1) => {
+    const list = custom?.[i]?.deck
+    if (list && list.length > 0) return list.map((c): CardInst => ({ uid: uid++, id: c.id, up: !!c.up }))
+    return PVP_DECK.map((id): CardInst => ({ uid: uid++, id, up: false }))
+  }
+  const hpOf = (i: 0 | 1) => Math.max(1, Math.floor(custom?.[i]?.hp ?? PVP_HP))
   const sides: [DeckSide, DeckSide] = [
-    makeSide(names[0], PVP_HP, PVP_HP, mkDeck(), rng),
-    makeSide(names[1], PVP_HP, PVP_HP, mkDeck(), rng),
+    makeSide(names[0], hpOf(0), hpOf(0), mkDeck(0), rng),
+    makeSide(names[1], hpOf(1), hpOf(1), mkDeck(1), rng),
   ]
   const ps: PvpState = { rng, turn: 1, active: 0, sides, over: null, uid }
   const evs: GameEvent[] = []
@@ -119,6 +130,8 @@ export interface PvpSideView {
   discard: CardInst[]
   exhausted: CardInst[]
   powersPlayed: number
+  /** Summoned allies are public information. */
+  minions: MinionC[]
   /** Present only on your own side. */
   hand?: CardInst[]
 }
@@ -148,6 +161,7 @@ export function viewFor(ps: PvpState, idx: 0 | 1): PvpView {
       discard: s.discard,
       exhausted: s.exhausted,
       powersPlayed: s.powersPlayed,
+      minions: s.minions,
       ...(i === idx ? { hand: s.hand } : {}),
     }
   }
