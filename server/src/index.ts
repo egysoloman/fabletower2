@@ -16,6 +16,7 @@ import {
   CARDS,
   ENCOUNTERS,
   STARTER_DECKS,
+  STARTER_RELICS,
   cardsByRarity,
   coopReduce,
   coopViewFor,
@@ -183,7 +184,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     hp: 75,
     maxHp: 75,
     deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
-    relics: ['cortexlink'],
+    relics: [STARTER_RELICS[chars[i]]],
     gold: 99,
     replied: false,
   }))

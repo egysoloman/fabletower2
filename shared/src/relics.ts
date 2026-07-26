@@ -65,6 +65,21 @@ reg(R({
   hooks: { firstTurnDraw: 1 },
 }))
 reg(R({
+  id: 'ignitionkey', name: 'Ignition Key', rarity: 'starter', sym: '△', char: 'vector',
+  desc: 'Start each combat with 1 Heat — the furnace never fully cools.',
+  hooks: { combatStatuses: { heat: 1 } },
+}))
+reg(R({
+  id: 'phaselocket', name: 'Phase Locket', rarity: 'starter', sym: '◐', char: 'ghost',
+  desc: 'Start each combat with 1 Stance Wall (block on stance entry).',
+  hooks: { combatStatuses: { stancewall: 1 } },
+}))
+reg(R({
+  id: 'dronecradle', name: 'Drone Cradle', rarity: 'starter', sym: '☖', char: 'array',
+  desc: 'Start each combat with 1 Turret already humming.',
+  hooks: { combatStatuses: { turret: 1 } },
+}))
+reg(R({
   id: 'neonheart', name: 'Neon Heart', rarity: 'common', sym: '♥',
   desc: 'Raise your Max HP by 12.',
   hooks: { maxHp: 12 },

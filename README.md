@@ -73,6 +73,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ## Game content
 
+- **A full character-select experience** — animated portrait cards with
+  lore, archetype hints, 1-5 difficulty stars, per-character **signature
+  starting relics** (Cortex Link, Ignition Key, Phase Locket, Drone Cradle)
+  previewed with explanations, **unlockable color palettes** (win a run,
+  then an A5+ run, per character), a weighted random pick, and full
+  keyboard navigation (arrows / Enter / R).
 - **FOUR playable characters** — RUNNER (versatile netdiver); VECTOR, a
   volatile overclocker built on the Heat mechanic (attacks ride +1 damage per
   Heat stack, overheating past the threshold burns you for all of it, vent

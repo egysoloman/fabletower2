@@ -20,6 +20,7 @@ import { byName } from '../components'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
+import { charColor } from './charselect'
 
 function intentText(intent: Intent): string {
   switch (intent.kind) {
@@ -209,7 +210,7 @@ export function CombatScreen() {
             {p.energy}/{p.energyMax}
           </div>
           <BlockChip block={p.block} />
-          <div class="glyph">
+          <div class="glyph" style={{ color: charColor(run.value?.char ?? 'runner') }}>
             <Sprite id={run.value?.char ?? 'runner'} size={58} />
           </div>
           <div class="pname">

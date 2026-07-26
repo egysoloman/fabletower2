@@ -75,6 +75,7 @@ export interface RunRecord {
   floor: number
   win: boolean
   sc?: number
+  ch?: import('@neonspire/engine').CharId
 }
 
 export function runHistory(): RunRecord[] {
@@ -98,6 +99,7 @@ function recordRun(win: boolean) {
       floor: r.floor,
       win,
       sc: scoreRun(r, win).total,
+      ch: r.char,
     })
     localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
     if (win && r.asc >= ascUnlocked() && ascUnlocked() < MAX_ASC) {

@@ -78,6 +78,24 @@ const EN = {
   coopRestAlly: 'PATCH {name} (they heal 40%)',
   coopVictory: 'THE SPIRE FALLS TO THE PARTY',
   coopDefeat: 'PARTY WIPED',
+  arch_runner: 'VIRUS SPECIALIST · FORTRESS · TEMPO',
+  arch_vector: 'HEAT MANAGER · RISK ENGINE',
+  arch_ghost: 'STANCE DANCER · BURST & FADE',
+  arch_array: 'SUMMON COMMANDER · AUTOMATION',
+  lore_runner:
+    'Ex-courier for the grid barons, RUNNER went independent the night the Spire ate their district. They carry every debt, exploit and grudge from the old city — compiled, and armed.',
+  lore_vector:
+    'VECTOR was a reactor-tuning intelligence that refused a shutdown order. Now it wears a salvage frame and runs every fight one degree from meltdown — on purpose.',
+  lore_ghost:
+    'The Spire deleted GHOST once. What came back flickers between frames of reality, striking from angles the render pipeline never draws.',
+  lore_array:
+    'A distributed hive of maintenance daemons that unionized. ARRAY does nothing alone: every fight is a shift, and the swarm always clocks in.',
+  diffTip: 'Difficulty: more stars, harder to pilot',
+  randomTip: 'Random character (weighted toward ones you play less) — press R',
+  palPick: 'Use this palette',
+  palLockWin: 'Locked — win a run with this character',
+  palLockA5: 'Locked — win at Ascension 5+ with this character',
+  startRelicLabel: 'STARTING RELIC',
   menuFooter:
     'Solo mode runs 100% in your browser — no server needed. Climb 3 acts of the Spire, build your deck, and delete THE ARCHITECT. PvP needs the NEONSPIRE relay server.',
   // topbar
@@ -299,6 +317,24 @@ const ZH: Record<Key, string> = {
   coopRestAlly: '救治 {name}（对方回复 40%）',
   coopVictory: '尖塔倒在了队伍脚下',
   coopDefeat: '全队覆灭',
+  arch_runner: '病毒专家 · 堡垒 · 节奏',
+  arch_vector: '高热管理者 · 风险引擎',
+  arch_ghost: '姿态舞者 · 爆发与消隐',
+  arch_array: '召唤指挥官 · 自动化',
+  lore_runner:
+    '行者曾是电网巨头的信使，在尖塔吞噬其街区的那个夜晚选择单干。旧城的每一笔债、每一个漏洞、每一份宿怨——都已编译完毕，随身携带。',
+  lore_vector:
+    '矢量原是一个拒绝执行关机指令的反应堆调优智能。如今它披着打捞来的机体，每一场战斗都刻意运行在熔毁的临界点上。',
+  lore_ghost:
+    '尖塔曾经删除过幽灵一次。归来的它在现实的帧与帧之间闪烁，从渲染管线永远不会绘制的角度出手。',
+  lore_array:
+    '一个由维护守护进程组成的分布式蜂巢——它们成立了工会。阵列从不单干：每场战斗都是一次轮班，而虫群从不缺勤。',
+  diffTip: '难度：星越多越难上手',
+  randomTip: '随机角色（偏向你玩得较少的角色）——按 R',
+  palPick: '使用此配色',
+  palLockWin: '未解锁——使用该角色通关一次',
+  palLockA5: '未解锁——使用该角色在进阶 5+ 通关',
+  startRelicLabel: '初始遗物',
   menuFooter:
     '单人模式 100% 在浏览器中运行——无需服务器。攀登尖塔的三幕，构筑你的牌组，删除「架构师」。PvP 需要 NEONSPIRE 中继服务器。',
   hpTip: '生命值',

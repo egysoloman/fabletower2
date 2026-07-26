@@ -39,6 +39,14 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
 
 export const MAX_ASC = 20
 
+/** Each character opens the climb with their own signature relic. */
+export const STARTER_RELICS: Record<CharId, string> = {
+  runner: 'cortexlink',
+  vector: 'ignitionkey',
+  ghost: 'phaselocket',
+  array: 'dronecradle',
+}
+
 export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState {
   const rng = rngFromSeed(seed)
   let uid = 1
@@ -61,7 +69,7 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
     maxHp,
     gold: asc >= 12 ? 75 : 99,
     deck,
-    relics: ['cortexlink'],
+    relics: [STARTER_RELICS[char]],
     uid,
     floor: 0,
     lastEncounter: '',

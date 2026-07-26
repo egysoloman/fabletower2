@@ -321,6 +321,9 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   cortexlink: { name: '皮层链接', desc: '每场战斗的第一个回合额外抽 1 张牌。' },
+  ignitionkey: { name: '点火钥匙', desc: '每场战斗开始时获得 1 点高热——熔炉从未完全冷却。' },
+  phaselocket: { name: '相位吊坠', desc: '每场战斗开始时获得 1 层姿态壁垒（进入姿态时获得格挡）。' },
+  dronecradle: { name: '无人机摇篮', desc: '每场战斗开始时已有 1 层炮塔在嗡鸣。' },
   neonheart: { name: '霓虹之心', desc: '生命上限提高 12。' },
   crackedbattery: { name: '破裂电池', desc: '每场战斗的第一个回合额外获得 1 点能量。' },
   quantumchip: { name: '量子芯片', desc: '每场战斗你打出的第一张牌费用为 0。' },

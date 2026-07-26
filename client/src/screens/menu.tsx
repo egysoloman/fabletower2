@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import type { CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
 import { Sprite } from '../sprites'
+import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
@@ -38,36 +39,7 @@ export function MenuScreen() {
         </div>
       </div>
 
-      <div class="charrow">
-        <div class={`charcard runner ${char === 'runner' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('runner'))}>
-          <Sprite id="runner" size={46} />
-          <div>
-            <div class="cname-h">{t('charRunner')}</div>
-            <div class="cdesc-h">{t('charRunnerDesc')}</div>
-          </div>
-        </div>
-        <div class={`charcard vector ${char === 'vector' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('vector'))}>
-          <Sprite id="vector" size={46} />
-          <div>
-            <div class="cname-h">{t('charVector')}</div>
-            <div class="cdesc-h">{t('charVectorDesc')}</div>
-          </div>
-        </div>
-        <div class={`charcard ghost ${char === 'ghost' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('ghost'))}>
-          <Sprite id="ghost" size={46} />
-          <div>
-            <div class="cname-h">{t('charGhost')}</div>
-            <div class="cdesc-h">{t('charGhostDesc')}</div>
-          </div>
-        </div>
-        <div class={`charcard array ${char === 'array' ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar('array'))}>
-          <Sprite id="array" size={46} />
-          <div>
-            <div class="cname-h">{t('charArray')}</div>
-            <div class="cdesc-h">{t('charArrayDesc')}</div>
-          </div>
-        </div>
-      </div>
+      <CharSelect value={char} onChange={setChar} onStart={start} />
 
       <div class="menu-buttons">
         {canContinue && (

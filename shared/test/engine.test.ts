@@ -943,6 +943,19 @@ describe('GHOST stances (cycle 9)', () => {
     expect(s.player.statuses.str).toBe(1) // unchanged
   })
 
+  it('each character opens with their signature starter relic', async () => {
+    const { STARTER_RELICS } = await import('../src/run')
+    for (const [ch, relic] of Object.entries(STARTER_RELICS)) {
+      const run = newRun(3, 0, ch as any)
+      expect(run.relics).toEqual([relic])
+      expect(RELICS[relic].rarity).toBe('starter')
+    }
+    // starter relics never appear in reward pools
+    const { obtainableRelics } = await import('../src/relics')
+    const pool = obtainableRelics([], true, 'vector').map((r) => r.id)
+    expect(pool).not.toContain('ignitionkey')
+  })
+
   it('ghost pool is exclusive and the starter deck boots with stance cards', () => {
     const gPool = obtainableCards('ghost').map((c) => c.id)
     expect(gPool).toContain('flicker')
