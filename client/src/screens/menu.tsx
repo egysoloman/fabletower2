@@ -5,6 +5,8 @@ import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
 import { screenWipe } from '../fx'
 import { setSetting, settings } from '../settings'
+import { account, login, logout, register, syncMsg, syncUp } from '../account'
+import { useState as useAccState } from 'preact/hooks'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, tf, toggleLang } from '../i18n'
 import { SoundIcon } from '../sprites'
@@ -226,9 +228,48 @@ export function SettingsScreen() {
           </button>
         </label>
       </div>
+      <AccountPanel />
       <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
         {t('back')}
       </button>
+    </div>
+  )
+}
+
+/** Optional cloud account: guest mode is simply not logging in. */
+function AccountPanel() {
+  const [user, setUser] = useAccState('')
+  const [pass, setPass] = useAccState('')
+  const [err, setErr] = useAccState('')
+  const a = account.value
+  const go = (fn: (u: string, p: string) => Promise<void>) => {
+    setErr('')
+    fn(user, pass).catch((e) => setErr(String(e.message)))
+  }
+  return (
+    <div class="panel popin" style={{ minWidth: '340px' }}>
+      <h2>{t('accTitle')}</h2>
+      {a ? (
+        <>
+          <div class="sub">{tf('accHello', { name: a.name })}</div>
+          <div class="sub" style={{ color: 'var(--green)' }}>{syncMsg.value}</div>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button class="btn" onClick={() => void syncUp()}>{t('accSync')}</button>
+            <button class="btn ghost" onClick={logout}>{t('accLogout')}</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div class="sub">{t('accGuest')}</div>
+          <input class="neon" placeholder={t('accUser')} value={user} maxLength={16} onInput={(e) => setUser((e.target as HTMLInputElement).value)} />
+          <input class="neon" type="password" placeholder={t('accPass')} value={pass} onInput={(e) => setPass((e.target as HTMLInputElement).value)} />
+          {err && <div class="sub" style={{ color: 'var(--red)' }}>{err}</div>}
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button class="btn pink" onClick={() => go(login)}>{t('accLogin')}</button>
+            <button class="btn" onClick={() => go(register)}>{t('accRegister')}</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -157,6 +157,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ![pvp](docs/pvp.png)
 
+- **Optional cloud accounts** (guest mode is the default): register/log
+  in from Settings to sync feats, codex, palettes and unlocks across
+  devices — JSON-file store, scrypt-hashed credentials, bearer sessions,
+  and admin tools (list/delete/ban accounts, password resets, open/close
+  registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
+
 ## Tech
 
 Preact + `@preact/signals` (tiny, smooth), Vite, self-hosted Orbitron/Share

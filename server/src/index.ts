@@ -12,6 +12,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
+import { handleApi } from './accounts'
 import {
   CARDS,
   ENCOUNTERS,
@@ -84,7 +85,10 @@ async function serveStatic(url: string, res: ServerResponse) {
   }
 }
 
-const http = createServer((req, res) => serveStatic(req.url ?? '/', res))
+const http = createServer(async (req, res) => {
+  if (await handleApi(req, res)) return
+  serveStatic(req.url ?? '/', res)
+})
 
 // --- Matchmaking + rooms -----------------------------------------------------
 

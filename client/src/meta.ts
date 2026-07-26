@@ -7,6 +7,7 @@ import { signal } from '@preact/signals'
 import type { CharId, CombatState, RunState } from '@neonspire/engine'
 import { runHistory, type RunRecord } from './game'
 import { sfx } from './sfx'
+import { schedulePush } from './account'
 
 // --- Codex: discovered content ----------------------------------------------
 
@@ -54,6 +55,7 @@ export function discoverRun(run: RunState) {
   if (dirty) {
     codex.value = { ...c }
     saveCodex()
+    schedulePush()
   }
 }
 
@@ -157,6 +159,7 @@ export function award(id: string) {
     /* best-effort */
   }
   achToasts.value = [...achToasts.value, id]
+  schedulePush()
   sfx.win()
   setTimeout(() => {
     achToasts.value = achToasts.value.filter((x) => x !== id)
