@@ -31,6 +31,12 @@ reg(P({ id: 'overloadcell', name: 'Overload Cell', sym: '✹', target: 'enemy', 
 reg(P({ id: 'strserum', name: 'Strength Serum', sym: '▲', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'str', n: 2 }] }))
 reg(P({ id: 'nullvial', name: 'Null Vial', sym: '◈', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'artifact', n: 1 }] }))
 reg(P({ id: 'ghostvial', name: 'Ghost Vial', sym: '⌀', target: 'none', rarity: 'rare', effects: [{ k: 'block', n: 8 }, { k: 'draw', n: 2 }] }))
+reg(P({ id: 'clusterbomb', name: 'Cluster Bomb', sym: '✸', target: 'none', rarity: 'rare', effects: [{ k: 'dmgAll', n: 10 }] }))
+reg(P({ id: 'regentonic', name: 'Regen Tonic', sym: '❉', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'regen', n: 3 }] }))
+reg(P({ id: 'focusvial', name: 'Focus Vial', sym: '◬', target: 'none', rarity: 'common', effects: [{ k: 'draw', n: 2 }, { k: 'energy', n: 1 }] }))
+reg(P({ id: 'thornextract', name: 'Thorn Extract', sym: '❖', target: 'none', rarity: 'common', effects: [{ k: 'status', to: 'self', id: 'thorns', n: 3 }] }))
+reg(P({ id: 'dampener', name: 'Dampener Spray', sym: '↯', target: 'enemy', rarity: 'common', effects: [{ k: 'status', to: 'target', id: 'weak', n: 3 }] }))
+reg(P({ id: 'platedraught', name: 'Plating Draught', sym: '▣', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'plating', n: 2 }] }))
 
 export function potionName(id: string): string {
   return isZh() ? (POTION_ZH[id]?.name ?? POTIONS[id]?.name ?? id) : (POTIONS[id]?.name ?? id)

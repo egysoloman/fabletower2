@@ -590,6 +590,17 @@ describe('potions', () => {
     expect(applyPotion(cs, 'nope').error).toBeTruthy()
   })
 
+  it('every potion executes cleanly through the shared interpreter', async () => {
+    const { applyPotion } = await import('../src/combat')
+    const { POTIONS } = await import('../src/potions')
+    expect(Object.keys(POTIONS).length).toBeGreaterThanOrEqual(16)
+    for (const id of Object.keys(POTIONS)) {
+      const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'])
+      const res = applyPotion(cs, id, 0)
+      expect(res.error, `potion ${id} errored: ${res.error}`).toBeUndefined()
+    }
+  })
+
   it('drops respect belt capacity', async () => {
     const { rollPotionDrop, MAX_POTIONS } = await import('../src/run')
     const run = newRun(3)

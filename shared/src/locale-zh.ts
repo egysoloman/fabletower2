@@ -109,6 +109,14 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   wraithform: { name: '幽魂形态' },
   deathblossom: { name: '死亡绽放', flavor: '每位见证者只开一次' },
   dualitycore: { name: '二象核心', flavor: '两者皆是。账单后付。' },
+  airgap: { name: '物理隔离', flavor: '拔掉一切' },
+  ddosburst: { name: 'DDoS 洪流' },
+  sudosu: { name: 'sudo su', flavor: '权限已授予' },
+  coretap: { name: '核心抽取' },
+  slagshot: { name: '熔渣射击' },
+  ghoststride: { name: '幽灵步' },
+  crashout: { name: '崩溃退出', flavor: '从目标身上离场' },
+  spectralarmor: { name: '幽光护甲' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
@@ -122,6 +130,12 @@ export const POTION_ZH: Record<string, { name: string }> = {
   strserum: { name: '力量血清' },
   nullvial: { name: '虚无小瓶' },
   ghostvial: { name: '幽灵小瓶' },
+  clusterbomb: { name: '集束炸弹' },
+  regentonic: { name: '再生滋补剂' },
+  focusvial: { name: '专注小瓶' },
+  thornextract: { name: '荆棘萃取液' },
+  dampener: { name: '抑制喷雾' },
+  platedraught: { name: '镀层药剂' },
 }
 
 export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText?: string }> = {

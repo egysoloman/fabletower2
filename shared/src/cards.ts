@@ -635,6 +635,53 @@ reg(c({
   flavor: '<defunct> but deadly',
 }))
 
+// --- Pool padding: cycle 12 -------------------------------------------------
+
+reg(c({
+  id: 'airgap', name: 'Air Gap', type: 'skill', rarity: 'rare', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'artifact', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'artifact', n: 1 }, { k: 'block', n: 6 }],
+  exhaust: true, upExhaust: true,
+  flavor: 'unplug everything',
+}))
+reg(c({
+  id: 'ddosburst', name: 'DDoS Burst', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 2, target: 'none',
+  effects: [{ k: 'dmgAll', n: 8 }, { k: 'status', to: 'all', id: 'weak', n: 1 }],
+  upEffects: [{ k: 'dmgAll', n: 11 }, { k: 'status', to: 'all', id: 'weak', n: 1 }],
+}))
+reg(c({
+  id: 'sudosu', name: 'sudo su', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 0, target: 'none',
+  effects: [{ k: 'energy', n: 2 }],
+  upEffects: [{ k: 'energy', n: 2 }, { k: 'draw', n: 1 }],
+  exhaust: true, upExhaust: true,
+  flavor: 'permission granted',
+}))
+reg(c({
+  id: 'coretap', name: 'Core Tap', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'draw', n: 2 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+  upEffects: [{ k: 'draw', n: 3 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+}))
+reg(c({
+  id: 'slagshot', name: 'Slag Shot', type: 'attack', rarity: 'common', char: 'vector', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 4 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 6 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+}))
+reg(c({
+  id: 'ghoststride', name: 'Ghost Stride', type: 'attack', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 5, times: 2 }],
+  upEffects: [{ k: 'dmg', n: 7, times: 2 }],
+}))
+reg(c({
+  id: 'crashout', name: 'Crash Out', type: 'attack', rarity: 'rare', char: 'ghost', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 16 }, { k: 'enterStance', id: 'none' }],
+  upEffects: [{ k: 'dmg', n: 22 }, { k: 'enterStance', id: 'none' }],
+  flavor: 'exit through the target',
+}))
+reg(c({
+  id: 'spectralarmor', name: 'Spectral Armor', type: 'skill', rarity: 'common', char: 'ghost', cost: 2, target: 'none',
+  effects: [{ k: 'block', n: 12 }], upEffects: [{ k: 'block', n: 16 }],
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
