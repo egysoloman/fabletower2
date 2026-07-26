@@ -29,6 +29,8 @@ reg(P({ id: 'neurodart', name: 'Neuro Dart', sym: '◎', target: 'enemy', rarity
 reg(P({ id: 'acidflask', name: 'Acid Flask', sym: '☣', target: 'enemy', rarity: 'common', effects: [{ k: 'status', to: 'target', id: 'corrupt', n: 5 }] }))
 reg(P({ id: 'overloadcell', name: 'Overload Cell', sym: '✹', target: 'enemy', rarity: 'rare', effects: [{ k: 'dmg', n: 15 }] }))
 reg(P({ id: 'strserum', name: 'Strength Serum', sym: '▲', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'str', n: 2 }] }))
+reg(P({ id: 'nullvial', name: 'Null Vial', sym: '◈', target: 'none', rarity: 'rare', effects: [{ k: 'status', to: 'self', id: 'artifact', n: 1 }] }))
+reg(P({ id: 'ghostvial', name: 'Ghost Vial', sym: '⌀', target: 'none', rarity: 'rare', effects: [{ k: 'block', n: 8 }, { k: 'draw', n: 2 }] }))
 
 export function potionName(id: string): string {
   return isZh() ? (POTION_ZH[id]?.name ?? POTIONS[id]?.name ?? id) : (POTIONS[id]?.name ?? id)

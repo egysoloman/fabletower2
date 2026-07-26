@@ -104,6 +104,8 @@ export const POTION_ZH: Record<string, { name: string }> = {
   acidflask: { name: '酸蚀瓶' },
   overloadcell: { name: '过载电池' },
   strserum: { name: '力量血清' },
+  nullvial: { name: '虚无小瓶' },
+  ghostvial: { name: '幽灵小瓶' },
 }
 
 export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText?: string }> = {
@@ -127,6 +129,7 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   coolant: { name: '冷却液', desc: '过热阈值提高 {n}。', powerText: '你的过热阈值提高 {n}。' },
   ignition: { name: '点火', desc: '回合结束时获得 {n} 点高热。', powerText: '你的回合结束时，获得 {n} 点高热。' },
   reactor: { name: '反应堆', desc: '过热不再伤害你，而是对所有敌人造成该伤害。', powerText: '过热不再伤害你——改为对所有敌人造成该伤害。' },
+  artifact: { name: '人工制品', desc: '抵消接下来 {n} 次减益。', powerText: '获得 {n} 层人工制品：每层抵消下一次施加于你的减益。' },
 }
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
@@ -163,6 +166,7 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   autoloader: { name: '自动装填器', desc: '每场战斗的第一个回合额外获得 2 点能量。' },
   exoframe: { name: '外骨骼框架', desc: '每当卡牌为你提供格挡，额外获得 2 点。' },
   berserkerchip: { name: '狂战士芯片', desc: '每场战斗开始时获得 2 点力量……代价是生命上限 -10。' },
+  faradaycage: { name: '法拉第笼', desc: '每场战斗开始时获得 1 层人工制品（抵消下一次减益）。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
@@ -289,6 +293,60 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
     choices: [
       { label: '搜刮托盘', detail: '获得一瓶随机药剂并回复 5 点生命。' },
       { label: '离开', detail: '什么都不会发生。' },
+    ],
+  },
+  auction: {
+    name: '暗网拍卖行',
+    text: '一间弹窗式拍卖行涌进你的 HUD：无标签的硬件、烫手的固件，还有一个永远停在十秒的倒计时。',
+    choices: [
+      { label: '竞拍硬件', detail: '支付 85¤：获得一个随机遗物。' },
+      { label: '竞拍固件', detail: '支付 40¤：将一张随机罕见牌加入牌组。' },
+      { label: '围观', detail: '什么都不会发生。' },
+    ],
+  },
+  stimlab: {
+    name: '废弃兴奋剂实验室',
+    text: '半成品的批次在龟裂的加热灯下冒泡。好货都在冷藏柜里；而冷藏柜连着某个东西。',
+    choices: [
+      { label: '搜刮冷藏柜', detail: '获得 2 瓶随机药剂。受到 6 点伤害。' },
+      { label: '小心调配', detail: '获得一瓶随机药剂。' },
+      { label: '离开', detail: '什么都不会发生。' },
+    ],
+  },
+  archivist: {
+    name: '档案管理员',
+    text: '一个由堆叠硬盘构成的佝偻身影，编目着一切曾被删除的东西。它愿意交易——但只以同类相换。',
+    choices: [
+      { label: '以知识换知识', detail: '从牌组移除一张牌，然后加入一张随机罕见牌。' },
+      { label: '捐赠', detail: '支付 40¤：升级一张随机卡牌。' },
+      { label: '退开', detail: '什么都不会发生。' },
+    ],
+  },
+  junkyard: {
+    name: '无人机废料场',
+    text: '数英亩报废的无人机，已被拾荒者翻了个半净。废堆之下，还有什么在广播一份维修手册。',
+    choices: [
+      { label: '挖出核心', detail: '获得一个随机遗物。一张「故障」加入你的牌组。' },
+      { label: '拆解零件', detail: '获得 50¤。' },
+      { label: '继续赶路', detail: '什么都不会发生。' },
+    ],
+  },
+  chapel: {
+    name: '静默服务器教堂',
+    text: '一整厅转速归零的服务器。这里供奉的东西已经完成了它的运算。这份寂静是承重的。',
+    choices: [
+      { label: '冥想', detail: '生命上限提高 4，并回复 10 点生命。' },
+      { label: '剥走铜线', detail: '获得 70¤。一张「延迟」诅咒加入你的牌组。' },
+      { label: '蹑足离开', detail: '什么都不会发生。' },
+    ],
+  },
+  glitchpool: {
+    name: '故障之池',
+    text: '一汪原始的、未渲染的空间——地板在这里忘记了自己的贴图。掉进去的东西回来时……都变了样。',
+    choices: [
+      { label: '跳入', detail: '加入一张随机稀有牌。受到 10 点伤害并获得一张「故障」。' },
+      { label: '掠过水面', detail: '升级一张随机卡牌。' },
+      { label: '保持距离', detail: '什么都不会发生。' },
     ],
   },
   boot: {

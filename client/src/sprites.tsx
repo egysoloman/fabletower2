@@ -337,6 +337,52 @@ const ART: Record<string, JSX.Element> = {
       {dot(52, 56, 2.2)}
     </>
   ),
+  'ev-auction': (
+    <>
+      <rect x="30" y="8" width="16" height="12" rx="2" transform="rotate(45 38 14)" />
+      <path d="M34 24 L18 40" stroke-width="3" />
+      <path d="M12 52 H40 M16 52 V46 H36 V52" stroke-width="1.8" />
+    </>
+  ),
+  'ev-stimlab': (
+    <>
+      <path d="M28 8 H36 M32 8 V24 L18 48 A6 6 0 0 0 24 56 H40 A6 6 0 0 0 46 48 L32 24" />
+      <path d="M24 42 H40" stroke-width="1.6" />
+      {dot(29, 48, 1.8)}
+      {dot(36, 50, 1.4)}
+    </>
+  ),
+  'ev-archivist': (
+    <>
+      <rect x="14" y="40" width="36" height="10" rx="1" />
+      <rect x="18" y="28" width="28" height="10" rx="1" />
+      <rect x="22" y="16" width="20" height="10" rx="1" />
+      {dot(44, 45, 1.6)}
+      {dot(40, 33, 1.6)}
+      {dot(36, 21, 1.6)}
+    </>
+  ),
+  'ev-junkyard': (
+    <>
+      <path d="M14 50 L36 28" stroke-width="2.4" />
+      <path d="M34 18 A10 10 0 0 1 46 30 L52 24 M46 30 L40 36" />
+      <path d="M12 56 H30" stroke-width="1.6" />
+      <path d="M46 46 L54 54 M54 46 L46 54" stroke-width="1.8" />
+    </>
+  ),
+  'ev-chapel': (
+    <>
+      <rect x="22" y="24" width="20" height="32" rx="2" />
+      <path d="M26 32 H38 M26 38 H38 M26 44 H38" stroke-width="1.4" />
+      <path d="M32 20 C28 14 32 10 32 8 C32 10 36 14 32 20" />
+    </>
+  ),
+  'ev-glitchpool': (
+    <>
+      <path d="M32 12 A20 20 0 1 1 12 32 A14 14 0 1 0 32 18 A9 9 0 1 1 26 32" />
+      {dot(32, 32, 2)}
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />

@@ -220,6 +220,11 @@ reg(R({
   desc: 'Start each combat with 2 Strength… at the cost of 10 Max HP.',
   hooks: { combatStatuses: { str: 2 }, maxHp: -10 },
 }))
+reg(R({
+  id: 'faradaycage', name: 'Faraday Cage', rarity: 'rare', sym: '◈',
+  desc: 'Start each combat with 1 Artifact (negates the next debuff).',
+  hooks: { combatStatuses: { artifact: 1 } },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)

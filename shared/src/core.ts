@@ -67,6 +67,14 @@ export function applyOverheat(
 }
 
 export function applyStatus(f: Fighter, id: StatusId, n: number, who: string, evs: GameEvent[]) {
+  // Artifact eats incoming debuffs, one application per charge.
+  if (n > 0 && DEBUFFS.includes(id) && (f.statuses.artifact ?? 0) > 0) {
+    const left = (f.statuses.artifact ?? 0) - 1
+    if (left <= 0) delete f.statuses.artifact
+    else f.statuses.artifact = left
+    evs.push({ e: 'lifted', who })
+    return
+  }
   f.statuses[id] = (f.statuses[id] ?? 0) + n
   if ((f.statuses[id] ?? 0) <= 0) delete f.statuses[id]
   evs.push({ e: 'status', who, id, n })

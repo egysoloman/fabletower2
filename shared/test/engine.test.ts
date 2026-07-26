@@ -828,3 +828,54 @@ describe('THE ROOT (act 4)', () => {
     expect(scoreRun(run, false).lines.some((l) => l.k === 'deep')).toBe(false)
   })
 })
+
+describe('artifact & events (cycle 7)', () => {
+  it('artifact negates debuffs one application at a time, buffs pass', async () => {
+    const { applyStatus } = await import('../src/core')
+    const f: any = { statuses: { artifact: 2 }, hp: 10, maxHp: 10, block: 0 }
+    const evs: any[] = []
+    applyStatus(f, 'weak', 2, 'e0', evs)
+    expect(f.statuses.weak).toBeUndefined()
+    expect(f.statuses.artifact).toBe(1)
+    applyStatus(f, 'str', 2, 'e0', evs)
+    expect(f.statuses.str).toBe(2)
+    applyStatus(f, 'vuln', 1, 'e0', evs)
+    expect(f.statuses.artifact).toBeUndefined()
+    applyStatus(f, 'vuln', 1, 'e0', evs)
+    expect(f.statuses.vuln).toBe(1)
+    expect(evs.filter((e) => e.e === 'lifted').length).toBe(2)
+  })
+
+  it('act 4 guardians open with artifact; A5 elites gain one', () => {
+    expect(ENEMIES.theroot.traits?.artifact).toBe(2)
+    expect(ENEMIES.rootdaemon.traits?.artifact).toBe(1)
+    const cs = startCombat({
+      deck: ['strike', 'strike', 'strike', 'strike', 'strike'].map((id, i) => inst(id, i + 1)),
+      hp: 75, maxHp: 75, relics: [], enemyIds: ['golem'], encounterId: 'golem',
+      seed: 4, uidStart: 100, asc: 5, kind: 'elite',
+    })
+    expect(cs.enemies[0].statuses.artifact).toBe(1)
+  })
+
+  it('faraday cage gives the player artifact; null vial grants one mid-fight', async () => {
+    const { applyPotion } = await import('../src/combat')
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'], 42, ['faradaycage'])
+    expect(cs.player.statuses.artifact).toBe(1)
+    const r = applyPotion(cs, 'nullvial')
+    expect(r.state.player.statuses.artifact).toBe(2)
+  })
+
+  it('event pool grew and every outcome list executes cleanly', () => {
+    expect(EVENTS.length).toBeGreaterThanOrEqual(17)
+    for (const ev of EVENTS) {
+      for (const ch of ev.choices) {
+        const run = newRun(5)
+        run.gold = 500
+        const res = applyOutcomes(run, ch.outcomes)
+        expect(Array.isArray(res.lines), `${ev.id} outcome failed`).toBe(true)
+        expect(run.hp).toBeGreaterThan(0)
+        expect(run.gold).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+})

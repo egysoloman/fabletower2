@@ -25,6 +25,7 @@ export type StatusId =
   | 'coolant' // overheat threshold +N
   | 'ignition' // gain N heat at end of own turn
   | 'reactor' // overheat damages ALL enemies instead of you
+  | 'artifact' // negates the next N debuffs applied to this fighter
 
 export type Statuses = Partial<Record<StatusId, number>>
 
@@ -59,6 +60,7 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   coolant: { name: 'Coolant', sym: '❄', bad: false, desc: 'Overheat threshold raised by {n}.', powerText: 'Raise your overheat threshold by {n}.' },
   ignition: { name: 'Ignition', sym: 'Δ', bad: false, desc: 'Gains {n} Heat at end of turn.', powerText: 'At the end of your turn, gain {n} Heat.' },
   reactor: { name: 'Reactor', sym: '☢', bad: false, desc: 'Overheating damages ALL enemies instead of you.', powerText: 'Overheating no longer hurts you — it deals the damage to ALL enemies instead.' },
+  artifact: { name: 'Artifact', sym: '◈', bad: false, desc: 'Negates the next {n} debuff(s).', powerText: 'Gain {n} Artifact: each charge negates the next debuff applied to you.' },
 }
 
 export const DEBUFFS: StatusId[] = ['weak', 'vuln', 'corrupt']

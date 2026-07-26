@@ -178,7 +178,7 @@ reg(E({
 }))
 reg(E({
   id: 'rootdaemon', name: 'ROOT DAEMON', glyph: '🐲', hp: [130, 140],
-  traits: { str: 2 },
+  traits: { str: 2, artifact: 1 },
   moves: [
     { id: 'sudo', name: 'Sudo', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 3 }] },
     { id: 'smite', name: 'Smite', weight: 3, effects: [{ k: 'atk', n: 20 }] },
@@ -219,7 +219,8 @@ reg(E({
 reg(E({
   id: 'theroot', name: 'THE ROOT', glyph: '⌬', hp: [400, 400], boss: true,
   // Ritual makes it hit harder every single turn — the clock you race.
-  traits: { ritual: 1 },
+  // Artifact blunts opening debuff stacks; you must chew through it first.
+  traits: { ritual: 1, artifact: 2 },
   moves: [
     { id: 'rootpulse', name: 'Root Pulse', weight: 3, effects: [{ k: 'atk', n: 10, times: 2 }] },
     { id: 'overwrite', name: 'OVERWRITE', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 30 }] },

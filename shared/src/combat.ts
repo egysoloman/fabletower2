@@ -70,6 +70,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
       statuses[k as keyof typeof statuses] = (statuses[k as keyof typeof statuses] ?? 0) + v
     }
     if (asc >= 4 && (def.boss || o.kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
+    if (asc >= 5 && (def.boss || o.kind === 'elite')) statuses.artifact = (statuses.artifact ?? 0) + 1
     return {
       defId: id,
       name: def.name,

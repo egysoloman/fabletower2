@@ -156,6 +156,72 @@ export const EVENTS: EventDef[] = [
       { label: 'LEAVE', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
+  {
+    id: 'auction',
+    name: 'Darknet Auction',
+    glyph: '🔨',
+    text: 'A pop-up auction house floods your HUD with lots: unlabeled hardware, hot firmware, and a countdown that is always at ten seconds.',
+    choices: [
+      { label: 'BID ON HARDWARE', detail: 'Pay 85¤: gain a random relic.', needGold: 85, outcomes: [{ k: 'gold', n: -85 }, { k: 'relic' }] },
+      { label: 'BID ON FIRMWARE', detail: 'Pay 40¤: add a random UNCOMMON card to your deck.', needGold: 40, outcomes: [{ k: 'gold', n: -40 }, { k: 'cardRandom', rarity: 'uncommon' }] },
+      { label: 'LURK', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'stimlab',
+    name: 'Abandoned Stim Lab',
+    glyph: '⚗',
+    text: 'Half-finished batches bubble under cracked heat lamps. The good stuff is in the fridge; the fridge is wired to something.',
+    choices: [
+      { label: 'RAID THE FRIDGE', detail: 'Gain 2 random potions. Take 6 damage.', outcomes: [{ k: 'potion' }, { k: 'potion' }, { k: 'damage', n: 6 }] },
+      { label: 'BREW CAREFULLY', detail: 'Gain a random potion.', outcomes: [{ k: 'potion' }] },
+      { label: 'LEAVE', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'archivist',
+    name: 'The Archivist',
+    glyph: '📚',
+    text: 'A hunched figure of stacked drives catalogues everything that was ever deleted. It will trade — but only in kind.',
+    choices: [
+      { label: 'TRADE KNOWLEDGE', detail: 'Remove a card from your deck, then add a random UNCOMMON card.', outcomes: [{ k: 'removeChoose' }, { k: 'cardRandom', rarity: 'uncommon' }] },
+      { label: 'DONATE', detail: 'Pay 40¤: upgrade a random card.', needGold: 40, outcomes: [{ k: 'gold', n: -40 }, { k: 'upgradeRandom' }] },
+      { label: 'BACK AWAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'junkyard',
+    name: 'Drone Junkyard',
+    glyph: '🛠',
+    text: 'Acres of dead drones, picked half-clean. Something under the pile is still broadcasting a service manual.',
+    choices: [
+      { label: 'DIG FOR THE CORE', detail: 'Gain a random relic. A Glitch is added to your deck.', outcomes: [{ k: 'relic' }, { k: 'cardGlitch' }] },
+      { label: 'STRIP PARTS', detail: 'Gain 50¤.', outcomes: [{ k: 'gold', n: 50 }] },
+      { label: 'MOVE ON', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'chapel',
+    name: 'Silent Server Chapel',
+    glyph: '🕯',
+    text: 'A hall of servers spun down to zero RPM. Whatever was worshipped here has finished computing. The silence is load-bearing.',
+    choices: [
+      { label: 'MEDITATE', detail: 'Raise your Max HP by 4 and heal 10 HP.', outcomes: [{ k: 'maxhp', n: 4 }, { k: 'heal', n: 10 }] },
+      { label: 'STRIP THE COPPER', detail: 'Gain 70¤. A Lag curse is added to your deck.', outcomes: [{ k: 'gold', n: 70 }, { k: 'curse' }] },
+      { label: 'TIPTOE OUT', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'glitchpool',
+    name: 'Glitch Pool',
+    glyph: '🌀',
+    text: 'A pool of raw, un-rendered space where the floor forgot its textures. Things dropped in come back… different.',
+    choices: [
+      { label: 'DIVE', detail: 'Add a random RARE card. Take 10 damage and gain a Glitch.', outcomes: [{ k: 'cardRandom', rarity: 'rare' }, { k: 'damage', n: 10 }, { k: 'cardGlitch' }] },
+      { label: 'SKIM THE SURFACE', detail: 'Upgrade a random card.', outcomes: [{ k: 'upgradeRandom' }] },
+      { label: 'KEEP YOUR DISTANCE', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
 ]
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */
