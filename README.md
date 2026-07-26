@@ -125,8 +125,8 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   `⌁ CHEATS` button in the top bar opens full heal, +credits, +max HP,
   upgrade-everything, add-any-card/relic, free card deletion, and in-combat
   kill-all / +energy / draw. Difficulty is a suggestion.
-- **3 acts + a secret Act 4, 31 enemies, 7 bosses** — every act rotates
-  between two bosses, with summoner broods, phase-shifting bosses, an
+- **3 acts + a secret Act 4, 80 enemies, 12 bosses** — every act rotates
+  between three or more bosses, with summoner broods, phase-shifting bosses, an
   Artifact-armored elite and a permanently-stealthed phantom — on a
   Spire-style branching node map:
   combats, elites, rest sites, shops (buy/remove/potions), treasure vaults,
