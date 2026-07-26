@@ -111,6 +111,15 @@ export interface CardDef {
   upEffects: Effect[]
   exhaust?: boolean
   upExhaust?: boolean
+  /** Always drawn into your opening hand. */
+  innate?: boolean
+  upInnate?: boolean
+  /** Not discarded at end of turn. */
+  retain?: boolean
+  upRetain?: boolean
+  /** Exhausts if still in hand at end of turn. */
+  ethereal?: boolean
+  upEthereal?: boolean
   unplayable?: boolean
   flavor?: string
 }

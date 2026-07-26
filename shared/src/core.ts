@@ -6,7 +6,7 @@
  * reducer (combat.ts), the PvP reducer (pvp.ts), the browser client and the
  * Node server all execute these exact functions.
  */
-import { CARDS, cardCost, cardEffects, cardExhausts } from './cards'
+import { CARDS, cardCost, cardEffects, cardEthereal, cardExhausts, cardInnate, cardRetains } from './cards'
 import { RELICS } from './relics'
 import type { CardInst, DeckSide, Effect, Fighter, GameEvent, StatusId } from './types'
 import { DEBUFFS } from './types'
@@ -156,8 +156,13 @@ function relicHook<K extends keyof (typeof RELICS)[string]['hooks']>(
 }
 
 export function discardHand(side: DeckSide) {
-  side.discard.push(...side.hand)
-  side.hand = []
+  const kept: CardInst[] = []
+  for (const card of side.hand) {
+    if (cardRetains(card)) kept.push(card)
+    else if (cardEthereal(card)) side.exhausted.push(card)
+    else side.discard.push(card)
+  }
+  side.hand = kept
 }
 
 /**
@@ -238,12 +243,22 @@ export function refillSide(
     relicHook(env, 'energyPerTurn') +
     (opts.firstTurn ? relicHook(env, 'firstTurnEnergy') : 0) +
     (opts.bonusEnergy ?? 0)
-  const n =
+  let n =
     BASE_DRAW +
     (side.statuses.drawGain ?? 0) +
     relicHook(env, 'drawPerTurn') +
     (opts.firstTurn ? relicHook(env, 'firstTurnDraw') : 0) +
     (opts.bonusDraw ?? 0)
+  if (opts.firstTurn) {
+    // Innate cards jump the queue: pulled straight into the opening hand,
+    // counting against (but never below zero of) the normal draw.
+    const innate = side.draw.filter(cardInnate).slice(0, Math.max(0, HAND_LIMIT - side.hand.length))
+    if (innate.length > 0) {
+      side.draw = side.draw.filter((c) => !innate.includes(c))
+      side.hand.push(...innate)
+      n = Math.max(0, n - innate.length)
+    }
+  }
   drawCards(side, n, env, who, evs)
 }
 

@@ -44,6 +44,9 @@ export function statusPowerText(id: StatusId): string | undefined {
 export const ES = {
   unplayable: () => (isZh() ? '无法打出。' : 'Unplayable.'),
   exhaust: () => (isZh() ? '消耗。' : 'Exhaust.'),
+  innate: () => (isZh() ? '固有。' : 'Innate.'),
+  retain: () => (isZh() ? '保留。' : 'Retain.'),
+  ethereal: () => (isZh() ? '虚无。' : 'Ethereal.'),
   glitchPain: () =>
     isZh()
       ? '回合结束时若此牌在你手中，失去 1 点生命。'

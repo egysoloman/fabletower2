@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import {
   CARDS,
+  cardRetains,
   enemyName,
   moveName,
   playableCards,
@@ -99,12 +100,15 @@ export function CombatScreen() {
   }, [over])
 
   // End-turn flourish: the hand visibly sweeps into the discard pile.
+  // Retained cards stay put, so they don't get a departure streak.
   const sweepDiscard = () => {
     const dest = document.querySelector('.pilebtn.right')?.getBoundingClientRect()
     if (!dest) return
     const to = { x: dest.left + dest.width / 2, y: dest.top + dest.height / 2 }
+    const hand = combat.value?.player.hand ?? []
     document.querySelectorAll('.hand .card').forEach((el, i) => {
       if (i >= 6) return
+      if (hand[i] && cardRetains(hand[i])) return
       const r = el.getBoundingClientRect()
       setTimeout(() => flyMini({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, to, '#00e5ff'), i * 36)
     })

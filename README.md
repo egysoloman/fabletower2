@@ -77,11 +77,13 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   volatile overclocker built on the Heat mechanic: attacks ride +1 damage per
   Heat stack, overheating past the threshold burns you for all of it, vent
   cards cash it out, and the Reactor power turns meltdowns into AoE.
-- **81 playable cards** across per-character pools and three RUNNER build
+- **89 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
-  (Hyperthread, Burst Compile) — every card with a distinct upgrade. Junk
+  (Hyperthread, Burst Compile) — every card with a distinct upgrade, plus
+  **Innate / Retain / Ethereal** keywords (Boot Disk opens every hand, Slow
+  Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
 - **33 relics** with combat/economy hooks — including double-edged boss picks

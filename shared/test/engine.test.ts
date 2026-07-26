@@ -752,3 +752,39 @@ describe('curses & score (cycle 4)', () => {
     expect(win.lines.find((l) => l.k === 'asc')?.pts).toBe(120)
   })
 })
+
+describe('card keywords (cycle 5)', () => {
+  it('innate cards always open in hand and count against the draw', () => {
+    for (const seed of [1, 2, 3, 4, 5]) {
+      const cs = startCombat({
+        deck: ['bootdisk', ...Array(12).fill('strike'), 'preheat'].map((id, i) => inst(id, i + 1)),
+        hp: 75, maxHp: 75, relics: [], enemyIds: ['golem'], encounterId: 'golem', seed, uidStart: 100,
+      })
+      expect(cs.player.hand.some((c) => c.id === 'bootdisk'), `seed ${seed}`).toBe(true)
+      expect(cs.player.hand.some((c) => c.id === 'preheat'), `seed ${seed}`).toBe(true)
+      expect(cs.player.hand.length).toBe(5)
+    }
+  })
+
+  it('retained cards survive end of turn', () => {
+    const cs = fixedCombat(['slowburn', 'slowburn', 'slowburn', 'slowburn', 'slowburn'], ['golem'])
+    const s = combatReduce(cs, { t: 'end' }).state
+    expect(s.player.hand.length).toBe(5)
+    expect(s.player.hand.every((c) => c.id === 'slowburn')).toBe(true)
+    expect(s.player.discard.length).toBe(0)
+  })
+
+  it('ethereal cards exhaust at end of turn', () => {
+    const cs = fixedCombat(['emberveil', 'emberveil', 'emberveil', 'emberveil', 'emberveil'], ['golem'])
+    const s = combatReduce(cs, { t: 'end' }).state
+    expect(s.player.hand.length).toBe(0)
+    expect(s.player.discard.length).toBe(0)
+    expect(s.player.exhausted.length).toBe(5)
+  })
+
+  it('keywords appear in generated rules text', () => {
+    expect(describeCard(inst('preheat', 1))).toMatch(/^Innate\./)
+    expect(describeCard(inst('slowburn', 1))).toMatch(/^Retain\./)
+    expect(describeCard(inst('ghostprocess', 1))).toMatch(/^Ethereal\./)
+  })
+})

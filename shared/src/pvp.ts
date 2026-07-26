@@ -37,7 +37,7 @@ export function newPvp(seed: number, names: [string, string]): PvpState {
   ]
   const ps: PvpState = { rng, turn: 1, active: 0, sides, over: null, uid }
   const evs: GameEvent[] = []
-  refillSide(sides[0], ps, 'p0', evs)
+  refillSide(sides[0], ps, 'p0', evs, { firstTurn: true })
   return ps
 }
 
@@ -92,7 +92,12 @@ export function pvpReduce(prev: PvpState, playerIdx: 0 | 1, action: PvpAction): 
       )
       checkDeaths(ps, evs)
       // Going second is a tempo loss; the classic +1 energy makes up for it.
-      if (!died && !ps.over) refillSide(next, ps, whoNext, evs, { bonusEnergy: ps.turn === 2 ? 1 : 0 })
+      if (!died && !ps.over)
+        refillSide(next, ps, whoNext, evs, {
+          bonusEnergy: ps.turn === 2 ? 1 : 0,
+          // p1's very first refill is turn 2 — Innate applies there too.
+          firstTurn: ps.turn === 2,
+        })
     }
   }
 

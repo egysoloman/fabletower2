@@ -85,6 +85,14 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   reactorcore: { name: '反应堆核心', flavor: '武器化的熔毁' },
   redline: { name: '红线区', flavor: '转速表在撒谎' },
   whiteout: { name: '白热化' },
+  preheat: { name: '预热', flavor: '先暖管道，免得管道暖你' },
+  emberveil: { name: '余烬帷幕', flavor: '天亮即散' },
+  flashfire: { name: '闪燃' },
+  slowburn: { name: '文火', flavor: '耐心，武器化' },
+  sunflare: { name: '日耀', flavor: '请勿用仅剩的眼睛直视光束' },
+  bootdisk: { name: '引导盘', flavor: '开机第一次读取' },
+  residentshell: { name: '常驻外壳', flavor: '永远在跑，从未被见' },
+  ghostprocess: { name: '幽灵进程', flavor: '<defunct> 但致命' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {

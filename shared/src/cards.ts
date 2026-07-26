@@ -492,6 +492,60 @@ reg(c({
   upEffects: [{ k: 'dmg', n: 24 }, { k: 'status', to: 'self', id: 'heat', n: 4 }],
 }))
 
+// --- Keyword cards: Innate / Retain / Ethereal ------------------------------
+
+reg(c({
+  id: 'preheat', name: 'Preheat', type: 'skill', rarity: 'common', char: 'vector', cost: 0, target: 'none',
+  innate: true,
+  effects: [{ k: 'status', to: 'self', id: 'heat', n: 2 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'heat', n: 3 }, { k: 'draw', n: 1 }],
+  flavor: 'warm the pipes before the pipes warm you',
+}))
+reg(c({
+  id: 'emberveil', name: 'Ember Veil', type: 'skill', rarity: 'common', char: 'vector', cost: 1, target: 'none',
+  ethereal: true,
+  effects: [{ k: 'block', n: 9 }], upEffects: [{ k: 'block', n: 13 }],
+  flavor: 'gone by morning',
+}))
+reg(c({
+  id: 'flashfire', name: 'Flashfire', type: 'attack', rarity: 'uncommon', char: 'vector', cost: 1, target: 'enemy',
+  ethereal: true,
+  effects: [{ k: 'dmg', n: 13 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+  upEffects: [{ k: 'dmg', n: 17 }, { k: 'status', to: 'self', id: 'heat', n: 2 }],
+}))
+reg(c({
+  id: 'slowburn', name: 'Slow Burn', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  retain: true,
+  effects: [{ k: 'block', n: 5 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  upEffects: [{ k: 'block', n: 8 }, { k: 'status', to: 'self', id: 'heat', n: 1 }],
+  flavor: 'patience, weaponized',
+}))
+reg(c({
+  id: 'sunflare', name: 'Sunflare', type: 'attack', rarity: 'rare', char: 'vector', cost: 2, target: 'enemy',
+  ethereal: true,
+  effects: [{ k: 'dmg', n: 24 }, { k: 'status', to: 'self', id: 'heat', n: 3 }],
+  upEffects: [{ k: 'dmg', n: 32 }, { k: 'status', to: 'self', id: 'heat', n: 3 }],
+  flavor: 'do not look at beam with remaining eye',
+}))
+reg(c({
+  id: 'bootdisk', name: 'Boot Disk', type: 'skill', rarity: 'common', char: 'runner', cost: 0, target: 'none',
+  innate: true,
+  effects: [{ k: 'block', n: 4 }], upEffects: [{ k: 'block', n: 7 }],
+  flavor: 'first read on boot',
+}))
+reg(c({
+  id: 'residentshell', name: 'Resident Shell', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, target: 'none',
+  retain: true,
+  effects: [{ k: 'block', n: 6 }], upEffects: [{ k: 'block', n: 9 }],
+  flavor: 'always running, never seen',
+}))
+reg(c({
+  id: 'ghostprocess', name: 'Ghost Process', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 1, target: 'enemy',
+  ethereal: true,
+  effects: [{ k: 'dmg', n: 14 }], upEffects: [{ k: 'dmg', n: 19 }],
+  flavor: '<defunct> but deadly',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
@@ -526,6 +580,24 @@ export function cardEffects(card: CardInst): Effect[] {
 export function cardExhausts(card: CardInst): boolean {
   const def = CARDS[card.id]
   return !!(card.up ? (def.upExhaust ?? def.exhaust) : def.exhaust)
+}
+
+/** Innate: always drawn into the opening hand. */
+export function cardInnate(card: CardInst): boolean {
+  const def = CARDS[card.id]
+  return !!(card.up ? (def.upInnate ?? def.innate) : def.innate)
+}
+
+/** Retain: not discarded at end of turn. */
+export function cardRetains(card: CardInst): boolean {
+  const def = CARDS[card.id]
+  return !!(card.up ? (def.upRetain ?? def.retain) : def.retain)
+}
+
+/** Ethereal: exhausts if still in hand at end of turn. */
+export function cardEthereal(card: CardInst): boolean {
+  const def = CARDS[card.id]
+  return !!(card.up ? (def.upEthereal ?? def.ethereal) : def.ethereal)
 }
 
 /** Localized display name of a card id (without the upgrade '+'). */
@@ -676,6 +748,9 @@ export function describeCard(card: CardInst): string {
   const def = CARDS[card.id]
   const parts: string[] = []
   if (def.unplayable) parts.push(ES.unplayable())
+  if (cardInnate(card)) parts.push(ES.innate())
+  if (cardRetains(card)) parts.push(ES.retain())
+  if (cardEthereal(card)) parts.push(ES.ethereal())
   if (card.id === 'glitch') parts.push(ES.glitchPain())
   for (const e of cardEffects(card)) parts.push(effText(e))
   if (cardExhausts(card)) parts.push(ES.exhaust())
