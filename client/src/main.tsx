@@ -7,6 +7,7 @@ import './styles.css'
 import { App } from './app'
 
 import('./mods').then((m) => void m.loadMods())
+import('./account').then((m) => void m.checkGate())
 render(<App />, document.getElementById('app')!)
 
 // --- PWA: service worker + install prompt + offline indicator ---------------

@@ -157,3 +157,48 @@ export async function fetchGlobalBoard(): Promise<GlobalBoard | null> {
     return null
   }
 }
+
+// --- Optional game entry gate (GAME_ENTRY_PASSWORD server-side) -------------
+
+/** 'checking' -> 'open' | 'locked'. Static/offline hosting always opens. */
+export const gate = signal<'checking' | 'open' | 'locked'>('checking')
+
+async function sha256(text: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text))
+  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function checkGate() {
+  try {
+    const r = await api('/api/gate')
+    if (!r.required) {
+      gate.value = 'open'
+      return
+    }
+    const stored = localStorage.getItem('ns-gate') ?? ''
+    if (stored) {
+      try {
+        await api('/api/gate', 'POST', { hash: stored })
+        gate.value = 'open'
+        return
+      } catch {
+        localStorage.removeItem('ns-gate')
+      }
+    }
+    gate.value = 'locked'
+  } catch {
+    // no server (static hosting / offline solo) — the gate cannot apply
+    gate.value = 'open'
+  }
+}
+
+export async function tryGate(pass: string): Promise<boolean> {
+  try {
+    await api('/api/gate', 'POST', { pass })
+    localStorage.setItem('ns-gate', await sha256(pass))
+    gate.value = 'open'
+    return true
+  } catch {
+    return false
+  }
+}

@@ -4,7 +4,7 @@
  * admin endpoints. Guest mode is simply "never call these" — the game is
  * fully playable without an account.
  */
-import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
+import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -37,6 +37,12 @@ interface Db {
 
 const DATA_FILE = process.env.NS_DATA_FILE ?? join(process.cwd(), 'data', 'accounts.json')
 const ADMIN_KEY = process.env.NS_ADMIN_KEY ?? ''
+/** Obfuscatable admin API prefix, e.g. ADMIN_API_PATH=/sadasd/admin */
+export const ADMIN_API_PATH = (process.env.ADMIN_API_PATH ?? '/api/admin').replace(/\/$/, '')
+/** Optional game entry password (empty = gate disabled). */
+const GATE_HASH = process.env.GAME_ENTRY_PASSWORD
+  ? createHash('sha256').update(process.env.GAME_ENTRY_PASSWORD).digest('hex')
+  : ''
 const MAX_BLOB = 128 * 1024
 
 let db: Db = { accounts: {}, registrationsOpen: true, dailyScores: {} }
@@ -110,7 +116,7 @@ function isAdmin(req: IncomingMessage): boolean {
 /** Returns true if the request was handled as an API route. */
 export async function handleApi(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = (req.url ?? '').split('?')[0]
-  if (!url.startsWith('/api/')) return false
+  if (!url.startsWith('/api/') && !url.startsWith(ADMIN_API_PATH + '/')) return false
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
       'access-control-allow-origin': '*',
@@ -119,6 +125,18 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     })
     res.end()
     return true
+  }
+
+  // --- entry gate ------------------------------------------------------
+  if (url === '/api/gate') {
+    if (req.method === 'GET') return json(res, 200, { required: GATE_HASH.length > 0 }), true
+    if (req.method === 'POST') {
+      const b = await readBody(req)
+      const given = b?.hash ? String(b.hash) : createHash('sha256').update(String(b?.pass ?? '')).digest('hex')
+      const ok = GATE_HASH === '' || (given.length === GATE_HASH.length &&
+        timingSafeEqual(Buffer.from(given), Buffer.from(GATE_HASH)))
+      return json(res, ok ? 200 : 401, ok ? { ok: true, hash: GATE_HASH || undefined } : { err: 'wrong password' }), true
+    }
   }
 
   // --- auth ------------------------------------------------------------
@@ -211,15 +229,16 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
   }
 
   // --- admin -----------------------------------------------------------
-  if (url.startsWith('/api/admin/')) {
+  if (url.startsWith(ADMIN_API_PATH + '/')) {
+    const sub = url.slice(ADMIN_API_PATH.length)
     if (!isAdmin(req)) return json(res, 403, { err: 'admin key required' }), true
-    if (url === '/api/admin/accounts' && req.method === 'GET') {
+    if (sub === '/accounts' && req.method === 'GET') {
       const list = Object.values(db.accounts).map((a) => ({
         user: a.user, name: a.name, created: a.created, banned: !!a.banned, blobUpdated: a.blobUpdated ?? 0,
       }))
       return json(res, 200, { registrationsOpen: db.registrationsOpen, accounts: list }), true
     }
-    const delMatch = /^\/api\/admin\/accounts\/([\w\-]+)$/.exec(url)
+    const delMatch = /^\/accounts\/([\w\-]+)$/.exec(sub)
     if (delMatch && req.method === 'DELETE') {
       const key = keyOf(delMatch[1])
       if (!db.accounts[key]) return json(res, 404, { err: 'no such account' }), true
@@ -228,7 +247,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       persist()
       return json(res, 200, { ok: true }), true
     }
-    if (url === '/api/admin/reset' && req.method === 'POST') {
+    if (sub === '/reset' && req.method === 'POST') {
       const b = await readBody(req)
       const acc = db.accounts[keyOf(String(b?.user ?? ''))]
       const pass = String(b?.pass ?? '')
@@ -239,7 +258,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       persist()
       return json(res, 200, { ok: true }), true
     }
-    if (url === '/api/admin/ban' && req.method === 'POST') {
+    if (sub === '/ban' && req.method === 'POST') {
       const b = await readBody(req)
       const acc = db.accounts[keyOf(String(b?.user ?? ''))]
       if (!acc) return json(res, 404, { err: 'no such account' }), true
@@ -247,16 +266,16 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       persist()
       return json(res, 200, { ok: true, banned: acc.banned }), true
     }
-    if (url === '/api/admin/registrations' && req.method === 'POST') {
+    if (sub === '/registrations' && req.method === 'POST') {
       const b = await readBody(req)
       db.registrationsOpen = !!b?.open
       persist()
       return json(res, 200, { registrationsOpen: db.registrationsOpen }), true
     }
-    if (url === '/api/admin/export' && req.method === 'GET') {
+    if (sub === '/export' && req.method === 'GET') {
       return json(res, 200, db), true
     }
-    if (url === '/api/admin/import' && req.method === 'POST') {
+    if (sub === '/import' && req.method === 'POST') {
       const b = await readBody(req)
       if (!b || typeof b.accounts !== 'object') return json(res, 400, { err: 'bad import payload' }), true
       db = { registrationsOpen: b.registrationsOpen !== false, accounts: b.accounts, dailyScores: b.dailyScores ?? {} }

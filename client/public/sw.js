@@ -22,7 +22,9 @@ self.addEventListener('fetch', (e) => {
     caches.match(e.request).then((cached) => {
       const fresh = fetch(e.request)
         .then((res) => {
-          if (res.ok) {
+          const cacheable =
+            url.pathname === '/' || /\.(js|css|html|svg|png|woff2?|webmanifest|json)$/.test(url.pathname)
+          if (res.ok && cacheable) {
             const clone = res.clone()
             caches.open(CACHE).then((c) => c.put(e.request, clone))
           }

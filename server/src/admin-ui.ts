@@ -3,7 +3,7 @@
  * itself is public (it contains nothing sensitive); every data call requires
  * the NS_ADMIN_KEY header, entered in the UI and kept in sessionStorage.
  */
-export const ADMIN_HTML = `<!doctype html>
+export const adminHtml = (apiBase: string) => `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>NEONSPIRE · ADMIN</title>
 <style>
@@ -58,6 +58,7 @@ td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
   <tbody id="rows"></tbody></table>
 </div>
 <script>
+const API = '${apiBase}'
 let KEY = sessionStorage.getItem('ns-admin-key') || ''
 let DATA = null
 const $ = (id) => document.getElementById(id)
@@ -73,7 +74,7 @@ async function api(path, method, body) {
 function saveKey() { KEY = $('key').value.trim(); sessionStorage.setItem('ns-admin-key', KEY); load() }
 async function load() {
   try {
-    DATA = await api('/api/admin/accounts')
+    DATA = await api(API + '/accounts')
     const board = await fetch('/api/daily/leaderboard').then((r) => r.json()).catch(() => ({ top: [] }))
     $('app').style.display = ''
     msg('connected ✓')
@@ -100,22 +101,22 @@ function render() {
       '<button class="mini warn" onclick="del(\\'' + a.user + '\\')">DELETE</button></td></tr>')
     .join('')
 }
-async function ban(user, banned) { try { await api('/api/admin/ban', 'POST', { user, banned }); load() } catch (e) { msg(e.message, true) } }
+async function ban(user, banned) { try { await api(API + '/ban', 'POST', { user, banned }); load() } catch (e) { msg(e.message, true) } }
 async function resetPw(user) {
   const pass = prompt('New password for ' + user + ' (6+ chars):')
   if (!pass) return
-  try { await api('/api/admin/reset', 'POST', { user, pass }); msg('password reset for ' + user) } catch (e) { msg(e.message, true) }
+  try { await api(API + '/reset', 'POST', { user, pass }); msg('password reset for ' + user) } catch (e) { msg(e.message, true) }
 }
 async function del(user) {
   if (!confirm('Delete account "' + user + '" permanently?')) return
-  try { await api('/api/admin/accounts/' + user, 'DELETE'); load() } catch (e) { msg(e.message, true) }
+  try { await api(API + '/accounts/' + user, 'DELETE'); load() } catch (e) { msg(e.message, true) }
 }
 async function toggleReg() {
-  try { await api('/api/admin/registrations', 'POST', { open: !DATA.registrationsOpen }); load() } catch (e) { msg(e.message, true) }
+  try { await api(API + '/registrations', 'POST', { open: !DATA.registrationsOpen }); load() } catch (e) { msg(e.message, true) }
 }
 async function exportDb() {
   try {
-    const db = await api('/api/admin/export')
+    const db = await api(API + '/export')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([JSON.stringify(db, null, 2)], { type: 'application/json' }))
     a.download = 'neonspire-db-' + new Date().toISOString().slice(0, 10) + '.json'
@@ -128,7 +129,7 @@ function importDb() {
     const file = f.files && f.files[0]
     if (!file) return
     if (!confirm('Importing REPLACES the whole database. Continue?')) return
-    try { await api('/api/admin/import', 'POST', JSON.parse(await file.text())); msg('imported ✓'); load() }
+    try { await api(API + '/import', 'POST', JSON.parse(await file.text())); msg('imported ✓'); load() }
     catch (e) { msg(e.message, true) }
   }
   f.click()

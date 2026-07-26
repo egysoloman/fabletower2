@@ -12,8 +12,10 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
-import { handleApi } from './accounts'
-import { ADMIN_HTML } from './admin-ui'
+import { ADMIN_API_PATH, handleApi } from './accounts'
+
+const ADMIN_UI_PATH = (process.env.ADMIN_UI_PATH ?? '/admin').replace(/\/$/, '')
+import { adminHtml } from './admin-ui'
 import {
   CARDS,
   ENCOUNTERS,
@@ -88,9 +90,9 @@ async function serveStatic(url: string, res: ServerResponse) {
 
 const http = createServer(async (req, res) => {
   if (await handleApi(req, res)) return
-  if ((req.url ?? '').split('?')[0] === '/admin') {
+  if ((req.url ?? '').split('?')[0] === ADMIN_UI_PATH) {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-    res.end(ADMIN_HTML)
+    res.end(adminHtml(ADMIN_API_PATH))
     return
   }
   serveStatic(req.url ?? '/', res)

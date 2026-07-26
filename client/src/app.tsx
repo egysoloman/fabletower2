@@ -4,6 +4,8 @@ import { screen } from './store'
 import { MenuScreen, NewRunScreen, SettingsScreen } from './screens/menu'
 import { CodexScreen } from './screens/codex'
 import { achToasts } from './meta'
+import { GateScreen } from './screens/gate'
+import { gate } from './account'
 import { netOnline } from './settings'
 import { t } from './i18n'
 import { MapScreen } from './screens/map'
@@ -17,6 +19,7 @@ import { CheatMenu } from './screens/cheats'
 
 export function App() {
   const s = screen.value
+  if (gate.value !== 'open') return <GateScreen />
   return (
     <>
       {/* keyed wrapper remounts per screen → fade/settle transition */}

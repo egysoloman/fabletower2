@@ -162,6 +162,9 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   devices — JSON-file store, scrypt-hashed credentials, bearer sessions,
   and admin tools (list/delete/ban accounts, password resets, open/close
   registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
+  Hardening knobs: GAME_ENTRY_PASSWORD (optional server-verified entry
+  gate before the menu), ADMIN_API_PATH and ADMIN_UI_PATH (relocate the
+  admin API and dashboard to unguessable paths).
 
 - **Mod support**: JSON-only content packs in `client/public/mods/` —
   cards, relics, enemies, potions, events and character-loadout tweaks,
