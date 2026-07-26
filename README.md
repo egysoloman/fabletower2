@@ -89,7 +89,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   conductor who deploys Turret / Plating / Viral automations and amplifies
   every trigger with **Focus** — then cashes the stacks with per-automation
   payoff attacks.
-- **258 playable cards** across per-character pools and three RUNNER build
+- **307 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
