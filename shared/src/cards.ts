@@ -1213,6 +1213,24 @@ reg(c({ id: 'lastresort', name: 'Last Resort', type: 'attack', rarity: 'rare', c
 reg(c({ id: 'streetsmarts', name: 'Street Smarts', type: 'skill', rarity: 'common', cost: 1, target: 'none', effects: [{ k: 'block', n: 4 }, { k: 'draw', n: 1 }], upEffects: [{ k: 'block', n: 6 }, { k: 'draw', n: 1 }] }))
 reg(c({ id: 'trainhop', name: 'Train Hop', type: 'skill', rarity: 'uncommon', cost: 0, target: 'none', ethereal: true, effects: [{ k: 'energy', n: 1 }], upEffects: [{ k: 'energy', n: 1 }, { k: 'draw', n: 1 }] }))
 
+// --- Co-op support cards (target an ally; yourself outside co-op) -----------
+
+reg(c({
+  id: 'medpatch', name: 'Med Patch', type: 'skill', rarity: 'uncommon', cost: 1, target: 'ally',
+  effects: [{ k: 'heal', n: 8 }], upEffects: [{ k: 'heal', n: 12 }],
+  flavor: 'field-rated adhesive mercy',
+}))
+reg(c({
+  id: 'coverfire', name: 'Cover Fire', type: 'skill', rarity: 'uncommon', cost: 1, target: 'ally',
+  effects: [{ k: 'block', n: 8 }], upEffects: [{ k: 'block', n: 12 }],
+}))
+reg(c({
+  id: 'rationpack', name: 'Ration Pack', type: 'skill', rarity: 'common', cost: 0, target: 'ally',
+  exhaust: true, upExhaust: true,
+  effects: [{ k: 'heal', n: 4 }, { k: 'block', n: 4 }],
+  upEffects: [{ k: 'heal', n: 6 }, { k: 'block', n: 6 }],
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
@@ -1435,6 +1453,7 @@ export function describeCard(card: CardInst): string {
   const def = CARDS[card.id]
   const parts: string[] = []
   if (def.unplayable) parts.push(ES.unplayable())
+  if (def.target === 'ally') parts.push(ES.ally())
   if (cardInnate(card)) parts.push(ES.innate())
   if (cardRetains(card)) parts.push(ES.retain())
   if (cardEthereal(card)) parts.push(ES.ethereal())

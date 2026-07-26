@@ -45,6 +45,7 @@ export const ES = {
   unplayable: () => (isZh() ? '无法打出。' : 'Unplayable.'),
   exhaust: () => (isZh() ? '消耗。' : 'Exhaust.'),
   innate: () => (isZh() ? '固有。' : 'Innate.'),
+  ally: () => (isZh() ? '以一名队友为目标（无队友时以自己为目标）。' : 'Target an ally (yourself if alone).'),
   retain: () => (isZh() ? '保留。' : 'Retain.'),
   ethereal: () => (isZh() ? '虚无。' : 'Ethereal.'),
   glitchPain: () =>

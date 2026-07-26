@@ -559,6 +559,8 @@ export function playCardFromHand(
   handIdx: number,
   targetIdx: number | undefined,
   evs: GameEvent[],
+  /** Co-op: 'ally'-target cards resolve their effects on this party member. */
+  ally?: { side: DeckSide; who: string },
 ): string | null {
   const card = side.hand[handIdx]
   if (!card) return 'no such card in hand'
@@ -587,8 +589,12 @@ export function playCardFromHand(
   side.cardsThisTurn++
   evs.push({ e: 'move', who: whoSelf, id: card.id, name: def.name })
 
+  // Ally-target cards land their effects on the chosen party member (in
+  // solo/PvP there is no party, so they simply apply to their owner).
+  const effSide = def.target === 'ally' && ally ? ally.side : side
+  const effWho = def.target === 'ally' && ally ? ally.who : whoSelf
   for (const eff of cardEffects(card)) {
-    resolveEffect(eff, env, side, whoSelf, foes, target ?? 0, evs)
+    resolveEffect(eff, env, effSide, effWho, foes, target ?? 0, evs)
   }
 
   // Tempo payoffs for genuinely-0-cost cards (their printed cost, not Quantum

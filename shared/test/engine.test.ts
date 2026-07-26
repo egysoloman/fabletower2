@@ -1090,6 +1090,100 @@ describe('player summons (cycle 21)', () => {
   })
 })
 
+describe('co-op combat (cycle 27)', () => {
+  const mkPlayers = (n: number) =>
+    Array.from({ length: n }, (_, p) => ({
+      name: 'P' + p,
+      hp: 70,
+      maxHp: 70,
+      deck: ['strike', 'strike', 'defend', 'defend', 'medpatch'].map((id, i) => inst(id, p * 100 + i + 1)),
+      relics: [],
+    }))
+  const start = async (n: number, enemyIds = ['golem']) => {
+    const { startCoopCombat } = await import('../src/coop')
+    return startCoopCombat({ players: mkPlayers(n), enemyIds, encounterId: enemyIds.join(','), seed: 9, uidStart: 900 })
+  }
+
+  it('enemy stats scale with party size', async () => {
+    const { coopScale } = await import('../src/coop')
+    expect(coopScale(1)).toEqual({ hp: 1, atk: 1 })
+    expect(coopScale(3).hp).toBeCloseTo(2.1)
+    expect(coopScale(4).atk).toBeCloseTo(1.45)
+    // golem rolls 42-48 base hp; party of two scales the roll by 1.55
+    const solo = await start(1)
+    expect(solo.enemies[0].maxHp).toBeGreaterThanOrEqual(42)
+    expect(solo.enemies[0].maxHp).toBeLessThanOrEqual(48)
+    const duo = await start(2)
+    expect(duo.enemies[0].maxHp).toBeGreaterThanOrEqual(Math.round(42 * 1.55))
+    expect(duo.enemies[0].maxHp).toBeLessThanOrEqual(Math.round(48 * 1.55))
+  })
+
+  it('players rotate turns, then the enemy phase fires', async () => {
+    const { coopReduce } = await import('../src/coop')
+    let cs = await start(2)
+    expect(cs.active).toBe(0)
+    expect(cs.players[0].hand.length).toBe(5)
+    cs = coopReduce(cs, 0, { t: 'end' }).state
+    expect(cs.active).toBe(1)
+    expect(coopReduce(cs, 0, { t: 'end' }).error).toBe('not your turn')
+    const turnBefore = cs.turn
+    cs = coopReduce(cs, 1, { t: 'end' }).state
+    if (!cs.over) {
+      expect(cs.turn).toBe(turnBefore + 1)
+      expect(cs.active).toBe(0)
+      expect(cs.players[0].hand.length).toBe(5) // refilled for the new round
+    }
+  })
+
+  it('ally support cards heal the chosen teammate, cost the owner', async () => {
+    const { coopReduce } = await import('../src/coop')
+    const cs = await start(2)
+    cs.players[1].hp = 50
+    const idx = cs.players[0].hand.findIndex((c) => c.id === 'medpatch')
+    expect(idx).toBeGreaterThanOrEqual(0)
+    const energyBefore = cs.players[0].energy
+    const res = coopReduce(cs, 0, { t: 'play', hand: idx, ally: 1 })
+    expect(res.error).toBeUndefined()
+    expect(res.state.players[1].hp).toBe(58)
+    expect(res.state.players[0].energy).toBe(energyBefore - 1)
+    expect(res.state.players[0].discard.some((c) => c.id === 'medpatch')).toBe(true)
+  })
+
+  it('downed players are skipped; a win revives them at 30%', async () => {
+    const { coopReduce } = await import('../src/coop')
+    const cs = await start(2)
+    cs.players[0].hp = 0
+    cs.downed[0] = true
+    cs.active = 1
+    cs.enemies[0].hp = 1
+    const idx = cs.players[1].hand.findIndex((c) => c.id === 'strike')
+    const res = coopReduce(cs, 1, { t: 'play', hand: idx, target: 0 })
+    expect(res.state.over).toBe('win')
+    expect(res.state.downed[0]).toBe(false)
+    expect(res.state.players[0].hp).toBe(Math.floor(70 * 0.3))
+  })
+
+  it('all players down means a loss', async () => {
+    const { coopReduce } = await import('../src/coop')
+    const cs = await start(2)
+    cs.players[0].hp = 0
+    cs.downed[0] = true
+    cs.players[1].hp = 1
+    cs.players[1].statuses.corrupt = 5
+    cs.active = 1
+    const res = coopReduce(cs, 1, { t: 'end' }).state
+    expect(res.over).toBe('lose')
+  })
+
+  it('ally cards work solo: they simply target their owner', () => {
+    const cs = fixedCombat(['medpatch', 'medpatch', 'medpatch', 'medpatch', 'medpatch'], ['golem'])
+    cs.player.hp = 50
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.hp).toBe(58)
+    expect(describeCard(inst('medpatch', 1))).toContain('Target an ally')
+  })
+})
+
 describe('boss & enemy variety (cycle 11)', () => {
   it('acts 1-3 rotate between two bosses', async () => {
     const { ENCOUNTERS } = await import('../src/enemies')

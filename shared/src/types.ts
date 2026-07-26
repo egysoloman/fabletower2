@@ -123,8 +123,9 @@ export interface CardDef {
   char?: CharId
   cost: number
   upCost?: number
-  /** 'enemy' cards need a target; 'none' cards resolve immediately. */
-  target: 'enemy' | 'none'
+  /** 'enemy' cards need a target; 'none' resolve immediately; 'ally' cards
+   * target a party member in co-op (and yourself in solo/PvP). */
+  target: 'enemy' | 'none' | 'ally'
   effects: Effect[]
   upEffects: Effect[]
   exhaust?: boolean
