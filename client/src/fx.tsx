@@ -118,7 +118,7 @@ export function codeBurstAt(who: string, lines: string[]) {
 const CODE_CHARS = '01<>/{}$#;&*'
 
 /** Spray of glowing code glyphs (digital shrapnel). */
-export function glyphSplash(x: number, y: number, color: string, n = 10) {
+export function glyphSplash(x: number, y: number, color: string, n = 10, glyphSet?: string[]) {
   for (let i = 0; i < n; i++) {
     if (parts.length >= MAX_PARTICLES) return
     const a = Math.random() * Math.PI * 2
@@ -134,7 +134,7 @@ export function glyphSplash(x: number, y: number, color: string, n = 10) {
       size: 1.6 + Math.random() * 1.6,
       gravity: 0.05,
       ambient: false,
-      char: CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)],
+      char: (glyphSet ?? CODE_CHARS)[Math.floor(Math.random() * (glyphSet ?? CODE_CHARS).length)],
     })
   }
 }
@@ -520,6 +520,13 @@ function playOne(ev: GameEvent) {
       burstAt(ev.who, '#00e5ff', 10 + Math.min(14, ev.n), 3.4 + Math.min(2.4, ev.n / 8))
       ringAt(ev.who, '#00e5ff')
       pulse(ev.who, `fx-recoil-${sideOf(ev.who)}`)
+      // Shield break: block absorbed part of this batch, then gave way.
+      if ((ev as any).shatter) {
+        ringAt(ev.who, '#ff2d95')
+        const pt = anchorCenter(ev.who)
+        if (pt) glyphSplash(pt.x, pt.y, '#ff2d95', 10, ['▰', '▱', '◣', '◥'])
+        spawnFloat(ev.who, '⛨✕', 'flare')
+      }
       sfx.hit()
       // Big "ouch" shake + red vignette only when the LOCAL player takes it.
       if (ev.who === localWho.value) {
@@ -622,6 +629,18 @@ export function fxRemainingMs(): number {
 /** Animate a reducer's event list. `delay` offsets the first beat (e.g. to
  * land impacts when a card-flight ghost arrives); `step` paces the beats. */
 export function processEvents(evs: GameEvent[], opts: { delay?: number; step?: number } = {}) {
+  // Pre-scan: a 'blocked' followed by a damaging 'hit' on the same fighter
+  // means their shield broke mid-swing — tag the hit for a shatter effect.
+  {
+    const guarded = new Set<string>()
+    for (const e of evs) {
+      if (e.e === 'blocked') guarded.add(e.who)
+      else if (e.e === 'hit' && e.n && guarded.has(e.who)) {
+        ;(e as any).shatter = true
+        guarded.delete(e.who)
+      }
+    }
+  }
   const delay = opts.delay ?? 60
   const step = opts.step ?? 110
   fxEndAt = Math.max(fxEndAt, Date.now() + delay + evs.length * step)

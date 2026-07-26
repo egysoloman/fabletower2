@@ -260,23 +260,23 @@ export function CoopScreen() {
           </>
         )}
         {phase === 'reward' && coopReward.value && (
-          <>
+          <div class="phase-in">
             <h2 style={{ color: 'var(--gold)' }}>{t('spoils')}</h2>
             <div class="sub">+{coopReward.value.gold}¤{coopReward.value.relic ? ` · ${coopReward.value.relic}` : ''}</div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              {coopReward.value.cards.map((id: string) => (
+            <div class="cardrow" style={{ display: 'flex', gap: '12px' }}>
+              {coopReward.value.cards.map((id: string, i: number) => (
                 <div key={id} onClick={() => (coopSend({ t: 'cooptake', card: id, relic: true }), (coopReward.value = null), (coopPhase.value = 'map'))}>
-                  <CardView card={{ uid: 0, id, up: false }} />
+                  <CardView card={{ uid: 0, id, up: false }} cls="reveal" style={{ '--reveal': `${i * 110}ms` } as never} />
                 </div>
               ))}
             </div>
             <button class="btn ghost" onClick={() => (coopSend({ t: 'cooptake', card: null, relic: true }), (coopReward.value = null), (coopPhase.value = 'map'))}>
               {t('skip')}
             </button>
-          </>
+          </div>
         )}
         {phase === 'rest' && m && (
-          <>
+          <div class="phase-in">
             <h2>{t('safehouse')}</h2>
             <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
               <button class="btn" onClick={() => coopSend({ t: 'cooprestpick', what: 'heal' })}>
@@ -290,7 +290,7 @@ export function CoopScreen() {
                 ),
               )}
             </div>
-          </>
+          </div>
         )}
         {(phase === 'victory' || phase === 'defeat' || phase === 'ended' || phase === 'error') && (
           <>

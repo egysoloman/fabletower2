@@ -1,7 +1,7 @@
 import { FxLayer } from './fx'
 import { PickerModal, PileModal } from './components'
 import { screen } from './store'
-import { MenuScreen } from './screens/menu'
+import { MenuScreen, NewRunScreen } from './screens/menu'
 import { MapScreen } from './screens/map'
 import { CombatScreen } from './screens/combat'
 import { DescendScreen, EventScreen, RestScreen, RewardScreen, ShopScreen } from './screens/overlays'
@@ -18,6 +18,7 @@ export function App() {
       {/* keyed wrapper remounts per screen → fade/settle transition */}
       <div class="screenwrap" key={s}>
         {s === 'menu' && <MenuScreen />}
+        {s === 'newrun' && <NewRunScreen />}
         {s === 'map' && <MapScreen />}
         {s === 'combat' && <CombatScreen />}
         {s === 'reward' && <RewardScreen />}

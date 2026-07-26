@@ -4,6 +4,7 @@ import type { CardInst, CombatState, EventDef, RunState, ShopStock } from '@neon
 
 export type Screen =
   | 'menu'
+  | 'newrun'
   | 'map'
   | 'combat'
   | 'reward'

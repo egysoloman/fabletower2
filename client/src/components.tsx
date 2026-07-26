@@ -231,8 +231,8 @@ export function PileModal() {
       <div class="panel" onClick={(e) => e.stopPropagation()}>
         <h2>{view.title}</h2>
         <div class="gridcards">
-          {view.cards.map((c) => (
-            <CardView key={c.uid} card={c} />
+          {view.cards.map((c, i) => (
+            <CardView key={c.uid} card={c} style={{ '--fan': Math.min(i, 14) } as never} />
           ))}
           {view.cards.length === 0 && <div class="sub">{t('empty')}</div>}
         </div>
@@ -255,9 +255,10 @@ export function PickerModal() {
       <div class="panel">
         <h2 class="pink">{req.title}</h2>
         <div class="gridcards">
-          {cards.map((c) => (
+          {cards.map((c, i) => (
             <div
               key={c.uid}
+              style={{ '--fan': Math.min(i, 14) } as never}
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                 burst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#ffd166', 16, 3.2)

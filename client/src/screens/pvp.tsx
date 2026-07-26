@@ -375,7 +375,7 @@ export function PvpScreen() {
             <div class="gridcards">
               {me.discard.length === 0 && <div class="sub">{t('empty')}</div>}
               {me.discard.map((c, i) => (
-                <CardView key={i} card={c} />
+                <CardView key={i} card={c} style={{ '--fan': Math.min(i, 14) } as never} />
               ))}
             </div>
             <button class="btn" onClick={() => setPileOpen(false)}>
