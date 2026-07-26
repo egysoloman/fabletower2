@@ -92,7 +92,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
-- **141 relics** with combat/economy hooks — character-exclusive relics that
+- **180 relics** with combat/economy hooks — matching StS relic volume — character-exclusive relics that
   only appear in the right pools, double-edged boss picks like the Berserker
   Chip (+2 Strength, −10 Max HP) — plus a **choice of boss relics** after
   each act boss and a Neow-style **BOOT SEQUENCE** bonus at run start.
