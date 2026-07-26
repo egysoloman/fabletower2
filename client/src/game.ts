@@ -119,6 +119,7 @@ function recordRun(win: boolean) {
     checkRun(rec, r, dailySeed())
     if (r.seed === dailySeed()) {
       recordDaily({ score: rec.sc ?? 0, ch: r.char, win, d: Date.now() })
+      import('./account').then((m) => void m.submitDailyScore(rec.sc ?? 0, r.seed, r.char))
       dailyResult.value = { score: rec.sc ?? 0, rank: dailyRank((rec.sc ?? 0) + 1) }
     }
     if (win && r.asc >= ascUnlocked() && ascUnlocked() < MAX_ASC) {

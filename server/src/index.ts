@@ -13,6 +13,7 @@ import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
 import { handleApi } from './accounts'
+import { ADMIN_HTML } from './admin-ui'
 import {
   CARDS,
   ENCOUNTERS,
@@ -87,6 +88,11 @@ async function serveStatic(url: string, res: ServerResponse) {
 
 const http = createServer(async (req, res) => {
   if (await handleApi(req, res)) return
+  if ((req.url ?? '').split('?')[0] === '/admin') {
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+    res.end(ADMIN_HTML)
+    return
+  }
   serveStatic(req.url ?? '/', res)
 })
 

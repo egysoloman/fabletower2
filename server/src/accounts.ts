@@ -20,18 +20,28 @@ interface Account {
   blobUpdated?: number
 }
 
+interface DailyScore {
+  user: string
+  name: string
+  score: number
+  char: string
+  seed: number
+  at: number
+}
+
 interface Db {
   accounts: Record<string, Account>
   registrationsOpen: boolean
+  dailyScores: Record<string, DailyScore[]>
 }
 
 const DATA_FILE = process.env.NS_DATA_FILE ?? join(process.cwd(), 'data', 'accounts.json')
 const ADMIN_KEY = process.env.NS_ADMIN_KEY ?? ''
 const MAX_BLOB = 128 * 1024
 
-let db: Db = { accounts: {}, registrationsOpen: true }
+let db: Db = { accounts: {}, registrationsOpen: true, dailyScores: {} }
 try {
-  db = { registrationsOpen: true, ...JSON.parse(readFileSync(DATA_FILE, 'utf8')) }
+  db = { registrationsOpen: true, dailyScores: {}, ...JSON.parse(readFileSync(DATA_FILE, 'utf8')) }
 } catch {
   /* fresh store */
 }
@@ -160,6 +170,46 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     }
   }
 
+  // --- global daily leaderboard ---------------------------------------
+  const today = new Date().toISOString().slice(0, 10)
+  if (url === '/api/daily/score' && req.method === 'POST') {
+    const acc = authed(req)
+    if (!acc) return json(res, 401, { err: 'not logged in' }), true
+    const b = await readBody(req)
+    const score = Math.floor(Number(b?.score))
+    if (!Number.isFinite(score) || score < 0 || score > 100000) return json(res, 400, { err: 'bad score' }), true
+    const entry: DailyScore = {
+      user: acc.user, name: acc.name, score,
+      char: String(b?.char ?? 'runner').slice(0, 12),
+      seed: Math.floor(Number(b?.seed)) >>> 0, at: Date.now(),
+    }
+    const list = (db.dailyScores[today] ??= [])
+    const mine = list.findIndex((e) => e.user === acc.user)
+    // only the highest score per account per day counts
+    if (mine >= 0) {
+      if (list[mine].score >= score) return json(res, 200, { ok: true, kept: list[mine].score }), true
+      list[mine] = entry
+    } else {
+      list.push(entry)
+    }
+    list.sort((a, b2) => b2.score - a.score)
+    db.dailyScores[today] = list.slice(0, 500)
+    // retire boards older than two weeks
+    for (const k of Object.keys(db.dailyScores)) {
+      if (k < new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10)) delete db.dailyScores[k]
+    }
+    persist()
+    return json(res, 200, { ok: true, rank: list.findIndex((e) => e.user === acc.user) + 1 }), true
+  }
+  if (url === '/api/daily/leaderboard' && req.method === 'GET') {
+    const list = (db.dailyScores[today] ?? []).slice(0, 100).map((e, i) => ({
+      rank: i + 1, name: e.name, score: e.score, char: e.char,
+    }))
+    const acc = authed(req)
+    const mine = acc ? (db.dailyScores[today] ?? []).findIndex((e) => e.user === acc.user) : -1
+    return json(res, 200, { date: today, top: list, you: mine >= 0 ? mine + 1 : null }), true
+  }
+
   // --- admin -----------------------------------------------------------
   if (url.startsWith('/api/admin/')) {
     if (!isAdmin(req)) return json(res, 403, { err: 'admin key required' }), true
@@ -209,7 +259,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (url === '/api/admin/import' && req.method === 'POST') {
       const b = await readBody(req)
       if (!b || typeof b.accounts !== 'object') return json(res, 400, { err: 'bad import payload' }), true
-      db = { registrationsOpen: b.registrationsOpen !== false, accounts: b.accounts }
+      db = { registrationsOpen: b.registrationsOpen !== false, accounts: b.accounts, dailyScores: b.dailyScores ?? {} }
       persist()
       return json(res, 200, { ok: true, count: Object.keys(db.accounts).length }), true
     }

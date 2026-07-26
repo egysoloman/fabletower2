@@ -2,10 +2,11 @@
  * Compendium: discovered cards/relics/enemies, run statistics, achievements
  * and the local daily leaderboard. Undiscovered entries show as ???.
  */
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { CARDS, ENEMIES, RELICS, cardBaseName, enemyName, relicDesc, relicName } from '@neonspire/engine'
 import { ACHIEVEMENTS, achievements, codex, dailyBoard, runStats } from '../meta'
 import { screen } from '../store'
+import { fetchGlobalBoard, type GlobalBoard } from '../account'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
@@ -14,6 +15,10 @@ type Tab = 'cards' | 'relics' | 'enemies' | 'ach' | 'stats'
 
 export function CodexScreen() {
   const [tab, setTab] = useState<Tab>('cards')
+  const [global, setGlobal] = useState<GlobalBoard | null>(null)
+  useEffect(() => {
+    if (tab === 'stats') fetchGlobalBoard().then(setGlobal)
+  }, [tab])
   const c = codex.value
   const ach = achievements.value
   const stats = runStats()
@@ -106,16 +111,31 @@ export function CodexScreen() {
             <div><b>A{stats.highestAscWin}</b>{t('cxAsc')}</div>
             <div><b>{stats.bestScore}</b>{t('cxBest')}</div>
           </div>
-          <h2 style={{ marginTop: '10px' }}>{t('cxDaily')}</h2>
-          {dailyBoard().length === 0 && <div class="sub">{t('cxNoDaily')}</div>}
-          <div class="achlist">
-            {dailyBoard().map((e, i) => (
-              <div key={i} class="achrow got">
-                <span class="asym">#{i + 1}</span>
-                <span><b>{e.score}</b><small>{e.ch}{e.win ? ' · WIN' : ''}</small></span>
+          <h2 style={{ marginTop: '10px' }}>{global ? t('cxDailyGlobal') : t('cxDaily')}</h2>
+          {global && global.you && <div class="sub" style={{ color: 'var(--gold)' }}>{tf('cxYourRank', { n: global.you })}</div>}
+          {global ? (
+            <div class="achlist">
+              {global.top.length === 0 && <div class="sub">{t('cxNoDaily')}</div>}
+              {global.top.map((e) => (
+                <div key={e.rank} class="achrow got">
+                  <span class="asym">#{e.rank}</span>
+                  <span><b>{e.score}</b><small>{e.name} · {e.char}</small></span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {dailyBoard().length === 0 && <div class="sub">{t('cxNoDaily')}</div>}
+              <div class="achlist">
+                {dailyBoard().map((e, i) => (
+                  <div key={i} class="achrow got">
+                    <span class="asym">#{i + 1}</span>
+                    <span><b>{e.score}</b><small>{e.ch}{e.win ? ' · WIN' : ''}</small></span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
 

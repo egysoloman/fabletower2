@@ -132,3 +132,28 @@ export function schedulePush() {
   clearTimeout(pushTimer)
   pushTimer = window.setTimeout(() => void syncUp(), 1500)
 }
+
+/** Submit a daily-run score (no-op in guest mode). */
+export async function submitDailyScore(score: number, seed: number, char: string) {
+  const a = account.value
+  if (!a) return
+  try {
+    await api('/api/daily/score', 'POST', { score, seed, char }, a.token)
+  } catch {
+    /* leaderboard is best-effort */
+  }
+}
+
+export interface GlobalBoard {
+  date: string
+  top: { rank: number; name: string; score: number; char: string }[]
+  you: number | null
+}
+
+export async function fetchGlobalBoard(): Promise<GlobalBoard | null> {
+  try {
+    return await api('/api/daily/leaderboard', 'GET', undefined, account.value?.token)
+  } catch {
+    return null
+  }
+}
