@@ -4,7 +4,7 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, cardName, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
+import { CARDS, cardName, predictPvpPlay, pvpChecksum, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow } from '../components'
 import {
   anchorCenter,
@@ -36,6 +36,23 @@ function defaultWsUrl(): string {
   return 'ws://localhost:8787'
 }
 
+/** Lobby badge: fetches the server's current mode for display. */
+function ModeBadgeFetch() {
+  const [m, setM] = useState<string | null>(null)
+  useEffect(() => {
+    let base = ''
+    const loc = window.location
+    if (loc.port === '5173' || loc.port === '4173') base = `http://${loc.hostname}:8787`
+    fetch(base + '/api/mpmode').then((r) => r.json()).then((d) => setM(d.mode)).catch(() => {})
+  }, [])
+  if (!m) return null
+  return (
+    <span class={`modebadge ${m}`} data-tip={m === 'strict' ? t('modeStrictTip') : t('modeHybridTip')}>
+      {m.toUpperCase()}
+    </span>
+  )
+}
+
 export function PvpScreen() {
   const [url, setUrl] = useState(defaultWsUrl())
   const [name, setName] = useState('RUNNER')
@@ -53,6 +70,8 @@ export function PvpScreen() {
   const retryTimer = useRef<number>()
   const retryDeadline = useRef(0)
   const [conn, setConn] = useState<'online' | 'reconnecting'>('online')
+  const [mode, setMode] = useState<MpMode>('hybrid')
+  const predicted = useRef(false)
   const [myTag, setMyTag] = useState('')
   const [pileOpen, setPileOpen] = useState(false)
   const shakeCls = useShake()
@@ -106,6 +125,7 @@ export function PvpScreen() {
             setPhase('queued')
             break
           case 'match':
+            if (data.mode) setMode(data.mode)
             if (data.token) token.current = data.token
             retryDeadline.current = 0
             setConn('online')
@@ -131,9 +151,17 @@ export function PvpScreen() {
             showToast(data.online ? t('oppBack') : t('oppDropped'))
             break
           case 'st': {
+            if (data.mode) setMode(data.mode)
+            const mine = data.by !== undefined && data.by === data.view?.you
             setView(data.view)
             setPending(false)
-            processEvents((data.events ?? []) as GameEvent[], { delay: 220, step: 130 })
+            if (data.corrected) showToast(t('desyncFixed'))
+            // Hybrid: our own action already animated locally — the server
+            // view just snaps in silently. Everything else animates as usual.
+            if (!(mine && predicted.current && !data.corrected)) {
+              processEvents((data.events ?? []) as GameEvent[], { delay: 220, step: 130 })
+            }
+            predicted.current = false
             if (data.view?.over) {
               setPhase('over')
             }
@@ -197,7 +225,8 @@ export function PvpScreen() {
 
   const send = (action: PvpAction) => {
     setPending(true)
-    ws.current?.send(JSON.stringify({ t: 'action', action }))
+    const sum = view ? pvpChecksum(view) : undefined
+    ws.current?.send(JSON.stringify({ t: 'action', action, sum }))
   }
 
   const leave = () => {
@@ -245,6 +274,7 @@ export function PvpScreen() {
           {phase === 'queued' && (
             <>
               <div class="pulse">{t('scanning')}</div>
+              <ModeBadgeFetch />
               {myTag && <div style={{ color: 'var(--dim)', fontSize: '12px' }}>{tf('youAre', { tag: myTag })}</div>}
             </>
           )}
@@ -298,6 +328,21 @@ export function PvpScreen() {
     }
     energyRipple()
     sfx.play()
+    // Hybrid: play the outcome instantly from a local prediction; the
+    // authoritative reply snaps in behind it (with a correction toast if
+    // the states had diverged). Strict: wait for the server.
+    if (mode === 'hybrid' && view) {
+      const sum = pvpChecksum(view)
+      const pred = predictPvpPlay(view, idx)
+      if (pred) {
+        predicted.current = true
+        setView(pred.view)
+        processEvents(pred.events, { delay: 200 })
+      }
+      setPending(true)
+      ws.current?.send(JSON.stringify({ t: 'action', action: { t: 'play', hand: idx }, sum }))
+      return
+    }
     send({ t: 'play', hand: idx })
   }
 
@@ -307,6 +352,9 @@ export function PvpScreen() {
     <div class={`combat screen ${shakeCls}`}>
       <div class="topbar">
         <span class={`conndot ${conn}`} data-tip={conn === 'online' ? t('connOnline') : t('connReconnecting')} />
+        <span class={`modebadge ${mode}`} data-tip={mode === 'strict' ? t('modeStrictTip') : t('modeHybridTip')}>
+          {mode.toUpperCase()}
+        </span>
         <span class="stat" style={{ color: 'var(--purple)' }}>
           {tf('pvpTurn', { n: view.turn })}
         </span>

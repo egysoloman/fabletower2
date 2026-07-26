@@ -1423,3 +1423,25 @@ describe('mod support (cycle 43)', () => {
     expect(STARTER_RELICS.runner).toBe(before)
   })
 })
+
+describe('strict/hybrid mode support (cycle 45)', () => {
+  it('checksum is stable and order-sensitive; prediction matches the reducer', async () => {
+    const { newPvp, predictPvpPlay, pvpChecksum, pvpReduce, viewFor } = await import('../src/pvp')
+    const ps = newPvp(42, ['A', 'B'])
+    const sum1 = pvpChecksum(ps)
+    expect(pvpChecksum(structuredClone(ps))).toBe(sum1)
+    const view = viewFor(ps, 0)
+    expect(pvpChecksum(view)).toBe(sum1) // view carries the same public fields
+    // find a plain attack and compare predicted foe hp/energy with authority
+    const idx = view.sides[0].hand!.findIndex((c) => c.id === 'strike')
+    if (idx >= 0) {
+      const pred = predictPvpPlay(view, idx)!
+      const real = pvpReduce(ps, 0, { t: 'play', hand: idx })
+      expect(pred.view.sides[1].hp).toBe(real.state.sides[1].hp)
+      expect(pred.view.sides[0].energy).toBe(real.state.sides[0].energy)
+      expect(pred.events.some((e) => e.e === 'hit')).toBe(true)
+      // divergence detection: post-play state no longer matches pre-play sum
+      expect(pvpChecksum(real.state)).not.toBe(sum1)
+    }
+  })
+})

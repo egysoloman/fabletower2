@@ -15,6 +15,8 @@ import {
   tickTurnStart,
 } from './core'
 import { rngFromSeed } from './rng'
+import { CARDS } from './cards'
+import { modifiedDamage } from './core'
 
 export const PVP_HP = 72
 
@@ -168,4 +170,103 @@ export function viewFor(ps: PvpState, idx: 0 | 1): PvpView {
     }
   }
   return { you: idx, turn: ps.turn, active: ps.active, sides: [mk(0), mk(1)], over: ps.over }
+}
+
+// --- Strict/hybrid support ---------------------------------------------------
+
+export type MpMode = 'strict' | 'hybrid'
+
+/**
+ * Cheap divergence checksum over the fields both sides can see. The client
+ * sends it with each action; the server compares against the authoritative
+ * pre-action state and flags a correction when they disagree (latency ghosts
+ * or tampering — either way the full server view snaps the client back).
+ */
+export function pvpChecksum(v: {
+  turn: number
+  active: number
+  sides: { hp: number; block: number; energy: number }[]
+}): number {
+  let h = 2166136261
+  const mix = (n: number) => {
+    h ^= n + 0x9e3779b9
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  mix(v.turn)
+  mix(v.active)
+  for (const s of v.sides) {
+    mix(s.hp)
+    mix(s.block)
+    mix(s.energy)
+  }
+  return h >>> 0
+}
+
+/**
+ * Optimistic local prediction for hybrid mode: applies the deterministic
+ * parts of playing a card to a REDACTED view (cost, damage vs the visible
+ * foe, own block/statuses). RNG-dependent effects (draws, shuffles,
+ * summons) are left to the authoritative reply — the server view snaps in
+ * right behind the animation.
+ */
+export function predictPvpPlay(view: PvpView, handIdx: number): { view: PvpView; events: GameEvent[] } | null {
+  const me = view.sides[view.you]
+  const card = me.hand?.[handIdx]
+  if (!card) return null
+  const def = CARDS[card.id]
+  if (!def || def.unplayable) return null
+  const cost = card.up && def.upCost !== undefined ? def.upCost : def.cost
+  if (me.energy < cost) return null
+  const v: PvpView = structuredClone(view)
+  const m = v.sides[v.you]
+  const f = v.sides[1 - v.you]
+  const evs: GameEvent[] = []
+  const whoMe = 'p' + v.you
+  const whoFoe = 'p' + (1 - v.you)
+  m.energy -= cost
+  m.hand!.splice(handIdx, 1)
+  m.handCount--
+  const effects = card.up ? def.upEffects : def.effects
+  for (const eff of effects) {
+    switch (eff.k) {
+      case 'dmg':
+      case 'dmgAll': {
+        for (let t = 0; t < (eff.times ?? 1); t++) {
+          const dmg = modifiedDamage(eff.n, m as never, f as never)
+          const absorbed = Math.min(f.block, dmg)
+          f.block -= absorbed
+          const through = dmg - absorbed
+          if (absorbed > 0 && through <= 0) evs.push({ e: 'blocked', who: whoFoe, n: absorbed })
+          if (through > 0) {
+            f.hp = Math.max(0, f.hp - through)
+            evs.push({ e: 'hit', who: whoFoe, n: through })
+          }
+        }
+        break
+      }
+      case 'block':
+        m.block += eff.n
+        evs.push({ e: 'block', who: whoMe, n: eff.n })
+        break
+      case 'selfDmg':
+        m.hp = Math.max(0, m.hp - eff.n)
+        evs.push({ e: 'hit', who: whoMe, n: eff.n })
+        break
+      case 'status': {
+        const target = eff.to === 'self' ? m : f
+        const who = eff.to === 'self' ? whoMe : whoFoe
+        target.statuses = { ...target.statuses, [eff.id]: (target.statuses[eff.id] ?? 0) + eff.n }
+        evs.push({ e: 'status', who, id: eff.id, n: eff.n })
+        break
+      }
+      case 'heal':
+        m.hp = Math.min(m.maxHp, m.hp + eff.n)
+        evs.push({ e: 'heal', who: whoMe, n: eff.n })
+        break
+      default:
+        // RNG or hidden-info effect — leave for the authoritative reply
+        break
+    }
+  }
+  return { view: v, events: evs }
 }

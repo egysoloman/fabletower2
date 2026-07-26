@@ -33,12 +33,23 @@ interface Db {
   accounts: Record<string, Account>
   registrationsOpen: boolean
   dailyScores: Record<string, DailyScore[]>
+  /** Multiplayer combat mode; env MULTIPLAYER_MODE overrides when set. */
+  mpMode?: 'strict' | 'hybrid'
 }
 
 const DATA_FILE = process.env.NS_DATA_FILE ?? join(process.cwd(), 'data', 'accounts.json')
 const ADMIN_KEY = process.env.NS_ADMIN_KEY ?? ''
 /** Obfuscatable admin API prefix, e.g. ADMIN_API_PATH=/sadasd/admin */
 export const ADMIN_API_PATH = (process.env.ADMIN_API_PATH ?? '/api/admin').replace(/\/$/, '')
+const ENV_MP_MODE = process.env.MULTIPLAYER_MODE === 'strict' || process.env.MULTIPLAYER_MODE === 'hybrid'
+  ? (process.env.MULTIPLAYER_MODE as 'strict' | 'hybrid')
+  : null
+
+/** Effective multiplayer mode: env override > admin setting > hybrid. */
+export function getMpMode(): 'strict' | 'hybrid' {
+  return ENV_MP_MODE ?? db.mpMode ?? 'hybrid'
+}
+
 /** Optional game entry password (empty = gate disabled). */
 const GATE_HASH = process.env.GAME_ENTRY_PASSWORD
   ? createHash('sha256').update(process.env.GAME_ENTRY_PASSWORD).digest('hex')
@@ -139,6 +150,10 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     }
   }
 
+  if (url === '/api/mpmode' && req.method === 'GET') {
+    return json(res, 200, { mode: getMpMode(), envLocked: ENV_MP_MODE !== null }), true
+  }
+
   // --- auth ------------------------------------------------------------
   if (url === '/api/register' && req.method === 'POST') {
     const b = await readBody(req)
@@ -236,7 +251,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       const list = Object.values(db.accounts).map((a) => ({
         user: a.user, name: a.name, created: a.created, banned: !!a.banned, blobUpdated: a.blobUpdated ?? 0,
       }))
-      return json(res, 200, { registrationsOpen: db.registrationsOpen, accounts: list }), true
+      return json(res, 200, { registrationsOpen: db.registrationsOpen, mpMode: getMpMode(), mpEnvLocked: ENV_MP_MODE !== null, accounts: list }), true
     }
     const delMatch = /^\/accounts\/([\w\-]+)$/.exec(sub)
     if (delMatch && req.method === 'DELETE') {
@@ -265,6 +280,14 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       acc.banned = !!b?.banned
       persist()
       return json(res, 200, { ok: true, banned: acc.banned }), true
+    }
+    if (sub === '/mpmode' && req.method === 'POST') {
+      const b = await readBody(req)
+      const mode = b?.mode === 'strict' ? 'strict' : b?.mode === 'hybrid' ? 'hybrid' : null
+      if (!mode) return json(res, 400, { err: 'mode must be strict|hybrid' }), true
+      db.mpMode = mode
+      persist()
+      return json(res, 200, { mode: getMpMode(), envLocked: ENV_MP_MODE !== null }), true
     }
     if (sub === '/registrations' && req.method === 'POST') {
       const b = await readBody(req)

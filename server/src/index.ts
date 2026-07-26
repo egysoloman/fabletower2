@@ -12,13 +12,14 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
-import { ADMIN_API_PATH, handleApi } from './accounts'
+import { ADMIN_API_PATH, getMpMode, handleApi } from './accounts'
 
 const ADMIN_UI_PATH = (process.env.ADMIN_UI_PATH ?? '/admin').replace(/\/$/, '')
 import { adminHtml } from './admin-ui'
 import {
   CARDS,
   ENCOUNTERS,
+  pvpChecksum,
   EVENTS,
   POTIONS,
   coopUsePotion,
@@ -403,7 +404,7 @@ function startMatch(a: Client, b: Client, mode: Mode) {
     a.room = room
     b.room = room
     room.players.forEach((p, i) => {
-      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1), token: mintToken(p) })
+      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1), token: mintToken(p), mode: getMpMode() })
     })
     return
   }
@@ -444,10 +445,14 @@ function finishClimb(room: Room, winnerIdx: 0 | 1, reason: string) {
   // relaying so the loser can spectate) until both leave.
 }
 
-function handleAction(client: Client, rawAction: unknown) {
+function handleAction(client: Client, rawAction: unknown, clientSum?: number) {
   const room = client.room
   if (!room || !room.state) return send(client.ws, { t: 'err', msg: 'not in a match' })
   const idx = room.players.indexOf(client) as 0 | 1
+  // Hybrid divergence check: compare the client's pre-action checksum with
+  // the authoritative state (both modes validate fully regardless).
+  const corrected =
+    clientSum !== undefined && clientSum !== pvpChecksum(room.state)
   const a = rawAction as PvpAction
   const valid =
     a && typeof a === 'object' &&
@@ -459,7 +464,10 @@ function handleAction(client: Client, rawAction: unknown) {
 
   room.state = res.state
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'st', view: viewFor(room.state!, i as 0 | 1), events: res.events })
+    send(p.ws, {
+      t: 'st', view: viewFor(room.state!, i as 0 | 1), events: res.events,
+      mode: getMpMode(), by: idx, ...(corrected && i === idx ? { corrected: true } : {}),
+    })
   })
   if (room.state.over) {
     room.finished = true
@@ -512,7 +520,7 @@ wss.on('connection', (ws) => {
         break
       }
       case 'action':
-        handleAction(client, msg.action)
+        handleAction(client, msg.action, typeof msg.sum === 'number' ? msg.sum : undefined)
         break
       case 'resume': {
         // Reconnect into a live seat within the grace window.
@@ -531,7 +539,7 @@ wss.on('connection', (ws) => {
         if (room) {
           const idx = room.players.indexOf(client) as 0 | 1
           if (room.mode === 'duel' || room.state) {
-            send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true })
+            send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true, mode: getMpMode() })
           } else {
             send(ws, { t: 'climbstart', you: idx, seed: room.seed, opp: room.players[1 - idx].name, token: client.token, rejoin: true })
           }
@@ -558,7 +566,7 @@ wss.on('connection', (ws) => {
           room.finished = false
           room.rematch = [false, false]
           room.players.forEach((p, i) => {
-            send(p.ws, { t: 'match', you: i, view: viewFor(room.state!, i as 0 | 1), token: p.token })
+            send(p.ws, { t: 'match', you: i, view: viewFor(room.state!, i as 0 | 1), token: p.token, mode: getMpMode() })
           })
         } else {
           send(other.ws, { t: 'rematch-offer' })

@@ -46,10 +46,12 @@ td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
     <div class="card"><b id="c-today">–</b><small>SYNCED TODAY</small></div>
     <div class="card"><b id="c-banned">–</b><small>BANNED</small></div>
     <div class="card"><b id="c-scores">–</b><small>DAILY SCORES</small></div>
+    <div class="card"><b id="c-mode">–</b><small>MP MODE</small></div>
   </div>
   <h2>ACCOUNTS</h2>
   <div class="row"><input id="search" placeholder="search…" oninput="render()">
     <button onclick="toggleReg()" id="regbtn">TOGGLE REGISTRATIONS</button>
+    <button onclick="toggleMode()" id="modebtn">TOGGLE MP MODE</button>
     <button class="gold" onclick="exportDb()">EXPORT DB</button>
     <button class="warn" onclick="importDb()">IMPORT DB</button>
     <input type="file" id="importfile" accept=".json" style="display:none">
@@ -83,6 +85,8 @@ async function load() {
     $('c-today').textContent = DATA.accounts.filter((a) => a.blobUpdated > dayAgo).length
     $('c-banned').textContent = DATA.accounts.filter((a) => a.banned).length
     $('c-scores').textContent = board.top.length
+    $('c-mode').textContent = DATA.mpMode.toUpperCase() + (DATA.mpEnvLocked ? ' (env)' : '')
+    $('modebtn').disabled = !!DATA.mpEnvLocked
     $('regstate').innerHTML = DATA.registrationsOpen
       ? '<span class="pill on">registrations OPEN</span>' : '<span class="pill off">registrations CLOSED</span>'
     render()
@@ -110,6 +114,9 @@ async function resetPw(user) {
 async function del(user) {
   if (!confirm('Delete account "' + user + '" permanently?')) return
   try { await api(API + '/accounts/' + user, 'DELETE'); load() } catch (e) { msg(e.message, true) }
+}
+async function toggleMode() {
+  try { await api(API + '/mpmode', 'POST', { mode: DATA.mpMode === 'hybrid' ? 'strict' : 'hybrid' }); load() } catch (e) { msg(e.message, true) }
 }
 async function toggleReg() {
   try { await api(API + '/registrations', 'POST', { open: !DATA.registrationsOpen }); load() } catch (e) { msg(e.message, true) }
