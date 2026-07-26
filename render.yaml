@@ -1,0 +1,18 @@
+# Render Blueprint — one web service serving both the built client and the
+# PvP WebSocket on a single port.
+#
+# The server reads PORT from the environment and static-hosts client/dist, so
+# the build must run the client build; the client derives its WebSocket URL
+# from window.location and upgrades to wss: on HTTPS, so no extra config.
+services:
+  - type: web
+    name: neonspire
+    runtime: node
+    plan: free
+    region: singapore
+    branch: claude/neon-spire-roguelike-fqipjn
+    # --include=dev is required: Render sets NODE_ENV=production, which would
+    # otherwise skip devDependencies — and vite lives there.
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /

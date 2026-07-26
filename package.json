@@ -8,6 +8,9 @@
     "client",
     "server"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "npm run dev -w client",
     "dev:server": "npm run dev -w server",
