@@ -1,6 +1,8 @@
 import type { CombatState, EnemyC, EnemyDef, Intent, IntentKind, MoveDef } from './types'
 import { weightedPick, type Rng } from './rng'
 import { modifiedDamage } from './core'
+import { isZh } from './i18n'
+import { ENEMY_ZH } from './locale-zh'
 
 const E = (def: EnemyDef) => def
 
@@ -160,6 +162,17 @@ reg(E({
     { id: 'awaken', name: 'AWAKEN', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'buff', id: 'str', n: 4 }, { k: 'buff', id: 'ritual', n: 1 }] },
   ],
 }))
+
+/** Localized enemy display name. */
+export function enemyName(defId: string): string {
+  return isZh() ? (ENEMY_ZH[defId]?.name ?? ENEMIES[defId]?.name ?? defId) : (ENEMIES[defId]?.name ?? defId)
+}
+
+/** Localized move display name (for intent tooltips). */
+export function moveName(defId: string, moveId: string): string {
+  const en = ENEMIES[defId]?.moves.find((m) => m.id === moveId)?.name ?? moveId
+  return isZh() ? (ENEMY_ZH[defId]?.moves[moveId] ?? en) : en
+}
 
 // --- Encounters -------------------------------------------------------------
 

@@ -5,14 +5,20 @@ import {
   RELICS,
   STATUS_INFO,
   cardCost,
+  cardFlavor,
   cardName,
   describeCard,
+  relicDesc,
+  relicName,
+  statusDesc,
+  statusName,
   type CardInst,
   type Statuses,
   type StatusId,
 } from '@neonspire/engine'
 import { picker, pileView, run } from './store'
 import { muted, sfx, toggleMute } from './sfx'
+import { lang, t, tf, toggleLang } from './i18n'
 import { abandonRun } from './game'
 
 export function CardView(props: {
@@ -23,6 +29,9 @@ export function CardView(props: {
 }) {
   const { card } = props
   const def = CARDS[card.id]
+  const typeLabel =
+    def.type === 'attack' ? t('typeAttack') : def.type === 'skill' ? t('typeSkill') : t('typePower')
+  const flavor = cardFlavor(card)
   return (
     <div
       class={`card ${def.type} ${def.rarity === 'special' ? 'special' : ''} ${props.cls ?? ''}`}
@@ -31,9 +40,9 @@ export function CardView(props: {
     >
       {!def.unplayable && <div class="cost">{card.up && def.upCost !== undefined ? def.upCost : cardCost(card)}</div>}
       <div class={`cname ${card.up ? 'upgraded' : ''}`}>{cardName(card)}</div>
-      <div class="ctype">{def.type}</div>
+      <div class="ctype">{typeLabel}</div>
       <div class="cdesc">{describeCard(card)}</div>
-      {def.flavor && <div class="cflavor">{def.flavor}</div>}
+      {flavor && <div class="cflavor">{flavor}</div>}
     </div>
   )
 }
@@ -60,6 +69,7 @@ export function BlockChip(props: { block: number }) {
 }
 
 export function StatusRow(props: { statuses: Statuses }) {
+  void lang.value // localized tooltips must re-render on language switch
   const entries = Object.entries(props.statuses).filter(([, v]) => (v ?? 0) !== 0)
   return (
     <div class="statusrow">
@@ -69,7 +79,7 @@ export function StatusRow(props: { statuses: Statuses }) {
           <span
             key={id}
             class={`status ${info.bad ? 'bad' : ''}`}
-            data-tip={`${info.name}: ${info.desc.replaceAll('{n}', String(v))}`}
+            data-tip={`${statusName(id as StatusId)}: ${statusDesc(id as StatusId).replaceAll('{n}', String(v))}`}
           >
             {info.sym}
             {v}
@@ -81,13 +91,14 @@ export function StatusRow(props: { statuses: Statuses }) {
 }
 
 export function RelicBar(props: { relics: string[] }) {
+  void lang.value
   return (
     <div class="relicbar">
       {props.relics.map((id) => {
         const def = RELICS[id]
         if (!def) return null
         return (
-          <div key={id} class="relic" data-tip={`${def.name}\n${def.desc}`}>
+          <div key={id} class="relic" data-tip={`${relicName(id)}\n${relicDesc(id)}`}>
             {def.sym}
           </div>
         )
@@ -102,15 +113,13 @@ export function TopBar(props: { showAbandon?: boolean }) {
   if (!r) return null
   return (
     <div class="topbar">
-      <span class="stat hp-txt" data-tip="Hit points">
+      <span class="stat hp-txt" data-tip={t('hpTip')}>
         ♥ <b>{r.hp}/{r.maxHp}</b>
       </span>
-      <span class="stat gold-txt" data-tip="Credits">
+      <span class="stat gold-txt" data-tip={t('creditsTip')}>
         ¤ <b>{r.gold}</b>
       </span>
-      <span class="stat floor-txt">
-        ACT {r.act} · FLOOR {r.floor}
-      </span>
+      <span class="stat floor-txt">{tf('actFloor', { act: r.act, floor: r.floor })}</span>
       <RelicBar relics={r.relics} />
       <span class="spacer" />
       <span
@@ -118,10 +127,13 @@ export function TopBar(props: { showAbandon?: boolean }) {
         style={{ color: 'var(--purple)' }}
         onClick={() => {
           sfx.click()
-          pileView.value = { title: `DECK · ${r.deck.length} CARDS`, cards: [...r.deck].sort(byName) }
+          pileView.value = { title: tf('deckTitle', { n: r.deck.length }), cards: [...r.deck].sort(byName) }
         }}
       >
-        ▤ DECK {r.deck.length}
+        {tf('deckBtn', { n: r.deck.length })}
+      </span>
+      <span class="stat linkish" onClick={toggleLang} style={{ color: 'var(--dim)' }} data-tip="EN / 中文">
+        {lang.value === 'zh' ? 'EN' : '中'}
       </span>
       <span class="stat linkish" onClick={toggleMute} style={{ color: 'var(--dim)' }}>
         {muted.value ? '🔇' : '🔊'}
@@ -131,10 +143,10 @@ export function TopBar(props: { showAbandon?: boolean }) {
           class="stat linkish"
           style={{ color: 'var(--dim)' }}
           onClick={() => {
-            if (window.confirm('Abandon this run?')) abandonRun()
+            if (window.confirm(t('abandonConfirm'))) abandonRun()
           }}
         >
-          ✕ ABANDON
+          {t('abandon')}
         </span>
       )}
     </div>
@@ -157,10 +169,10 @@ export function PileModal() {
           {view.cards.map((c) => (
             <CardView key={c.uid} card={c} />
           ))}
-          {view.cards.length === 0 && <div class="sub">— empty —</div>}
+          {view.cards.length === 0 && <div class="sub">{t('empty')}</div>}
         </div>
         <button class="btn ghost" onClick={() => (pileView.value = null)}>
-          CLOSE
+          {t('close')}
         </button>
       </div>
     </div>
@@ -181,11 +193,11 @@ export function PickerModal() {
           {cards.map((c) => (
             <CardView key={c.uid} card={c} onClick={() => req.onPick(c.uid)} />
           ))}
-          {cards.length === 0 && <div class="sub">No eligible cards.</div>}
+          {cards.length === 0 && <div class="sub">{t('noEligible')}</div>}
         </div>
         {req.cancellable && (
           <button class="btn ghost" onClick={() => (picker.value = null)}>
-            CANCEL
+            {t('cancel')}
           </button>
         )}
       </div>

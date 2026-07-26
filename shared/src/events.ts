@@ -1,3 +1,6 @@
+import { isZh } from './i18n'
+import { EVENT_ZH } from './locale-zh'
+
 export type Outcome =
   | { k: 'gold'; n: number }
   | { k: 'damage'; n: number }
@@ -22,6 +25,22 @@ export interface EventDef {
   glyph: string
   text: string
   choices: EventChoice[]
+}
+
+export function eventName(ev: EventDef): string {
+  return isZh() ? (EVENT_ZH[ev.id]?.name ?? ev.name) : ev.name
+}
+
+export function eventText(ev: EventDef): string {
+  return isZh() ? (EVENT_ZH[ev.id]?.text ?? ev.text) : ev.text
+}
+
+export function eventChoiceLabel(ev: EventDef, i: number): string {
+  return isZh() ? (EVENT_ZH[ev.id]?.choices[i]?.label ?? ev.choices[i].label) : ev.choices[i].label
+}
+
+export function eventChoiceDetail(ev: EventDef, i: number): string {
+  return isZh() ? (EVENT_ZH[ev.id]?.choices[i]?.detail ?? ev.choices[i].detail) : ev.choices[i].detail
 }
 
 export const EVENTS: EventDef[] = [

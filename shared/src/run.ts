@@ -1,7 +1,8 @@
 /** Run/meta layer: deck-building, map traversal, rewards, shops, events. */
 import type { CardInst, CombatState, NodeType, RunState, ShopStock } from './types'
-import { CARDS, cardsByRarity, obtainableCards } from './cards'
-import { RELICS, obtainableRelics } from './relics'
+import { CARDS, cardBaseName, cardsByRarity, obtainableCards } from './cards'
+import { RELICS, obtainableRelics, relicName } from './relics'
+import { ES } from './i18n'
 import { ENCOUNTERS } from './enemies'
 import { EVENTS, type Outcome } from './events'
 import { genActMap, nodeById } from './map'
@@ -231,48 +232,48 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
         break
       case 'damage':
         run.hp = Math.max(1, run.hp - o.n)
-        lines.push(`-${o.n} HP`)
+        lines.push(ES.hpLoss(o.n))
         break
       case 'heal': {
         const healed = Math.min(o.n, run.maxHp - run.hp)
         run.hp += healed
-        lines.push(`+${healed} HP`)
+        lines.push(ES.hpGain(healed))
         break
       }
       case 'maxhp':
         run.maxHp += o.n
         run.hp += o.n
-        lines.push(`+${o.n} Max HP`)
+        lines.push(ES.maxHpGain(o.n))
         break
       case 'relic': {
         const id = randomRelicId(run)
         if (id) {
           addRelic(run, id)
-          lines.push(`Acquired ${RELICS[id].name}`)
+          lines.push(ES.acquiredRelic(relicName(id)))
         } else {
           run.gold += withGoldBonus(run, 50)
-          lines.push(`No relics left — +${withGoldBonus(run, 50)}¤`)
+          lines.push(ES.noRelicsLeft(withGoldBonus(run, 50)))
         }
         break
       }
       case 'cardRandomRare': {
         const def = pick(run.rng, obtainableCards().filter((c) => c.rarity === 'rare'))
         addCardToDeck(run, def.id)
-        lines.push(`Added ${def.name}`)
+        lines.push(ES.addedCard(cardBaseName(def.id)))
         break
       }
       case 'cardGlitch':
         addCardToDeck(run, 'glitch')
-        lines.push('A Glitch infects your deck')
+        lines.push(ES.glitchInfects())
         break
       case 'upgradeRandom': {
         const candidates = run.deck.filter((c) => !c.up && CARDS[c.id].rarity !== 'special')
         if (candidates.length > 0) {
           const card = pick(run.rng, candidates)
           card.up = true
-          lines.push(`Upgraded ${CARDS[card.id].name}+`)
+          lines.push(ES.upgradedCard(cardBaseName(card.id)))
         } else {
-          lines.push('Nothing left to upgrade')
+          lines.push(ES.nothingToUpgrade())
         }
         break
       }

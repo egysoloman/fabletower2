@@ -2,6 +2,7 @@ import { MAP_COLS, MAP_ROWS, allNodes, availableNodeIds, type MapNode, type Node
 import { TopBar } from '../components'
 import { clickNode } from '../game'
 import { run } from '../store'
+import { t, tf } from '../i18n'
 
 const ICONS: Record<NodeType, string> = {
   combat: '⚔',
@@ -13,14 +14,16 @@ const ICONS: Record<NodeType, string> = {
   boss: '👁',
 }
 
-const NAMES: Record<NodeType, string> = {
-  combat: 'Hostiles',
-  elite: 'ELITE hostiles',
-  rest: 'Safehouse',
-  shop: 'Black market',
-  treasure: 'Data vault',
-  event: 'Unknown signal',
-  boss: 'SECTOR BOSS',
+function nodeName(type: NodeType): string {
+  switch (type) {
+    case 'combat': return t('nodeCombat')
+    case 'elite': return t('nodeElite')
+    case 'rest': return t('nodeRest')
+    case 'shop': return t('nodeShop')
+    case 'treasure': return t('nodeTreasure')
+    case 'event': return t('nodeEvent')
+    case 'boss': return t('nodeBoss')
+  }
 }
 
 /** Deterministic per-node x jitter so the map looks hand-drawn. */
@@ -50,9 +53,7 @@ export function MapScreen() {
   return (
     <div class="screen">
       <TopBar showAbandon />
-      <div class="act-title">
-        ── ACT {r.act} / 3 ──
-      </div>
+      <div class="act-title">{tf('actTitle', { act: r.act })}</div>
       <div class="map-wrap">
         <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`}>
           {nodes.flatMap((n) =>
@@ -78,7 +79,7 @@ export function MapScreen() {
             const rad = n.type === 'boss' ? 26 : 16
             return (
               <g key={n.id} class={cls} onClick={() => open.has(n.id) && clickNode(n.id)}>
-                <title>{NAMES[n.type]}</title>
+                <title>{nodeName(n.type)}</title>
                 <circle cx={cx(n)} cy={cy(n)} r={rad} />
                 <text x={cx(n)} y={cy(n)} style={n.type === 'boss' ? 'font-size:22px' : ''}>
                   {ICONS[n.type]}

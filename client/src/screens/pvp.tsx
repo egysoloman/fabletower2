@@ -9,6 +9,7 @@ import { BlockChip, CardView, HpBar, StatusRow } from '../components'
 import { processEvents, registerAnchor } from '../fx'
 import { screen } from '../store'
 import { sfx } from '../sfx'
+import { t, tf } from '../i18n'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
 
@@ -28,6 +29,7 @@ export function PvpScreen() {
   const [phase, setPhase] = useState<Phase>('setup')
   const [view, setView] = useState<PvpView | null>(null)
   const [notice, setNotice] = useState('')
+  const [forfeitWin, setForfeitWin] = useState(false)
   const [toast, setToast] = useState('')
   const ws = useRef<WebSocket | null>(null)
   const toastTimer = useRef<number>()
@@ -45,12 +47,12 @@ export function PvpScreen() {
       ws.current = sock
       sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name }))
       sock.onerror = () => {
-        setNotice('Could not reach the relay server. Solo mode never needs one — but PvP does. Start it with:  npm run dev:server')
+        setNotice(t('serverErr'))
         setPhase('error')
       }
       sock.onclose = () => {
         setPhase((p) => (p === 'playing' || p === 'queued' || p === 'connecting' ? 'error' : p))
-        setNotice((n) => n || 'Connection lost.')
+        setNotice((n) => n || t('connLost'))
       }
       sock.onmessage = (msg) => {
         let data: any
@@ -80,13 +82,14 @@ export function PvpScreen() {
             showToast(data.msg ?? 'rejected')
             break
           case 'opp-left':
-            setNotice('Your opponent disconnected. You win by default.')
+            setNotice(t('oppLeft'))
+            setForfeitWin(true)
             setPhase('over')
             break
         }
       }
     } catch {
-      setNotice('Invalid server URL.')
+      setNotice(t('badUrl'))
       setPhase('error')
     }
   }
@@ -111,25 +114,25 @@ export function PvpScreen() {
         <div class="pvp-status">
           {phase === 'setup' && (
             <>
-              <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder="handle" />
+              <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder={t('handlePlaceholder')} />
               <input class="neon" style={{ width: '300px' }} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} placeholder="ws://server:8787" />
               <button class="btn big pink" onClick={connect}>
-                FIND OPPONENT
+                {t('findOpponent')}
               </button>
             </>
           )}
-          {phase === 'connecting' && <div class="pulse">▚ CONNECTING…</div>}
-          {phase === 'queued' && <div class="pulse">▚ SCANNING FOR OPPONENT… (open a second tab to duel yourself)</div>}
+          {phase === 'connecting' && <div class="pulse">{t('connecting')}</div>}
+          {phase === 'queued' && <div class="pulse">{t('scanning')}</div>}
           {phase === 'error' && (
             <>
               <div style={{ color: 'var(--red)', maxWidth: '440px', textAlign: 'center', lineHeight: 1.6 }}>{notice}</div>
               <button class="btn" onClick={() => setPhase('setup')}>
-                RETRY
+                {t('retry')}
               </button>
             </>
           )}
           <button class="btn ghost" onClick={leave}>
-            ← BACK
+            {t('back')}
           </button>
         </div>
       </div>
@@ -142,34 +145,36 @@ export function PvpScreen() {
   const myTurn = view.active === view.you && !view.over
   const hand = me.hand ?? []
   const n = hand.length
-  const iWon = view.over ? view.over.winner === view.you : notice.includes('win')
+  const iWon = view.over ? view.over.winner === view.you : forfeitWin
 
   return (
     <div class="combat screen">
       <div class="topbar">
         <span class="stat" style={{ color: 'var(--purple)' }}>
-          PVP · TURN {view.turn}
+          {tf('pvpTurn', { n: view.turn })}
         </span>
         <span class="spacer" />
-        <span class={`turn-indicator ${myTurn ? 'you' : 'them'}`}>{myTurn ? '◈ YOUR TURN' : `${them.name}'S TURN`}</span>
+        <span class={`turn-indicator ${myTurn ? 'you' : 'them'}`}>
+          {myTurn ? t('yourTurn') : tf('theirTurn', { name: them.name })}
+        </span>
         <span class="spacer" />
         <span class="stat linkish" style={{ color: 'var(--dim)' }} onClick={leave}>
-          ✕ LEAVE
+          {t('leaveBtn')}
         </span>
       </div>
 
       <div class="arena">
         <div class="player-zone" ref={(el) => registerAnchor('p' + view.you, el)}>
-          <div class="energy-orb" data-tip="Energy">
+          <div class="energy-orb" data-tip={t('energyTip')}>
             {me.energy}/{me.energyMax}
           </div>
           <BlockChip block={me.block} />
           <div class="glyph">👤</div>
-          <div class="pname">{me.name} (YOU)</div>
+          <div class="pname">{tf('youSuffix', { name: me.name })}</div>
           <HpBar hp={me.hp} maxHp={me.maxHp} mine />
           <StatusRow statuses={me.statuses} />
           <div style={{ fontSize: '11px', color: 'var(--dim)' }}>
-            draw {me.drawCount} · discard {me.discard.length}
+            {tf('pvpCounts', { a: me.drawCount, b: me.discard.length })}
           </div>
         </div>
 
@@ -189,7 +194,7 @@ export function PvpScreen() {
           <HpBar hp={them.hp} maxHp={them.maxHp} />
           <StatusRow statuses={them.statuses} />
           <div style={{ fontSize: '11px', color: 'var(--dim)' }}>
-            draw {them.drawCount} · discard {them.discard.length}
+            {tf('pvpCounts', { a: them.drawCount, b: them.discard.length })}
           </div>
         </div>
       </div>
@@ -203,13 +208,15 @@ export function PvpScreen() {
       {view.over || phase === 'over' ? (
         <div class="overlay">
           <div class="panel">
-            <h2 class={iWon ? '' : 'pink'}>{iWon ? '▚ VICTORY ▞' : '▚ FLATLINED ▞'}</h2>
-            <div class="sub">{view.over?.reason ?? notice}</div>
-            <button class="btn pink" onClick={() => { setView(null); setPhase('setup'); setNotice('') }}>
-              REMATCH QUEUE
+            <h2 class={iWon ? '' : 'pink'}>{iWon ? t('pvpVictory') : t('pvpDefeat')}</h2>
+            <div class="sub">
+              {view.over ? tf('flatlinedWho', { name: view.sides[view.over.winner === 0 ? 1 : 0].name }) : notice}
+            </div>
+            <button class="btn pink" onClick={() => { setView(null); setPhase('setup'); setNotice(''); setForfeitWin(false) }}>
+              {t('rematch')}
             </button>
             <button class="btn ghost" onClick={leave}>
-              MENU
+              {t('menuBtn')}
             </button>
           </div>
         </div>
@@ -231,7 +238,7 @@ export function PvpScreen() {
             })}
           </div>
           <button class="btn pink endturn" disabled={!myTurn} onClick={() => send({ t: 'end' })}>
-            END TURN ▶
+            {t('endTurn')}
           </button>
         </div>
       )}

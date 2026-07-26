@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   CARDS,
+  enemyName,
+  moveName,
   playableCards,
   type CombatState,
   type EnemyC,
@@ -11,19 +13,20 @@ import { doCombat, resolveCombatIfOver } from '../game'
 import { registerAnchor, shakeTick } from '../fx'
 import { combat, pileView } from '../store'
 import { byName } from '../components'
+import { t, tf } from '../i18n'
 
 function intentText(intent: Intent): string {
   switch (intent.kind) {
     case 'attack':
-      return `ATK ${intent.dmg}${intent.times ? '×' + intent.times : ''}`
+      return `${t('intentAtk')} ${intent.dmg}${intent.times ? '×' + intent.times : ''}`
     case 'defend':
-      return 'DEF ▲'
+      return t('intentDef')
     case 'buff':
-      return 'BUF ▲'
+      return t('intentBuf')
     case 'debuff':
-      return 'HEX ▼'
+      return t('intentHex')
     case 'mixed':
-      return `ATK ${intent.dmg ?? '?'}${intent.times ? '×' + intent.times : ''} +`
+      return `${t('intentAtk')} ${intent.dmg ?? '?'}${intent.times ? '×' + intent.times : ''} +`
   }
 }
 
@@ -38,7 +41,7 @@ function EnemyBox(props: { e: EnemyC; idx: number; targetable: boolean; onTarget
     >
       <BlockChip block={e.block} />
       {e.intent && !e.dead ? (
-        <div class={`intent ${e.intent.kind}`} data-tip={e.intent.name}>
+        <div class={`intent ${e.intent.kind}`} data-tip={moveName(e.defId, e.intent.moveId)}>
           {intentText(e.intent)}
         </div>
       ) : (
@@ -47,7 +50,7 @@ function EnemyBox(props: { e: EnemyC; idx: number; targetable: boolean; onTarget
         </div>
       )}
       <div class="glyph">{e.glyph}</div>
-      <div class="ename">{e.name}</div>
+      <div class="ename">{enemyName(e.defId)}</div>
       <HpBar hp={e.hp} maxHp={e.maxHp} />
       <StatusRow statuses={e.statuses} />
     </div>
@@ -116,17 +119,17 @@ export function CombatScreen() {
     >
       <TopBar />
       <div key={cs.turn} class="turnbanner">
-        TURN {cs.turn}
+        {tf('turnBanner', { n: cs.turn })}
       </div>
       {cs.over && (
         <div class={`turnbanner ${cs.over === 'lose' ? 'enemy' : ''}`} style={{ animationDuration: '2s' }}>
-          {cs.over === 'win' ? 'THREAT DELETED' : 'FLATLINED'}
+          {cs.over === 'win' ? t('threatDeleted') : t('flatlined')}
         </div>
       )}
 
       <div class="arena">
         <div class="player-zone" ref={(el) => registerAnchor('p', el)}>
-          <div class="energy-orb" data-tip="Energy">
+          <div class="energy-orb" data-tip={t('energyTip')}>
             {p.energy}/{p.energyMax}
           </div>
           <BlockChip block={p.block} />
@@ -145,16 +148,18 @@ export function CombatScreen() {
 
       {selected !== null && (
         <div class="turnbanner" style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9 }}>
-          SELECT TARGET · right-click to cancel
+          {t('selectTarget')}
         </div>
       )}
 
       <div class="dock">
         <div
           class="pilebtn left"
-          onClick={() => (pileView.value = { title: `DRAW PILE · ${p.draw.length}`, cards: [...p.draw].sort(byName) })}
+          onClick={() =>
+            (pileView.value = { title: tf('drawPileTitle', { n: p.draw.length }), cards: [...p.draw].sort(byName) })
+          }
         >
-          ▲ DRAW {p.draw.length}
+          {tf('drawBtn', { n: p.draw.length })}
         </div>
         <div class="hand">
           {p.hand.map((c, i) => {
@@ -176,15 +181,15 @@ export function CombatScreen() {
           class="pilebtn right"
           onClick={() =>
             (pileView.value = {
-              title: `DISCARD · ${p.discard.length}  /  EXHAUSTED · ${p.exhausted.length}`,
+              title: tf('discardPileTitle', { a: p.discard.length, b: p.exhausted.length }),
               cards: [...p.discard].sort(byName).concat([...p.exhausted].sort(byName)),
             })
           }
         >
-          ▼ DISCARD {p.discard.length}
+          {tf('discardBtn', { n: p.discard.length })}
         </div>
         <button class="btn pink endturn" disabled={!!cs.over} onClick={() => (setSelected(null), doCombat({ t: 'end' }))}>
-          END TURN ▶
+          {t('endTurn')}
         </button>
       </div>
     </div>

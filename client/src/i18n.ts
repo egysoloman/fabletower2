@@ -1,0 +1,261 @@
+/** Client UI strings + language switching (engine content localizes itself). */
+import { signal } from '@preact/signals'
+import { setLocale, type Locale } from '@neonspire/engine'
+
+const EN = {
+  // menu
+  tagline: 'jack in · climb · flatline',
+  continueRun: '▶ CONTINUE RUN',
+  newRun: 'NEW RUN',
+  pvpDuel: 'PVP DUEL',
+  seedPlaceholder: 'seed (optional)',
+  menuFooter:
+    'Solo mode runs 100% in your browser — no server needed. Climb 3 acts of the Spire, build your deck, and delete THE ARCHITECT. PvP needs the NEONSPIRE relay server.',
+  // topbar
+  hpTip: 'Hit points',
+  creditsTip: 'Credits',
+  actFloor: 'ACT {act} · FLOOR {floor}',
+  deckBtn: '▤ DECK {n}',
+  deckTitle: 'DECK · {n} CARDS',
+  abandon: '✕ ABANDON',
+  abandonConfirm: 'Abandon this run?',
+  // map
+  actTitle: '── ACT {act} / 3 ──',
+  nodeCombat: 'Hostiles',
+  nodeElite: 'ELITE hostiles',
+  nodeRest: 'Safehouse',
+  nodeShop: 'Black market',
+  nodeTreasure: 'Data vault',
+  nodeEvent: 'Unknown signal',
+  nodeBoss: 'SECTOR BOSS',
+  // combat
+  turnBanner: 'TURN {n}',
+  threatDeleted: 'THREAT DELETED',
+  flatlined: 'FLATLINED',
+  selectTarget: 'SELECT TARGET · right-click to cancel',
+  drawBtn: '▲ DRAW {n}',
+  discardBtn: '▼ DISCARD {n}',
+  drawPileTitle: 'DRAW PILE · {n}',
+  discardPileTitle: 'DISCARD · {a}  /  EXHAUSTED · {b}',
+  endTurn: 'END TURN ▶',
+  energyTip: 'Energy',
+  intentAtk: 'ATK',
+  intentDef: 'DEF ▲',
+  intentBuf: 'BUF ▲',
+  intentHex: 'HEX ▼',
+  // card types
+  typeAttack: 'attack',
+  typeSkill: 'skill',
+  typePower: 'power',
+  // reward
+  spoils: '▚ SPOILS ▞',
+  recovered: '+{n}¤ recovered',
+  takeNote: 'take',
+  bossCache: 'boss cache',
+  pickCard: 'Add one card to your deck:',
+  cardIntegrated: 'Card integrated.',
+  continueBtn: 'CONTINUE ▶',
+  descend: 'DESCEND DEEPER ▶',
+  // shop
+  blackMarket: '▚ BLACK MARKET ▞',
+  sold: 'SOLD',
+  purgeBtn: 'PURGE A CARD · {n}¤',
+  purgeTitle: 'PURGE A CARD  (-{n}¤)',
+  leave: 'LEAVE ▶',
+  // rest
+  safehouse: '▚ SAFEHOUSE ▞',
+  safehouseText: 'The hum of the city fades. For one moment, nothing is hunting you.',
+  recharge: '♨ RECHARGE',
+  rechargeDesc: 'Restore {n} HP.',
+  patch: '⚙ PATCH',
+  patchDesc: 'Upgrade a card in your deck permanently.',
+  skip: 'SKIP ▶',
+  // pickers / piles
+  upgradeTitle: 'UPGRADE A CARD',
+  removeTitle: 'REMOVE A CARD',
+  cancel: 'CANCEL',
+  close: 'CLOSE',
+  empty: '— empty —',
+  noEligible: 'No eligible cards.',
+  nothingHappened: 'Nothing happened.',
+  cardDeleted: 'Card deleted from deck',
+  // finale
+  spireDeleted: 'SPIRE DELETED',
+  winText:
+    'THE ARCHITECT dissolves into static. The tower goes dark, floor by floor, and for the first time in years the city hears silence.',
+  loseText: 'Your deck scatters into the datastream. The Spire hums on, indifferent.',
+  stFloors: 'FLOORS',
+  stAct: 'ACT',
+  stCards: 'CARDS',
+  stRelics: 'RELICS',
+  stCredits: 'CREDITS',
+  runItBack: 'RUN IT BACK',
+  menuBtn: 'MENU',
+  seedLabel: 'seed: {n}',
+  cleansed: 'CLEANSED',
+  // pvp
+  handlePlaceholder: 'handle',
+  findOpponent: 'FIND OPPONENT',
+  connecting: '▚ CONNECTING…',
+  scanning: '▚ SCANNING FOR OPPONENT… (open a second tab to duel yourself)',
+  serverErr:
+    'Could not reach the relay server. Solo mode never needs one — but PvP does. Start it with:  npm run dev:server',
+  connLost: 'Connection lost.',
+  badUrl: 'Invalid server URL.',
+  retry: 'RETRY',
+  back: '← BACK',
+  pvpTurn: 'PVP · TURN {n}',
+  yourTurn: '◈ YOUR TURN',
+  theirTurn: "{name}'S TURN",
+  leaveBtn: '✕ LEAVE',
+  youSuffix: '{name} (YOU)',
+  pvpCounts: 'draw {a} · discard {b}',
+  pvpVictory: '▚ VICTORY ▞',
+  pvpDefeat: '▚ FLATLINED ▞',
+  flatlinedWho: '{name} flatlined',
+  oppLeft: 'Your opponent disconnected. You win by default.',
+  rematch: 'REMATCH QUEUE',
+}
+
+type Key = keyof typeof EN
+
+const ZH: Record<Key, string> = {
+  tagline: '接入 · 攀登 · 脑死',
+  continueRun: '▶ 继续冒险',
+  newRun: '新的冒险',
+  pvpDuel: '玩家对决',
+  seedPlaceholder: '种子（可选）',
+  menuFooter:
+    '单人模式 100% 在浏览器中运行——无需服务器。攀登尖塔的三幕，构筑你的牌组，删除「架构师」。PvP 需要 NEONSPIRE 中继服务器。',
+  hpTip: '生命值',
+  creditsTip: '信用点',
+  actFloor: '第 {act} 幕 · 第 {floor} 层',
+  deckBtn: '▤ 牌组 {n}',
+  deckTitle: '牌组 · {n} 张',
+  abandon: '✕ 放弃',
+  abandonConfirm: '放弃本次冒险？',
+  actTitle: '── 第 {act} 幕 / 3 ──',
+  nodeCombat: '敌人',
+  nodeElite: '精英敌人',
+  nodeRest: '安全屋',
+  nodeShop: '黑市',
+  nodeTreasure: '数据宝库',
+  nodeEvent: '未知信号',
+  nodeBoss: '区域首领',
+  turnBanner: '回合 {n}',
+  threatDeleted: '威胁已清除',
+  flatlined: '已脑死',
+  selectTarget: '选择目标 · 右键取消',
+  drawBtn: '▲ 抽牌堆 {n}',
+  discardBtn: '▼ 弃牌堆 {n}',
+  drawPileTitle: '抽牌堆 · {n}',
+  discardPileTitle: '弃牌堆 · {a}  /  已消耗 · {b}',
+  endTurn: '结束回合 ▶',
+  energyTip: '能量',
+  intentAtk: '攻',
+  intentDef: '防 ▲',
+  intentBuf: '增益 ▲',
+  intentHex: '削弱 ▼',
+  typeAttack: '攻击',
+  typeSkill: '技能',
+  typePower: '能力',
+  spoils: '▚ 战利品 ▞',
+  recovered: '回收 +{n}¤',
+  takeNote: '拿取',
+  bossCache: '首领宝库',
+  pickCard: '选择一张牌加入你的牌组：',
+  cardIntegrated: '卡牌已整合。',
+  continueBtn: '继续 ▶',
+  descend: '深入下一幕 ▶',
+  blackMarket: '▚ 黑市 ▞',
+  sold: '已售',
+  purgeBtn: '删除一张牌 · {n}¤',
+  purgeTitle: '删除一张牌  (-{n}¤)',
+  leave: '离开 ▶',
+  safehouse: '▚ 安全屋 ▞',
+  safehouseText: '城市的嗡鸣渐渐远去。这一刻，没有任何东西在追杀你。',
+  recharge: '♨ 充能',
+  rechargeDesc: '回复 {n} 点生命。',
+  patch: '⚙ 打补丁',
+  patchDesc: '永久升级牌组中的一张牌。',
+  skip: '跳过 ▶',
+  upgradeTitle: '升级一张牌',
+  removeTitle: '移除一张牌',
+  cancel: '取消',
+  close: '关闭',
+  empty: '— 空 —',
+  noEligible: '没有符合条件的牌。',
+  nothingHappened: '什么都没有发生。',
+  cardDeleted: '卡牌已从牌组删除',
+  spireDeleted: '尖塔已删除',
+  winText: '「架构师」溶解为静电噪点。高塔逐层熄灭，多年以来，这座城市第一次听见了寂静。',
+  loseText: '你的牌组散落进数据流。尖塔仍在嗡鸣，无动于衷。',
+  stFloors: '层数',
+  stAct: '幕',
+  stCards: '卡牌',
+  stRelics: '遗物',
+  stCredits: '信用点',
+  runItBack: '再来一局',
+  menuBtn: '主菜单',
+  seedLabel: '种子：{n}',
+  cleansed: '净化',
+  handlePlaceholder: '昵称',
+  findOpponent: '寻找对手',
+  connecting: '▚ 连接中…',
+  scanning: '▚ 正在匹配对手…（可打开第二个标签页与自己对战）',
+  serverErr: '无法连接中继服务器。单人模式无需服务器——但 PvP 需要。启动方式：npm run dev:server',
+  connLost: '连接已断开。',
+  badUrl: '服务器地址无效。',
+  retry: '重试',
+  back: '← 返回',
+  pvpTurn: 'PVP · 回合 {n}',
+  yourTurn: '◈ 你的回合',
+  theirTurn: '{name} 的回合',
+  leaveBtn: '✕ 离开',
+  youSuffix: '{name}（你）',
+  pvpCounts: '抽牌堆 {a} · 弃牌堆 {b}',
+  pvpVictory: '▚ 胜利 ▞',
+  pvpDefeat: '▚ 已脑死 ▞',
+  flatlinedWho: '{name} 已脑死',
+  oppLeft: '对手已断线。你不战而胜。',
+  rematch: '再次匹配',
+}
+
+function detectLang(): Locale {
+  try {
+    const saved = localStorage.getItem('ns-lang')
+    if (saved === 'zh' || saved === 'en') return saved
+    return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en'
+  } catch {
+    return 'en'
+  }
+}
+
+export const lang = signal<Locale>(detectLang())
+setLocale(lang.value)
+document.documentElement.lang = lang.value === 'zh' ? 'zh-CN' : 'en'
+
+export function setLang(l: Locale) {
+  lang.value = l
+  setLocale(l)
+  document.documentElement.lang = l === 'zh' ? 'zh-CN' : 'en'
+  try {
+    localStorage.setItem('ns-lang', l)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function toggleLang() {
+  setLang(lang.value === 'zh' ? 'en' : 'zh')
+}
+
+export function t(key: Key): string {
+  return (lang.value === 'zh' ? ZH : EN)[key]
+}
+
+export function tf(key: Key, vars: Record<string, string | number>): string {
+  let s = t(key)
+  for (const [k, v] of Object.entries(vars)) s = s.replaceAll(`{${k}}`, String(v))
+  return s
+}

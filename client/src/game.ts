@@ -40,6 +40,7 @@ import {
 } from './store'
 import { processEvents } from './fx'
 import { sfx } from './sfx'
+import { t, tf } from './i18n'
 
 export function newGame(seed?: number) {
   const s = seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0)
@@ -259,7 +260,7 @@ export function shopRemoveService() {
   const r = run.value
   if (!s || !r || r.gold < s.removePrice) return
   picker.value = {
-    title: `PURGE A CARD  (-${s.removePrice}¤)`,
+    title: tf('purgeTitle', { n: s.removePrice }),
     cancellable: true,
     onPick: (uid) => {
       if (!removeCard(r, uid)) return
@@ -291,7 +292,7 @@ export function restUpgrade() {
   const r = run.value
   if (!r || restUsed.value) return
   picker.value = {
-    title: 'UPGRADE A CARD',
+    title: t('upgradeTitle'),
     cancellable: true,
     filter: (c) => !c.up && CARDS[c.id].rarity !== 'special',
     onPick: (uid) => {
@@ -315,14 +316,14 @@ export function chooseEventOption(idx: number) {
   const choice = ev.choices[idx]
   if (!choice || (choice.needGold && r.gold < choice.needGold)) return
   const { lines, removeChoose } = applyOutcomes(r, choice.outcomes)
-  eventLines.value = lines.length > 0 ? lines : ['Nothing happened.']
+  eventLines.value = lines.length > 0 ? lines : [t('nothingHappened')]
   if (removeChoose) {
     picker.value = {
-      title: 'REMOVE A CARD',
+      title: t('removeTitle'),
       cancellable: false,
       onPick: (uid) => {
         if (removeCard(r, uid)) {
-          eventLines.value = [...(eventLines.value ?? []), 'Card deleted from deck']
+          eventLines.value = [...(eventLines.value ?? []), t('cardDeleted')]
           picker.value = null
           touch()
           saveGame()

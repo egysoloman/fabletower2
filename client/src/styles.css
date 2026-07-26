@@ -15,8 +15,9 @@
   --red: #ff3b5b;
   --text: #e8e4ff;
   --dim: #8f86b8;
-  --font-head: 'Orbitron', 'Segoe UI', sans-serif;
-  --font-body: 'Share Tech Mono', 'Courier New', monospace;
+  /* CJK glyphs fall back to system fonts (bundling a CJK face would add MBs) */
+  --font-head: 'Orbitron', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Segoe UI', sans-serif;
+  --font-body: 'Share Tech Mono', 'Noto Sans Mono CJK SC', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Courier New', monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -82,6 +83,15 @@ body::before {
 }
 
 h1, h2, h3, .head { font-family: var(--font-head); letter-spacing: 0.08em; }
+
+/* CJK text needs tighter tracking than the latin cyber look */
+:root[lang='zh-CN'] .btn,
+:root[lang='zh-CN'] .panel h2,
+:root[lang='zh-CN'] .bigchoice .t,
+:root[lang='zh-CN'] .turn-indicator,
+:root[lang='zh-CN'] .act-title { letter-spacing: 0.14em; }
+:root[lang='zh-CN'] .card .cdesc { font-size: 12.5px; line-height: 1.5; }
+:root[lang='zh-CN'] .tagline { letter-spacing: 0.5em; }
 
 /* ========================================================================== */
 /*  Buttons                                                                   */

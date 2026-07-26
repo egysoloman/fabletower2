@@ -390,6 +390,54 @@ describe('full runs (random bot)', () => {
   })
 })
 
+describe('localization (zh)', () => {
+  it('has a complete Chinese dictionary for every piece of content', async () => {
+    const { CARD_ZH, ENEMY_ZH, EVENT_ZH, RELIC_ZH } = await import('../src/locale-zh')
+    for (const id of Object.keys(CARDS)) {
+      expect(CARD_ZH[id]?.name, `card ${id} missing zh name`).toBeTruthy()
+    }
+    for (const id of Object.keys(RELICS)) {
+      expect(RELIC_ZH[id]?.name, `relic ${id} missing zh name`).toBeTruthy()
+      expect(RELIC_ZH[id]?.desc, `relic ${id} missing zh desc`).toBeTruthy()
+    }
+    for (const [id, def] of Object.entries(ENEMIES)) {
+      expect(ENEMY_ZH[id]?.name, `enemy ${id} missing zh name`).toBeTruthy()
+      for (const move of def.moves) {
+        expect(ENEMY_ZH[id]?.moves[move.id], `enemy ${id} move ${move.id} missing zh name`).toBeTruthy()
+      }
+    }
+    for (const ev of EVENTS) {
+      const zh = EVENT_ZH[ev.id]
+      expect(zh?.name, `event ${ev.id} missing zh`).toBeTruthy()
+      expect(zh?.text, `event ${ev.id} missing zh text`).toBeTruthy()
+      expect(zh?.choices.length, `event ${ev.id} zh choice count mismatch`).toBe(ev.choices.length)
+    }
+    // STATUS_ZH is a Record<StatusId, ...>, so completeness is compile-checked.
+  })
+
+  it('localizes generated rules text and names, and switches back cleanly', async () => {
+    const { setLocale } = await import('../src/i18n')
+    const { cardName, describeCard } = await import('../src/cards')
+    const { relicDesc } = await import('../src/relics')
+    const { enemyName } = await import('../src/enemies')
+    try {
+      setLocale('zh')
+      expect(describeCard(inst('strike', 1))).toBe('造成 6 点伤害。')
+      expect(describeCard(inst('strike', 1, true))).toBe('造成 9 点伤害。')
+      expect(cardName(inst('strike', 1, true))).toBe('斩击.sh+')
+      expect(describeCard(inst('trojan', 1))).toContain('虚弱')
+      expect(describeCard(inst('trojan', 1))).toContain('消耗。')
+      expect(describeCard(inst('glitchblade', 1))).toContain('弃牌堆')
+      expect(describeCard(inst('nanoplating', 1))).toContain('格挡')
+      expect(relicDesc('quantumchip')).toContain('费用为 0')
+      expect(enemyName('architect')).toBe('架构师')
+    } finally {
+      setLocale('en')
+    }
+    expect(describeCard(inst('strike', 1))).toBe('Deal 6 damage.')
+  })
+})
+
 describe('relics & shops', () => {
   it('all relics are described and obtainable pools exclude owned', () => {
     expect(Object.keys(RELICS).length).toBeGreaterThanOrEqual(12)

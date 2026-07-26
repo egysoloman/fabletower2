@@ -1,0 +1,143 @@
+/** Simplified-Chinese dictionaries for all engine-owned game content. */
+import type { StatusId } from './types'
+
+export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
+  strike: { name: '斩击.sh', flavor: 'chmod +x 痛苦' },
+  defend: { name: '空值护盾', flavor: '段错误已偏转' },
+  zeroday: { name: '零日漏洞', flavor: '未打补丁。绝不留情。' },
+  twinlaser: { name: '双子激光' },
+  spike: { name: '数据尖刺', flavor: 'sudo 受苦' },
+  backdoor: { name: '后门' },
+  breaker: { name: '断路器' },
+  chain: { name: '连锁闪电', flavor: 'for e in enemies: fry(e)' },
+  glitchblade: { name: '故障之刃', flavor: '未定义行为，定义明确的伤害' },
+  purge: { name: '清除.exe' },
+  overclock: { name: '超频斩' },
+  barrage: { name: '霓虹弹幕', flavor: '粉色曳光弹' },
+  crash: { name: '神经崩溃' },
+  ramslam: { name: '内存重击', flavor: '下载这个' },
+  surge: { name: '电压激涌' },
+  killswitch: { name: '断电开关' },
+  nulldivide: { name: '除零异常', flavor: 'x / 0' },
+  forkbomb: { name: '分叉炸弹', flavor: ':(){ :|:& };:' },
+  firewall: { name: '防火墙' },
+  hotfix: { name: '热修复' },
+  shortcircuit: { name: '短路' },
+  debugprobe: { name: '调试探针' },
+  cachehit: { name: '缓存命中' },
+  holodecoy: { name: '全息诱饵' },
+  encrypt: { name: '加密' },
+  reboot: { name: '重启' },
+  overvolt: { name: '过压' },
+  restore: { name: '系统还原' },
+  trojan: { name: '木马载荷' },
+  stimchip: { name: '兴奋芯片' },
+  malware: { name: '恶意滴注', flavor: '勒索软件，但更私人' },
+  zerotrust: { name: '零信任' },
+  rootaccess: { name: 'Root 权限', flavor: '# whoami → 神' },
+  neoncore: { name: '霓虹核心' },
+  autoturret: { name: '自动炮塔' },
+  nanoplating: { name: '纳米镀层' },
+  cpucore: { name: '超频处理器' },
+  datasiphon: { name: '数据虹吸' },
+  thornsexe: { name: '荆棘.exe' },
+  viralload: { name: '病毒载荷' },
+  compilerloop: { name: '编译循环', flavor: 'while(true) grow()' },
+  glitch: { name: '故障', flavor: '�����' },
+}
+
+export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText?: string }> = {
+  str: { name: '力量', desc: '攻击伤害额外 +{n}。' },
+  weak: { name: '虚弱', desc: '攻击伤害降低 25%，持续 {n} 回合。' },
+  vuln: { name: '易伤', desc: '受到的攻击伤害提高 50%，持续 {n} 回合。' },
+  corrupt: { name: '侵蚀', desc: '回合开始时失去 {n} 点生命，随后层数减 1。' },
+  thorns: { name: '荆棘', desc: '被攻击时，对攻击者造成 {n} 点伤害。' },
+  plating: { name: '镀层', desc: '回合结束时获得 {n} 点格挡。', powerText: '你的回合结束时，获得 {n} 点格挡。' },
+  turret: { name: '炮塔', desc: '回合结束时对随机敌人造成 {n} 点伤害。', powerText: '你的回合结束时，对一名随机敌人造成 {n} 点伤害。' },
+  viral: { name: '病毒', desc: '回合结束时对所有敌人施加 {n} 层侵蚀。', powerText: '你的回合结束时，对所有敌人施加 {n} 层侵蚀。' },
+  energyGain: { name: '超频', desc: '每回合额外获得 {n} 点能量。', powerText: '每回合开始时，额外获得 {n} 点能量。' },
+  drawGain: { name: '上行链路', desc: '每回合额外抽 {n} 张牌。', powerText: '每回合开始时，额外抽 {n} 张牌。' },
+  ritual: { name: '仪式', desc: '回合结束时获得 {n} 点力量。', powerText: '你的回合结束时，获得 {n} 点力量。' },
+}
+
+export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
+  cortexlink: { name: '皮层链接', desc: '每场战斗的第一个回合额外抽 1 张牌。' },
+  neonheart: { name: '霓虹之心', desc: '生命上限提高 12。' },
+  crackedbattery: { name: '破裂电池', desc: '每场战斗的第一个回合额外获得 1 点能量。' },
+  quantumchip: { name: '量子芯片', desc: '每场战斗你打出的第一张牌费用为 0。' },
+  aegisdriver: { name: '神盾驱动', desc: '每场战斗开始时获得 6 点格挡。' },
+  overdrive: { name: '超载模块', desc: '每场战斗开始时获得 1 点力量。' },
+  medkit: { name: '纳米医疗包', desc: '每场战斗结束后回复 7 点生命。' },
+  holoemitter: { name: '全息发射器', desc: '每当你打出一张能力牌，获得 4 点格挡。' },
+  surgecoil: { name: '涌流线圈', desc: '每当你的抽牌堆被洗牌，获得 1 点能量。' },
+  goldchip: { name: '金芯片', desc: '所有来源获得的信用点 +25%。' },
+  thornrouter: { name: '荆棘路由', desc: '每场战斗开始时获得 2 点荆棘。' },
+  viralcore: { name: '病毒核心', desc: '敌人在战斗开始时获得 3 层侵蚀。' },
+  mirrorshard: { name: '镜像碎片', desc: '敌人在战斗开始时获得 1 层虚弱。' },
+  cpuheatsink: { name: 'CPU 散热器', desc: '每回合开始时额外获得 1 点能量。' },
+  ramstick: { name: '备用内存', desc: '每回合开始时额外抽 1 张牌。' },
+  solarcell: { name: '太阳能电池', desc: '安全屋额外回复 15 点生命。' },
+}
+
+export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
+  spambot: { name: '垃圾邮件机器人', moves: { ping: '探测', flood: '洪流', popup: '弹窗' } },
+  drone: { name: '巡逻无人机', moves: { laser: '激光', shield: '展开护盾', ram: '冲撞' } },
+  kiddie: { name: '脚本小子', moves: { inject: '注入', brag: '吹嘘', smash: '乱敲键盘' } },
+  golem: { name: '防火墙魔像', moves: { fortify: '加固', slam: '重击', bash: '猛击' } },
+  hound: { name: '赛博猎犬', moves: { maul: '撕咬', rend: '撕裂', howl: '嚎叫' } },
+  compiler: { name: '编译者', moves: { compile: '编译', execute: '执行', forloop: '循环', segfault: '段错误' } },
+  ice: { name: 'ICE 碎片', moves: { freeze: '冻结射线', harden: '硬化', shatter: '粉碎' } },
+  netrunner: { name: '网络行者', moves: { jackin: '接入', ddos: '分布式攻击', siphon: '虹吸' } },
+  daemon: { name: '代理恶魔', moves: { curse: '数据侵蚀', blast: '咒术冲击', rally: '集结' } },
+  sentry: { name: '哨戒炮塔', moves: { snipe: '狙击', lockon: '锁定', reinforce: '增援' } },
+  blackice: { name: '黑冰', moves: { crush: '碾碎', freezewall: '冰封墙', lockdown: '封锁' } },
+  mainframe: { name: '中央主机', moves: { firewall: '防火墙', purgebeam: '清除光束', forkproc: '进程分叉', corruptdata: '数据侵蚀' } },
+  nullptr: { name: '空指针', moves: { deref: '解引用', void: '虚空守卫', leak: '内存泄漏' } },
+  wraith: { name: '量子幽魂', moves: { phase: '相位打击', blur: '模糊', collapse: '坍缩' } },
+  botnode: { name: '僵尸网络节点', moves: { pester: '骚扰', sync: '同步', guard: '防御' } },
+  rootdaemon: { name: 'ROOT 守护进程', moves: { sudo: 'SUDO', smite: '重惩', chainatk: '连锁攻击' } },
+  architect: { name: '架构师', moves: { genesis: '创世构建', deleterow: '删除行', rewrite: '重写', cascade: '级联', awaken: '觉醒' } },
+}
+
+export const EVENT_ZH: Record<string, { name: string; text: string; choices: { label: string; detail: string }[] }> = {
+  server: {
+    name: '废弃服务器农场',
+    text: '成排死去的机器仍残留着电荷的嗡鸣。带电的线网之后，还有值钱的东西插在机架上。',
+    choices: [
+      { label: '接入', detail: '获得一个随机遗物。受到 12 点伤害。' },
+      { label: '转身离开', detail: '什么都不会发生。' },
+    ],
+  },
+  courier: {
+    name: '黑市快递员',
+    text: '一台快递无人机停在巷口，货舱半开。"原型牌组科技。不退不换。别多问。"',
+    choices: [
+      { label: '购买芯片', detail: '支付 50¤：将一张随机稀有牌加入你的牌组。' },
+      { label: '拒绝', detail: '什么都不会发生。' },
+    ],
+  },
+  shrine: {
+    name: '霓虹神龛',
+    text: '一座由堆叠 CRT 显示器组成的神龛在黑暗中闪烁。静电杂音听起来几乎像一个声音，在向你提出交易。',
+    choices: [
+      { label: '祈祷', detail: '升级一张随机卡牌。失去 8 点生命。' },
+      { label: '休息', detail: '回复 18 点生命。' },
+    ],
+  },
+  cache: {
+    name: '损坏的补给箱',
+    text: '一个补给箱，封条已破，内容物已被扰乱。里面的信用点看起来是真的。校验和可不是。',
+    choices: [
+      { label: '撬开它', detail: '获得 60¤。一张「故障」牌被永久加入你的牌组。' },
+      { label: '别碰它', detail: '什么都不会发生。' },
+    ],
+  },
+  ghost: {
+    name: '壳中之魂',
+    text: '一位老行者的意识碎片飘过你的 HUD。"轻装上阵，"它低语，"或者变得强大。"',
+    choices: [
+      { label: '轻装上阵', detail: '从你的牌组中移除一张牌。' },
+      { label: '变得强大', detail: '生命上限提高 6。' },
+    ],
+  },
+}

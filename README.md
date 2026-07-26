@@ -4,6 +4,9 @@ A neon-cyberpunk, Slay-the-Spire-like deck-building roguelike for the browser.
 Climb three acts of procedurally generated maps, fight AI-driven enemies in
 turn-based card combat, collect cards and relics — then delete **THE ARCHITECT**.
 
+Fully bilingual: **English / 简体中文** — auto-detected from the browser, live
+toggle in the menu and top bar (中 / EN).
+
 ![combat](docs/combat.png)
 
 | | |
@@ -60,6 +63,13 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   never leave the server.
 - Card rules text is *generated from the effect data* (`describeCard`), so a
   card can never say one thing and do another.
+- Localization follows the same rule: since the engine generates all rules
+  text, the Chinese translation lives in the engine too (`locale-zh.ts` +
+  per-locale text templates). Game state never contains localized strings —
+  locale is purely a render-time concern, so PvP stays locale-agnostic and a
+  test enforces that every card/relic/enemy/move/event has a zh entry.
+
+![combat-zh](docs/combat-zh.png)
 
 ## Game content
 

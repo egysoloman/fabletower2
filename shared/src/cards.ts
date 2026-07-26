@@ -1,5 +1,6 @@
 import type { CardDef, CardInst, CardType, Effect, Rarity } from './types'
-import { STATUS_INFO } from './types'
+import { ES, isZh, statusName, statusPowerText } from './i18n'
+import { CARD_ZH } from './locale-zh'
 
 const c = (def: CardDef) => def
 
@@ -282,11 +283,22 @@ export function cardExhausts(card: CardInst): boolean {
   return !!(card.up ? (def.upExhaust ?? def.exhaust) : def.exhaust)
 }
 
-export function cardName(card: CardInst): string {
-  return CARDS[card.id].name + (card.up ? '+' : '')
+/** Localized display name of a card id (without the upgrade '+'). */
+export function cardBaseName(id: string): string {
+  return isZh() ? (CARD_ZH[id]?.name ?? CARDS[id].name) : CARDS[id].name
 }
 
-function effText(e: Effect): string {
+export function cardName(card: CardInst): string {
+  return cardBaseName(card.id) + (card.up ? '+' : '')
+}
+
+/** Localized flavor line (code-joke flavor intentionally stays as-is). */
+export function cardFlavor(card: CardInst): string | undefined {
+  const def = CARDS[card.id]
+  return isZh() ? (CARD_ZH[card.id]?.flavor ?? def.flavor) : def.flavor
+}
+
+function effTextEn(e: Effect): string {
   switch (e.k) {
     case 'dmg':
       return e.times && e.times > 1 ? `Deal ${e.n} damage ${e.times} times.` : `Deal ${e.n} damage.`
@@ -315,25 +327,72 @@ function effText(e: Effect): string {
     case 'addCard':
       return `Shuffle ${e.n > 1 ? e.n + ' ' + CARDS[e.id].name + 's' : 'a ' + CARDS[e.id].name} into your ${e.where} pile.`
     case 'status': {
-      const info = STATUS_INFO[e.id]
       if (e.to === 'self') {
-        if (info.powerText) return info.powerText.replaceAll('{n}', String(e.n))
-        return `Gain ${e.n} ${info.name}.`
+        const power = statusPowerText(e.id)
+        if (power) return power.replaceAll('{n}', String(e.n))
+        return `Gain ${e.n} ${statusName(e.id)}.`
       }
-      const what = `${e.n} ${info.name}`
+      const what = `${e.n} ${statusName(e.id)}`
       return e.to === 'all' ? `Apply ${what} to ALL enemies.` : `Apply ${what}.`
     }
   }
+}
+
+function effTextZh(e: Effect): string {
+  switch (e.k) {
+    case 'dmg':
+      return e.times && e.times > 1 ? `造成 ${e.n} 点伤害，共 ${e.times} 次。` : `造成 ${e.n} 点伤害。`
+    case 'dmgAll':
+      return e.times && e.times > 1
+        ? `对所有敌人造成 ${e.n} 点伤害，共 ${e.times} 次。`
+        : `对所有敌人造成 ${e.n} 点伤害。`
+    case 'dmgVulnBonus':
+      return `造成 ${e.n} 点伤害。对易伤敌人额外造成 ${e.bonus} 点。`
+    case 'dmgPerPower':
+      return `造成 ${e.base} 点伤害，本场战斗中每打出过一张能力牌，额外 +${e.per}。`
+    case 'blockAsDmg':
+      return '造成等同于你格挡值的伤害。'
+    case 'block':
+      return `获得 ${e.n} 点格挡。`
+    case 'draw':
+      return `抽 ${e.n} 张牌。`
+    case 'energy':
+      return `获得 ${e.n} 点能量。`
+    case 'heal':
+      return `回复 ${e.n} 点生命。`
+    case 'selfDmg':
+      return `受到 ${e.n} 点伤害。`
+    case 'cleanse':
+      return '移除你的所有负面状态。'
+    case 'addCard': {
+      const pile = e.where === 'discard' ? '弃牌堆' : '抽牌堆'
+      const count = e.n > 1 ? `${e.n} 张` : '一张'
+      return `将${count}「${cardBaseName(e.id)}」洗入你的${pile}。`
+    }
+    case 'status': {
+      if (e.to === 'self') {
+        const power = statusPowerText(e.id)
+        if (power) return power.replaceAll('{n}', String(e.n))
+        return `获得 ${e.n} 点${statusName(e.id)}。`
+      }
+      const what = `${e.n} 层${statusName(e.id)}`
+      return e.to === 'all' ? `对所有敌人施加${what}。` : `施加${what}。`
+    }
+  }
+}
+
+function effText(e: Effect): string {
+  return isZh() ? effTextZh(e) : effTextEn(e)
 }
 
 /** Generate rules text for a card (matches interpreter behaviour exactly). */
 export function describeCard(card: CardInst): string {
   const def = CARDS[card.id]
   const parts: string[] = []
-  if (def.unplayable) parts.push('Unplayable.')
-  if (card.id === 'glitch') parts.push('If this is in your hand at the end of your turn, lose 1 HP.')
+  if (def.unplayable) parts.push(ES.unplayable())
+  if (card.id === 'glitch') parts.push(ES.glitchPain())
   for (const e of cardEffects(card)) parts.push(effText(e))
-  if (cardExhausts(card)) parts.push('Exhaust.')
+  if (cardExhausts(card)) parts.push(ES.exhaust())
   return parts.join(' ')
 }
 

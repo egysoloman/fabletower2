@@ -1,6 +1,16 @@
 /** Post-combat rewards, shop, rest site, and map events. */
-import { RELICS, restHealAmount } from '@neonspire/engine'
+import {
+  RELICS,
+  eventChoiceDetail,
+  eventChoiceLabel,
+  eventName,
+  eventText,
+  relicDesc,
+  relicName,
+  restHealAmount,
+} from '@neonspire/engine'
 import { CardById, TopBar } from '../components'
+import { t, tf } from '../i18n'
 import {
   chooseEventOption,
   continueFromReward,
@@ -23,9 +33,9 @@ function RelicOffer(props: { id: string; note?: string; onClick?: () => void; di
       <div class="rsym">{def.sym}</div>
       <div>
         <div class="rname">
-          {def.name} {props.note && <span style={{ color: 'var(--dim)' }}>· {props.note}</span>}
+          {relicName(props.id)} {props.note && <span style={{ color: 'var(--dim)' }}>· {props.note}</span>}
         </div>
-        <div class="rdesc">{def.desc}</div>
+        <div class="rdesc">{relicDesc(props.id)}</div>
       </div>
     </div>
   )
@@ -39,17 +49,19 @@ export function RewardScreen() {
       <TopBar />
       <div class="overlay" style={{ position: 'relative', background: 'transparent', flex: 1 }}>
         <div class="panel">
-          <h2>▚ SPOILS ▞</h2>
+          <h2>{t('spoils')}</h2>
           <div class="sub" style={{ color: 'var(--gold)' }}>
-            +{b.gold}¤ recovered
+            {tf('recovered', { n: b.gold })}
           </div>
-          {b.relic && !b.relicTaken && <RelicOffer id={b.relic} note="take" onClick={() => takeRelicReward('relic')} />}
+          {b.relic && !b.relicTaken && (
+            <RelicOffer id={b.relic} note={t('takeNote')} onClick={() => takeRelicReward('relic')} />
+          )}
           {b.bossRelic && !b.bossRelicTaken && (
-            <RelicOffer id={b.bossRelic} note="boss cache" onClick={() => takeRelicReward('bossRelic')} />
+            <RelicOffer id={b.bossRelic} note={t('bossCache')} onClick={() => takeRelicReward('bossRelic')} />
           )}
           {b.cards && !b.cardTaken && (
             <>
-              <div class="sub">Add one card to your deck:</div>
+              <div class="sub">{t('pickCard')}</div>
               <div class="cardrow">
                 {b.cards.map((id) => (
                   <CardById key={id} id={id} onClick={() => takeCardReward(id)} />
@@ -57,9 +69,9 @@ export function RewardScreen() {
               </div>
             </>
           )}
-          {b.cards && b.cardTaken && <div class="result-lines">Card integrated.</div>}
+          {b.cards && b.cardTaken && <div class="result-lines">{t('cardIntegrated')}</div>}
           <button class="btn" onClick={continueFromReward}>
-            {b.afterBoss ? 'DESCEND DEEPER ▶' : 'CONTINUE ▶'}
+            {b.afterBoss ? t('descend') : t('continueBtn')}
           </button>
         </div>
       </div>
@@ -76,13 +88,13 @@ export function ShopScreen() {
       <TopBar />
       <div class="overlay" style={{ position: 'relative', background: 'transparent', flex: 1 }}>
         <div class="panel">
-          <h2 class="pink">▚ BLACK MARKET ▞</h2>
+          <h2 class="pink">{t('blackMarket')}</h2>
           <div class="cardrow">
             {s.cards.map((item, i) => (
               <div key={i} class={`shopitem ${item.sold ? 'sold' : ''}`}>
                 <CardById id={item.id} onClick={() => shopBuyCard(i)} />
                 <div class="pricetag" style={r.gold < item.price ? { color: 'var(--red)' } : {}}>
-                  {item.sold ? 'SOLD' : `${item.price}¤`}
+                  {item.sold ? t('sold') : `${item.price}¤`}
                 </div>
               </div>
             ))}
@@ -90,16 +102,16 @@ export function ShopScreen() {
           <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
             {s.relics.map((item, i) => (
               <div key={i} class={item.sold ? 'sold' : ''} style={item.sold ? { opacity: 0.3, pointerEvents: 'none' } : {}}>
-                <RelicOffer id={item.id} note={item.sold ? 'SOLD' : `${item.price}¤`} onClick={() => shopBuyRelic(i)} />
+                <RelicOffer id={item.id} note={item.sold ? t('sold') : `${item.price}¤`} onClick={() => shopBuyRelic(i)} />
               </div>
             ))}
           </div>
           <div style={{ display: 'flex', gap: '14px' }}>
             <button class="btn purple" disabled={r.gold < s.removePrice} onClick={shopRemoveService}>
-              PURGE A CARD · {s.removePrice}¤
+              {tf('purgeBtn', { n: s.removePrice })}
             </button>
             <button class="btn ghost" onClick={leaveNode}>
-              LEAVE ▶
+              {t('leave')}
             </button>
           </div>
         </div>
@@ -117,20 +129,20 @@ export function RestScreen() {
       <TopBar />
       <div class="overlay" style={{ position: 'relative', background: 'transparent', flex: 1 }}>
         <div class="panel">
-          <h2>▚ SAFEHOUSE ▞</h2>
-          <div class="sub">The hum of the city fades. For one moment, nothing is hunting you.</div>
+          <h2>{t('safehouse')}</h2>
+          <div class="sub">{t('safehouseText')}</div>
           <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
             <div class={`bigchoice ${used ? 'disabled' : ''}`} onClick={restHeal}>
-              <div class="t">♨ RECHARGE</div>
-              <div class="d">Restore {restHealAmount(r)} HP.</div>
+              <div class="t">{t('recharge')}</div>
+              <div class="d">{tf('rechargeDesc', { n: restHealAmount(r) })}</div>
             </div>
             <div class={`bigchoice pink ${used ? 'disabled' : ''}`} onClick={restUpgrade}>
-              <div class="t">⚙ PATCH</div>
-              <div class="d">Upgrade a card in your deck permanently.</div>
+              <div class="t">{t('patch')}</div>
+              <div class="d">{t('patchDesc')}</div>
             </div>
           </div>
           <button class="btn" onClick={leaveNode}>
-            {used ? 'CONTINUE ▶' : 'SKIP ▶'}
+            {used ? t('continueBtn') : t('skip')}
           </button>
         </div>
       </div>
@@ -149,16 +161,16 @@ export function EventScreen() {
       <div class="overlay" style={{ position: 'relative', background: 'transparent', flex: 1 }}>
         <div class="panel">
           <div class="event-glyph">{ev.glyph}</div>
-          <h2 class="pink">{ev.name}</h2>
-          <div class="sub">{ev.text}</div>
+          <h2 class="pink">{eventName(ev)}</h2>
+          <div class="sub">{eventText(ev)}</div>
           {!lines && (
             <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', justifyContent: 'center' }}>
               {ev.choices.map((c, i) => {
                 const blocked = !!c.needGold && r.gold < c.needGold
                 return (
                   <div key={i} class={`bigchoice ${i % 2 ? 'pink' : ''} ${blocked ? 'disabled' : ''}`} onClick={() => chooseEventOption(i)}>
-                    <div class="t">{c.label}</div>
-                    <div class="d">{c.detail}</div>
+                    <div class="t">{eventChoiceLabel(ev, i)}</div>
+                    <div class="d">{eventChoiceDetail(ev, i)}</div>
                   </div>
                 )
               })}
@@ -172,7 +184,7 @@ export function EventScreen() {
                 ))}
               </div>
               <button class="btn" onClick={leaveNode}>
-                CONTINUE ▶
+                {t('continueBtn')}
               </button>
             </>
           )}

@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import { newGame } from '../game'
 import { hasSave, loadGame, screen } from '../store'
 import { muted, sfx, toggleMute } from '../sfx'
+import { lang, t, toggleLang } from '../i18n'
 
 export function MenuScreen() {
   const [seedText, setSeedText] = useState('')
@@ -20,7 +21,7 @@ export function MenuScreen() {
           NEON<span>SPIRE</span>
         </div>
         <div class="tagline" style={{ textAlign: 'center', marginTop: '10px' }}>
-          jack in · climb · flatline
+          {t('tagline')}
         </div>
       </div>
 
@@ -33,11 +34,11 @@ export function MenuScreen() {
               if (!loadGame()) newGame()
             }}
           >
-            ▶ CONTINUE RUN
+            {t('continueRun')}
           </button>
         )}
         <button class="btn big pink" onClick={start}>
-          NEW RUN
+          {t('newRun')}
         </button>
         <button
           class="btn big purple"
@@ -46,26 +47,25 @@ export function MenuScreen() {
             screen.value = 'pvp'
           }}
         >
-          PVP DUEL
+          {t('pvpDuel')}
         </button>
         <div class="seedrow">
           <input
             class="neon"
-            placeholder="seed (optional)"
+            placeholder={t('seedPlaceholder')}
             value={seedText}
             onInput={(e) => setSeedText((e.target as HTMLInputElement).value)}
           />
+          <button class="btn ghost" onClick={toggleLang}>
+            {lang.value === 'zh' ? 'EN' : '中文'}
+          </button>
           <button class="btn ghost" onClick={toggleMute}>
             {muted.value ? '🔇' : '🔊'}
           </button>
         </div>
       </div>
 
-      <small style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>
-        Solo mode runs 100% in your browser — no server needed. Climb 3 acts of the
-        Spire, build your deck, and delete THE ARCHITECT. PvP needs the NEONSPIRE
-        relay server.
-      </small>
+      <small style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('menuFooter')}</small>
     </div>
   )
 }

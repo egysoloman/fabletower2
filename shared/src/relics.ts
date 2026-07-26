@@ -1,4 +1,6 @@
 import type { Statuses } from './types'
+import { isZh } from './i18n'
+import { RELIC_ZH } from './locale-zh'
 
 export interface RelicDef {
   id: string
@@ -123,6 +125,14 @@ reg(R({
   desc: 'Rest sites restore 15 additional HP.',
   hooks: { restBonus: 15 },
 }))
+
+export function relicName(id: string): string {
+  return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)
+}
+
+export function relicDesc(id: string): string {
+  return isZh() ? (RELIC_ZH[id]?.desc ?? RELICS[id]?.desc ?? '') : (RELICS[id]?.desc ?? '')
+}
 
 export function obtainableRelics(owned: string[], includeBoss = false): RelicDef[] {
   return Object.values(RELICS).filter(

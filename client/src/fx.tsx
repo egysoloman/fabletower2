@@ -1,8 +1,10 @@
 /** Combat feedback: floating numbers, particle bursts, screen shake. */
 import { signal } from '@preact/signals'
 import { useEffect, useRef } from 'preact/hooks'
-import { STATUS_INFO, type GameEvent, type StatusId } from '@neonspire/engine'
+import { STATUS_INFO, cardBaseName, moveName, statusName, type GameEvent, type StatusId } from '@neonspire/engine'
 import { sfx } from './sfx'
+import { t } from './i18n'
+import { combat } from './store'
 
 // --- Anchors: DOM positions for fighters ('p', 'e0'..., 'p0'/'p1') ----------
 
@@ -195,8 +197,9 @@ function playOne(ev: GameEvent) {
       break
     case 'status': {
       if (!ev.n) break
-      const info = ev.id ? STATUS_INFO[ev.id as StatusId] : null
-      spawnFloat(ev.who, `${info?.sym ?? '★'}${ev.n} ${info?.name ?? ''}`, 'stat')
+      const id = ev.id as StatusId | undefined
+      const info = id ? STATUS_INFO[id] : null
+      spawnFloat(ev.who, `${info?.sym ?? '★'}${ev.n} ${id ? statusName(id) : ''}`, 'stat')
       break
     }
     case 'die':
@@ -204,11 +207,24 @@ function playOne(ev: GameEvent) {
       burstAt(ev.who, '#00e5ff', 22, 3.6)
       shakeTick.value++
       break
-    case 'move':
-      if (ev.who !== 'p') spawnFloat(ev.who, ev.name ?? '', 'name')
+    case 'move': {
+      if (ev.who === 'p') break
+      let label = ev.name ?? ''
+      if (ev.id) {
+        if (ev.who.startsWith('e')) {
+          // PvE enemy move: localize via the enemy's def id
+          const defId = combat.value?.enemies[Number(ev.who.slice(1))]?.defId
+          if (defId) label = moveName(defId, ev.id)
+        } else {
+          // PvP opponent card play: the id is a card id
+          label = cardBaseName(ev.id)
+        }
+      }
+      spawnFloat(ev.who, label, 'name')
       break
+    }
     case 'lifted':
-      spawnFloat(ev.who, 'CLEANSED', 'heal')
+      spawnFloat(ev.who, t('cleansed'), 'heal')
       break
     case 'addcard':
       spawnFloat(ev.who, `+${ev.n} ${ev.name ?? 'card'}`, 'stat')

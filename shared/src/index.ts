@@ -1,4 +1,6 @@
 export * from './types'
+export * from './i18n'
+export * from './locale-zh'
 export * from './rng'
 export * from './cards'
 export * from './relics'
