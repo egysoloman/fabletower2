@@ -1,0 +1,19 @@
+{
+  "name": "neonspire",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "start": "npm run start -w server",
+    "test": "npm run test -w shared",
+    "typecheck": "npm run typecheck -w shared && npm run typecheck -w client && npm run typecheck -w server"
+  }
+}
