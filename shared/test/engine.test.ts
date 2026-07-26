@@ -1054,7 +1054,7 @@ describe('ascension 6-10 (cycle 8)', () => {
 
   it('A11-A15 modifiers apply', async () => {
     const { MAX_ASC, rollCardRewards } = await import('../src/run')
-    expect(MAX_ASC).toBe(15)
+    expect(MAX_ASC).toBeGreaterThanOrEqual(15)
     const r12 = newRun(1, 12)
     expect(r12.gold).toBe(75)
     const r14 = newRun(1, 14)
@@ -1075,6 +1075,28 @@ describe('ascension 6-10 (cycle 8)', () => {
         seed: 8, uidStart: 100, asc, kind: 'boss',
       })
     expect(mkBoss(13).enemies[0].maxHp).toBe(Math.round(Math.round(120 * (1 + 0.08 * 13)) * 1.15))
+  })
+
+  it('A16-A20 modifiers apply', async () => {
+    const { MAX_ASC } = await import('../src/run')
+    expect(MAX_ASC).toBe(20)
+    const r20 = newRun(1, 20)
+    expect(r20.deck.some((c) => c.id === 'glitch')).toBe(true)
+    const mk = (asc: number, kind: 'normal' | 'boss', id = 'golem') =>
+      startCombat({
+        deck: ['strike', 'strike', 'strike', 'strike', 'strike'].map((cid, i) => inst(cid, i + 1)),
+        hp: 60, maxHp: 60, relics: [], enemyIds: [id], encounterId: id,
+        seed: 8, uidStart: 100, asc, kind,
+      })
+    // A16: same seed, +10% hp over the A15 baseline formula
+    const base15 = Math.round(mk(15, 'normal').enemies[0].maxHp / (1 + 0.08 * 15) * (1 + 0.08 * 16))
+    expect(mk(16, 'normal').enemies[0].maxHp).toBe(Math.round(base15 * 1.1))
+    // A18: elite/boss str stacks to +2 (plus A11's +1 = 3 total on a boss)
+    expect(mk(18, 'boss', 'compiler').enemies[0].statuses.str).toBe(3)
+    // A20: bosses armored (A5's +1 plus A20's +1)
+    expect(mk(20, 'boss', 'compiler').enemies[0].statuses.artifact).toBe(2)
+    expect(restHealAmount(newRun(3, 17))).toBe(Math.floor(newRun(3, 17).maxHp * 0.15))
+    expect(EVENTS.length).toBeGreaterThanOrEqual(30)
   })
 
   it('A7 drops potions less often', async () => {

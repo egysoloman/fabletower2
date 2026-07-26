@@ -508,6 +508,47 @@ const ART: Record<string, JSX.Element> = {
       <path d="M32 31 V34 L35 36" stroke-width="1.6" />
     </>
   ),
+  'ev-tollgate': (
+    <>
+      <path d="M14 56 V20 M50 56 V20 M10 20 H54" />
+      <path d="M14 28 L50 44" stroke-width="2.2" />
+      <path d="M20 31 L24 33 M30 35 L34 37 M40 40 L44 42" stroke="var(--bg, #000)" stroke-width="1.4" />
+    </>
+  ),
+  'ev-ratking': (
+    <>
+      <path d="M20 44 C14 34 22 24 32 26 C42 24 50 34 44 44 Z" />
+      <path d="M24 26 C22 20 26 18 28 22 M40 26 C42 20 38 18 36 22" stroke-width="1.6" />
+      <path d="M44 42 C52 44 54 50 48 52" stroke-width="1.6" />
+      {dot(27, 34, 1.6)}
+      {dot(37, 34, 1.6)}
+      <path d="M18 50 H46" stroke-width="1.4" />
+    </>
+  ),
+  'ev-coolantspill': (
+    <>
+      <path d="M12 44 C18 38 26 50 32 44 C38 38 46 50 52 44" stroke-width="2.2" />
+      <path d="M22 20 L26 28 M32 14 L34 24 M42 18 L40 26" stroke-width="1.6" />
+      {dot(28, 34, 1.6)}
+      {dot(40, 32, 1.4)}
+    </>
+  ),
+  'ev-debtcollector': (
+    <>
+      <rect x="18" y="12" width="28" height="36" rx="2" />
+      <path d="M24 20 H40 M24 26 H40 M24 32 H34" stroke-width="1.4" />
+      <path d="M24 40 H30" stroke-width="2.2" />
+      <path d="M18 48 L14 56 M46 48 L50 56" stroke-width="1.6" />
+    </>
+  ),
+  'ev-arcade': (
+    <>
+      <path d="M18 56 V24 A14 14 0 0 1 46 24 V56 Z" />
+      <rect x="24" y="22" width="16" height="12" rx="1" stroke-width="1.6" />
+      {dot(26, 44, 2)}
+      <path d="M38 40 V48 M34 44 H42" stroke-width="1.8" />
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />

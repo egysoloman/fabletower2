@@ -309,6 +309,60 @@ export const EVENTS: EventDef[] = [
       { label: 'BURY IT AGAIN', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
+  {
+    id: 'tollgate',
+    name: 'Corporate Tollgate',
+    glyph: '⛩',
+    text: 'A privatized checkpoint straddles the only corridor up. The fee schedule is laminated. The turret is not decorative.',
+    choices: [
+      { label: 'PAY THE TOLL', detail: 'Pay 45¤: heal 15 HP and gain a random potion.', needGold: 45, outcomes: [{ k: 'gold', n: -45 }, { k: 'heal', n: 15 }, { k: 'potion' }] },
+      { label: 'SMASH THROUGH', detail: 'Gain 45¤ from the till. Take 10 damage.', outcomes: [{ k: 'gold', n: 45 }, { k: 'damage', n: 10 }] },
+      { label: 'FIND ANOTHER WAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'ratking',
+    name: "Rat King's Hoard",
+    glyph: '🐀',
+    text: 'A nest of cable-rats has dragged half the floor\'s valuables into a glittering pile. Their king watches you with seven borrowed eyes.',
+    choices: [
+      { label: 'TAKE THE CROWN JEWEL', detail: 'Gain a random relic. A Lag curse is added to your deck.', outcomes: [{ k: 'relic' }, { k: 'curse' }] },
+      { label: 'SKIM THE PILE', detail: 'Gain 40¤.', outcomes: [{ k: 'gold', n: 40 }] },
+      { label: 'BOW AND RETREAT', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'coolantspill',
+    name: 'Coolant Spill',
+    glyph: '❆',
+    text: 'A ruptured line floods the corridor ankle-deep in server coolant. It numbs everything it touches — wounds included.',
+    choices: [
+      { label: 'WADE IN', detail: 'Heal 22 HP.', outcomes: [{ k: 'heal', n: 22 }] },
+      { label: 'BOTTLE IT', detail: 'Gain a random potion.', outcomes: [{ k: 'potion' }] },
+      { label: 'STAY DRY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'debtcollector',
+    name: 'Debt Collector',
+    glyph: '🧾',
+    text: 'A repo-drone unfolds from the ceiling, reciting a debt you never took under a name that is almost yours. It is not asking.',
+    choices: [
+      { label: 'SETTLE IT', detail: 'Pay 55¤: it upgrades your chassis as a courtesy — raise Max HP by 5.', needGold: 55, outcomes: [{ k: 'gold', n: -55 }, { k: 'maxhp', n: 5 }] },
+      { label: 'REFUSE', detail: 'Take 8 damage as it garnishes your hardware.', outcomes: [{ k: 'damage', n: 8 }] },
+    ],
+  },
+  {
+    id: 'arcade',
+    name: 'Dead Arcade',
+    glyph: '🕹',
+    text: 'One cabinet still glows in the gutted arcade, marquee flickering: INSERT CREDIT. The high-score list is all the same three letters.',
+    choices: [
+      { label: 'INSERT CREDIT', detail: 'Pay 10¤: win a random potion.', needGold: 10, outcomes: [{ k: 'gold', n: -10 }, { k: 'potion' }] },
+      { label: 'TILT THE MACHINE', detail: 'Gain 30¤. Take 3 damage.', outcomes: [{ k: 'gold', n: 30 }, { k: 'damage', n: 3 }] },
+      { label: 'LET IT REST', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
 ]
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */

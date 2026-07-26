@@ -32,7 +32,7 @@ export const STARTER_DECKS: Record<CharId, string[]> = {
   ],
 }
 
-export const MAX_ASC = 15
+export const MAX_ASC = 20
 
 export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState {
   const rng = rngFromSeed(seed)
@@ -41,6 +41,7 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
   // A2+: the Spire rides along — start cursed. A10 doubles down.
   if (asc >= 2) deck.push({ uid: uid++, id: 'lag', up: false })
   if (asc >= 10) deck.push({ uid: uid++, id: 'lag', up: false })
+  if (asc >= 20) deck.push({ uid: uid++, id: 'glitch', up: false })
   const maxHp = asc >= 10 ? 60 : asc >= 5 ? 65 : 75
   // A14+: the climb starts before you're ready.
   const hp = asc >= 14 ? Math.floor(maxHp * 0.85) : maxHp
@@ -198,7 +199,7 @@ export function randomPotionId(run: RunState): string {
 
 /** ~35% of combat victories drop a potion (A7+: 25%), if there's belt space. */
 export function rollPotionDrop(run: RunState): string | null {
-  if (rand(run.rng) >= (run.asc >= 7 ? 0.25 : 0.35)) return null
+  if (rand(run.rng) >= (run.asc >= 19 ? 0.15 : run.asc >= 7 ? 0.25 : 0.35)) return null
   if (run.potions.length >= MAX_POTIONS) return null
   return randomPotionId(run)
 }
@@ -264,7 +265,7 @@ export function genShop(run: RunState): ShopStock {
 export function restHealAmount(run: RunState): number {
   let bonus = 0
   for (const r of run.relics) bonus += RELICS[r]?.hooks.restBonus ?? 0
-  return Math.floor(run.maxHp * (run.asc >= 6 ? 0.2 : run.asc >= 3 ? 0.25 : 0.3)) + bonus
+  return Math.floor(run.maxHp * (run.asc >= 17 ? 0.15 : run.asc >= 6 ? 0.2 : run.asc >= 3 ? 0.25 : 0.3)) + bonus
 }
 
 export function upgradeCard(run: RunState, uid: number): boolean {
