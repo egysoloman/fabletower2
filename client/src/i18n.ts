@@ -58,7 +58,7 @@ const EN = {
   rivalEliminated: 'RIVAL ELIMINATED',
   continueClimb: 'CONTINUE THE CLIMB',
   raceLost: 'RACE LOST',
-  coopMode: 'CO-OP EXPEDITION',
+  coopMode: 'CO-OP',
   coopParty: 'CO-OP',
   coopIntro:
     'Party up (2-4) and climb ONE shared Spire together: the host picks the path, every battle is fought side by side against scaled enemies, and everyone drafts their own rewards. Support cards and rest sites can patch up your teammates.',
@@ -297,7 +297,7 @@ const ZH: Record<Key, string> = {
   rivalEliminated: '对手已被淘汰',
   continueClimb: '继续攀登',
   raceLost: '竞速失败',
-  coopMode: '协力远征',
+  coopMode: '协力',
   coopParty: '协力',
   coopIntro:
     '组队（2-4 人）共同攀登同一座尖塔：队长选择路线，每场战斗全员并肩对抗按人数强化的敌人，奖励各自挑选。支援牌与休整点都能治疗你的队友。',

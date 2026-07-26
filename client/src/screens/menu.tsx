@@ -44,7 +44,7 @@ export function MenuScreen() {
       <div class="menu-buttons">
         {canContinue && (
           <button
-            class="btn big"
+            class="btn"
             onClick={() => {
               sfx.click()
               if (!loadGame()) newGame()
@@ -71,38 +71,28 @@ export function MenuScreen() {
           </div>
         )}
         {asc > 0 && <div class="ascmod">{t(`ascMod${asc}` as Parameters<typeof t>[0])}</div>}
-        <button class="btn big" onClick={startDaily}>
+        <button class="btn" onClick={startDaily}>
           {t('dailyRun')}
         </button>
-        <button
-          class="btn big purple"
-          onClick={() => {
-            sfx.click()
-            screen.value = 'pvp'
-          }}
-        >
-          {t('pvpDuel')}
-        </button>
-        <button
-          class="btn big"
-          style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
-          onClick={() => {
-            sfx.click()
-            screen.value = 'climb'
-          }}
-        >
-          {t('climbRace')}
-        </button>
-        <button
-          class="btn big"
-          style={{ borderColor: 'var(--green)', color: 'var(--green)' }}
-          onClick={() => {
-            sfx.click()
-            screen.value = 'coop'
-          }}
-        >
-          {t('coopMode')}
-        </button>
+        <div class="mp-row">
+          <button class="btn purple" onClick={() => (sfx.click(), (screen.value = 'pvp'))}>
+            {t('pvpDuel')}
+          </button>
+          <button
+            class="btn"
+            style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
+            onClick={() => (sfx.click(), (screen.value = 'climb'))}
+          >
+            {t('climbRace')}
+          </button>
+          <button
+            class="btn"
+            style={{ borderColor: 'var(--green)', color: 'var(--green)' }}
+            onClick={() => (sfx.click(), (screen.value = 'coop'))}
+          >
+            {t('coopMode')}
+          </button>
+        </div>
         <div class="seedrow">
           <input
             class="neon"
