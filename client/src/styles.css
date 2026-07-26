@@ -752,29 +752,31 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   box-shadow: 0 0 38px rgba(255, 45, 149, 0.8);
 }
 
+/* Pile buttons + END TURN live in side columns ABOVE the hand's band, so
+ * neither resting nor hover-raised cards can sit over them — and z-index 45
+ * outranks a hovered card (40) as a belt-and-braces guarantee that they are
+ * always clickable. */
 .pilebtn {
   position: absolute;
-  bottom: 16px;
+  bottom: 272px;
   font-size: 12px;
   color: var(--dim);
   cursor: pointer;
   border: 1px solid rgba(143, 134, 184, 0.35);
   padding: 7px 12px;
   border-radius: 6px;
-  background: rgba(10, 5, 24, 0.7);
-  z-index: 7;
+  background: rgba(10, 5, 24, 0.85);
+  z-index: 45;
 }
 .pilebtn:hover { color: var(--cyan); border-color: var(--cyan); }
 .pilebtn.left { left: 16px; }
-.pilebtn.right { right: 170px; }
+.pilebtn.right { right: 16px; }
 
-/* Sits above resting cards (inline z ≤ ~10) but below a hovered card (40)
- * and the drag ghost (120), so it can never be buried by the hand fan. */
 .endturn {
   position: absolute;
-  right: 18px;
-  bottom: 24px;
-  z-index: 30;
+  right: 16px;
+  bottom: 324px;
+  z-index: 45;
   background: rgba(16, 8, 32, 0.94);
   box-shadow: 0 0 14px rgba(255, 45, 149, 0.35), 0 6px 18px rgba(0, 0, 0, 0.55);
 }
@@ -959,5 +961,6 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   .card { width: 118px; height: 172px; }
   .cardslot { margin: 0 -22px; }
   .energy-orb { left: -60px; width: 52px; height: 52px; font-size: 17px; }
-  .pilebtn.right { right: 130px; }
+  .pilebtn { bottom: 246px; }
+  .endturn { bottom: 294px; }
 }
