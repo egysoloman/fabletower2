@@ -20,6 +20,7 @@ import {
   restHealAmount,
   rollCardRewards,
   rollPotionDrop,
+  scoreRun,
   upgradeCard,
   withGoldBonus,
   BOOT_EVENT,
@@ -71,6 +72,7 @@ export interface RunRecord {
   act: number
   floor: number
   win: boolean
+  sc?: number
 }
 
 export function runHistory(): RunRecord[] {
@@ -86,7 +88,15 @@ function recordRun(win: boolean) {
   if (!r) return
   try {
     const list = runHistory()
-    list.unshift({ d: Date.now(), seed: r.seed, asc: r.asc, act: r.act, floor: r.floor, win })
+    list.unshift({
+      d: Date.now(),
+      seed: r.seed,
+      asc: r.asc,
+      act: r.act,
+      floor: r.floor,
+      win,
+      sc: scoreRun(r, win).total,
+    })
     localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
     if (win && r.asc >= ascUnlocked() && ascUnlocked() < MAX_ASC) {
       localStorage.setItem('ns-ascmax', String(r.asc + 1))

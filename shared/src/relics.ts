@@ -43,6 +43,8 @@ export interface RelicDef {
     onShuffleStr?: number
     /** Power cards cost this much less. */
     powerDiscount?: number
+    /** Extra block whenever a card grants you block. */
+    cardBlockBonus?: number
   }
 }
 
@@ -157,6 +159,66 @@ reg(R({
   id: 'hypervisor', name: 'Hypervisor', rarity: 'boss', sym: '⌘',
   desc: 'Power cards cost 1 less.',
   hooks: { powerDiscount: 1 },
+}))
+reg(R({
+  id: 'pilotlight', name: 'Pilot Light', rarity: 'common', sym: '△',
+  desc: 'Start each combat with 2 Heat.',
+  hooks: { combatStatuses: { heat: 2 } },
+}))
+reg(R({
+  id: 'thermalpaste', name: 'Thermal Paste', rarity: 'common', sym: '❄',
+  desc: 'Start each combat with 2 Coolant (overheat threshold +2).',
+  hooks: { combatStatuses: { coolant: 2 } },
+}))
+reg(R({
+  id: 'meshnetwork', name: 'Mesh Network', rarity: 'rare', sym: '⊞',
+  desc: 'Start each combat with 1 Regen.',
+  hooks: { combatStatuses: { regen: 1 } },
+}))
+reg(R({
+  id: 'packetfilter', name: 'Packet Filter', rarity: 'common', sym: '⋔',
+  desc: 'Start each combat with 3 Block and 1 Thorns.',
+  hooks: { combatStartBlock: 3, combatStatuses: { thorns: 1 } },
+}))
+reg(R({
+  id: 'capacitorbank', name: 'Capacitor Bank', rarity: 'rare', sym: '≣',
+  desc: 'Start each combat with 12 Block.',
+  hooks: { combatStartBlock: 12 },
+}))
+reg(R({
+  id: 'blackmarketchip', name: 'Black-Market Chip', rarity: 'rare', sym: '¢',
+  desc: 'Gain 40% more credits from all sources.',
+  hooks: { goldBonusPct: 40 },
+}))
+reg(R({
+  id: 'fieldrepair', name: 'Field Repair Rig', rarity: 'common', sym: '⚒',
+  desc: 'Heal 4 after each combat, and rest sites restore 5 more HP.',
+  hooks: { afterCombatHeal: 4, restBonus: 5 },
+}))
+reg(R({
+  id: 'prefetcher', name: 'Prefetcher', rarity: 'common', sym: '⇶',
+  desc: 'Draw 2 additional cards on your first turn each combat.',
+  hooks: { firstTurnDraw: 2 },
+}))
+reg(R({
+  id: 'warmboot', name: 'Warm Boot', rarity: 'rare', sym: '◒',
+  desc: 'Start each combat with 2 Plating.',
+  hooks: { combatStatuses: { plating: 2 } },
+}))
+reg(R({
+  id: 'autoloader', name: 'Autoloader', rarity: 'boss', sym: '⟳',
+  desc: 'Gain 2 extra Energy on your first turn each combat.',
+  hooks: { firstTurnEnergy: 2 },
+}))
+reg(R({
+  id: 'exoframe', name: 'Exoframe', rarity: 'boss', sym: '⛊',
+  desc: 'Whenever a card grants you Block, gain 2 more.',
+  hooks: { cardBlockBonus: 2 },
+}))
+reg(R({
+  id: 'berserkerchip', name: 'Berserker Chip', rarity: 'boss', sym: '⚔',
+  desc: 'Start each combat with 2 Strength… at the cost of 10 Max HP.',
+  hooks: { combatStatuses: { str: 2 }, maxHp: -10 },
 }))
 
 export function relicName(id: string): string {

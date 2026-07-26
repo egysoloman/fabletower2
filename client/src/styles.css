@@ -1193,6 +1193,48 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .finale .statgrid { display: flex; gap: 34px; color: var(--dim); font-size: 14px; }
 .finale .statgrid b { display: block; color: var(--text); font-size: 22px; font-family: var(--font-head); }
 
+.scorebox {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 300px;
+  padding: 12px 18px;
+  border: 1px solid rgba(0, 240, 255, 0.25);
+  background: rgba(0, 20, 30, 0.55);
+  box-shadow: 0 0 18px rgba(0, 240, 255, 0.12) inset;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+}
+.scorehead {
+  color: var(--dim);
+  letter-spacing: 0.3em;
+  font-size: 11px;
+  font-family: var(--font-head);
+  margin-bottom: 4px;
+  text-align: left;
+}
+.scoreline {
+  display: flex;
+  justify-content: space-between;
+  gap: 26px;
+  color: var(--dim);
+  text-align: left;
+  animation: scoreIn 0.4s calc(0.25s + var(--i, 0) * 0.13s) cubic-bezier(0.2, 1.2, 0.4, 1) backwards;
+}
+.scoreline .pts { color: var(--cyan); font-family: var(--font-head); font-size: 12px; }
+.scoreline.total {
+  margin-top: 5px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(0, 240, 255, 0.3);
+  color: var(--text);
+}
+.scoreline.total .pts { color: var(--gold); font-size: 15px; text-shadow: 0 0 10px rgba(255, 209, 102, 0.7); }
+@keyframes scoreIn {
+  from { opacity: 0; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+.history .hscore { color: var(--cyan); font-family: var(--font-head); font-size: 11px; }
+
 /* ========================================================================== */
 /*  PvP                                                                       */
 /* ========================================================================== */

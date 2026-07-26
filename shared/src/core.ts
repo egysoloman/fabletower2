@@ -257,7 +257,7 @@ function cardBlock(
   evs: GameEvent[],
 ) {
   if (n <= 0) return
-  gainBlock(side, n, whoSelf, evs)
+  gainBlock(side, n + relicHook(env, 'cardBlockBonus'), whoSelf, evs)
   const kernel = side.statuses.kernel ?? 0
   const alive = foes.filter((x) => x.f.hp > 0)
   if (kernel > 0 && alive.length > 0) {

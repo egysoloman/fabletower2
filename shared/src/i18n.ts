@@ -59,4 +59,5 @@ export const ES = {
   nothingToUpgrade: () => (isZh() ? '没有可升级的牌' : 'Nothing left to upgrade'),
   gotPotion: (name: string) => (isZh() ? `获得了「${name}」` : `Gained ${name}`),
   potionsFull: () => (isZh() ? '药剂栏已满' : 'Potion belt is full'),
+  cursed: () => (isZh() ? '「延迟」诅咒侵入了你的牌组' : 'A Lag curse infects your deck'),
 }

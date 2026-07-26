@@ -1,8 +1,19 @@
 import { useEffect } from 'preact/hooks'
+import { scoreRun, type ScoreLine } from '@neonspire/engine'
 import { newGame, backToMenu } from '../game'
 import { defeatFx, victoryFx } from '../fx'
 import { run } from '../store'
-import { t, tf } from '../i18n'
+import { t, tf, type Key } from '../i18n'
+
+const SCORE_KEYS: Record<ScoreLine['k'], Key> = {
+  floors: 'scFloors',
+  acts: 'scActs',
+  relics: 'scRelics',
+  upgrades: 'scUpgrades',
+  gold: 'scGold',
+  asc: 'scAsc',
+  win: 'scWin',
+}
 
 export function FinaleScreen(props: { win: boolean }) {
   const r = run.value
@@ -55,6 +66,25 @@ export function FinaleScreen(props: { win: boolean }) {
           </div>
         </div>
       )}
+      {r &&
+        (() => {
+          const sc = scoreRun(r, win)
+          return (
+            <div class="scorebox">
+              <div class="scorehead">{t('scoreTitle')}</div>
+              {sc.lines.map((l, i) => (
+                <div class="scoreline" key={l.k} style={{ '--i': i }}>
+                  <span>{l.k === 'win' ? t('scWin') : tf(SCORE_KEYS[l.k], { n: l.n })}</span>
+                  <span class="pts">+{l.pts}</span>
+                </div>
+              ))}
+              <div class="scoreline total" style={{ '--i': sc.lines.length }}>
+                <span>{t('scoreTitle')}</span>
+                <span class="pts">{sc.total}</span>
+              </div>
+            </div>
+          )
+        })()}
       <div style={{ display: 'flex', gap: '14px' }}>
         <button class="btn pink big" onClick={() => newGame()}>
           {t('runItBack')}

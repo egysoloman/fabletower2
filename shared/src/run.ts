@@ -31,6 +31,8 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
   const rng = rngFromSeed(seed)
   let uid = 1
   const deck = STARTER_DECKS[char].map((id): CardInst => ({ uid: uid++, id, up: false }))
+  // A2+: the Spire rides along — start cursed.
+  if (asc >= 2) deck.push({ uid: uid++, id: 'lag', up: false })
   const maxHp = asc >= 5 ? 65 : 75
   return {
     seed,
@@ -199,9 +201,9 @@ export function addRelic(run: RunState, id: string) {
   if (run.relics.includes(id)) return
   run.relics.push(id)
   const extraHp = RELICS[id]?.hooks.maxHp ?? 0
-  if (extraHp > 0) {
-    run.maxHp += extraHp
-    run.hp += extraHp
+  if (extraHp !== 0) {
+    run.maxHp = Math.max(10, run.maxHp + extraHp)
+    run.hp = Math.max(1, Math.min(run.maxHp, run.hp + extraHp))
   }
 }
 
@@ -348,12 +350,44 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
         }
         break
       }
+      case 'curse':
+        addCardToDeck(run, 'lag')
+        lines.push(ES.cursed())
+        break
       case 'removeChoose':
         removeChoose = true
         break
     }
   }
   return { lines, removeChoose }
+}
+
+// --- Score ------------------------------------------------------------------
+
+export interface ScoreLine {
+  k: 'floors' | 'acts' | 'relics' | 'upgrades' | 'gold' | 'asc' | 'win'
+  n: number
+  pts: number
+}
+
+/**
+ * End-of-run score with a per-source breakdown. Lives in the engine so any
+ * future leaderboard (e.g. daily runs) scores identically everywhere.
+ */
+export function scoreRun(run: RunState, win: boolean): { lines: ScoreLine[]; total: number } {
+  const lines: ScoreLine[] = []
+  const add = (k: ScoreLine['k'], n: number, pts: number) => {
+    if (pts > 0) lines.push({ k, n, pts })
+  }
+  add('floors', run.floor, run.floor * 10)
+  add('acts', run.act, run.act * 50)
+  add('relics', run.relics.length, run.relics.length * 15)
+  const ups = run.deck.filter((c) => c.up).length
+  add('upgrades', ups, ups * 5)
+  add('gold', run.gold, Math.floor(run.gold / 2))
+  add('asc', run.asc, run.asc * 40)
+  if (win) add('win', 1, 100)
+  return { lines, total: lines.reduce((s, l) => s + l.pts, 0) }
 }
 
 // --- Act transitions --------------------------------------------------------

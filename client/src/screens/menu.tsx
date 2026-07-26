@@ -120,6 +120,7 @@ export function MenuScreen() {
               <span class={h.win ? 'hwin' : 'hloss'}>{h.win ? t('winShort') : t('lossShort')}</span>
               <span>{tf('actFloor', { act: h.act, floor: h.floor })}</span>
               {h.asc > 0 && <span>A{h.asc}</span>}
+              {h.sc != null && <span class="hscore">{h.sc}</span>}
               <span class="hseed">#{h.seed}</span>
             </div>
           ))}

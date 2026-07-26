@@ -48,6 +48,7 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   viralload: { name: '病毒载荷' },
   compilerloop: { name: '编译循环', flavor: 'while(true) grow()' },
   glitch: { name: '故障', flavor: '�����' },
+  lag: { name: '延迟', flavor: 'ping: 9999ms' },
   broadcast: { name: '广播恶意软件' },
   payload: { name: '载荷引爆', flavor: '引爆感染' },
   forkvirus: { name: '分叉病毒', flavor: '接触即复制' },
@@ -142,6 +143,18 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   chassis: { name: '钛合金机身', desc: '每场战斗开始时获得 1 层镀层（回合结束获得 1 点格挡）。' },
   momentumdrive: { name: '动量驱动', desc: '每当你的抽牌堆被洗牌，获得 1 点力量。' },
   hypervisor: { name: '虚拟机监视器', desc: '能力牌费用 -1。' },
+  pilotlight: { name: '常明灯', desc: '每场战斗开始时获得 2 点高热。' },
+  thermalpaste: { name: '导热硅脂', desc: '每场战斗开始时获得 2 点冷却液（过热阈值 +2）。' },
+  meshnetwork: { name: '网状网络', desc: '每场战斗开始时获得 1 层再生。' },
+  packetfilter: { name: '包过滤器', desc: '每场战斗开始时获得 3 点格挡和 1 点荆棘。' },
+  capacitorbank: { name: '电容器组', desc: '每场战斗开始时获得 12 点格挡。' },
+  blackmarketchip: { name: '黑市芯片', desc: '所有来源获得的信用点 +40%。' },
+  fieldrepair: { name: '野战维修架', desc: '每场战斗后回复 4 点生命，安全屋额外回复 5 点。' },
+  prefetcher: { name: '预取器', desc: '每场战斗的第一个回合额外抽 2 张牌。' },
+  warmboot: { name: '热启动', desc: '每场战斗开始时获得 2 层镀层。' },
+  autoloader: { name: '自动装填器', desc: '每场战斗的第一个回合额外获得 2 点能量。' },
+  exoframe: { name: '外骨骼框架', desc: '每当卡牌为你提供格挡，额外获得 2 点。' },
+  berserkerchip: { name: '狂战士芯片', desc: '每场战斗开始时获得 2 点力量……代价是生命上限 -10。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
@@ -239,6 +252,14 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
     choices: [
       { label: '还原', detail: '回复 25 点生命。' },
       { label: '扩容', detail: '生命上限提高 5。' },
+    ],
+  },
+  cursedware: {
+    name: '被诅咒的固件',
+    text: '一台支付终端为一次小小的安装开出了离谱的赏金。更新日志只有一行："轻微延迟问题。"',
+    choices: [
+      { label: '安装', detail: '获得 120¤。一张「延迟」诅咒被永久加入你的牌组。' },
+      { label: '拒绝', detail: '什么都不会发生。' },
     ],
   },
   dispenser: {

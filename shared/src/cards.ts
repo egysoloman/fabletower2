@@ -499,6 +499,11 @@ reg(c({
   effects: [], upEffects: [], unplayable: true,
   flavor: '�����',
 }))
+reg(c({
+  id: 'lag', name: 'Lag', type: 'skill', rarity: 'special', cost: 0, target: 'none',
+  effects: [], upEffects: [], unplayable: true,
+  flavor: 'ping: 9999ms',
+}))
 
 // ---------------------------------------------------------------------------
 

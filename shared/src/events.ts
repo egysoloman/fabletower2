@@ -12,6 +12,7 @@ export type Outcome =
   | { k: 'upgradeRandom' }
   | { k: 'removeChoose' }
   | { k: 'potion' }
+  | { k: 'curse' }
 
 export interface EventChoice {
   label: string
@@ -133,6 +134,16 @@ export const EVENTS: EventDef[] = [
     choices: [
       { label: 'RESTORE', detail: 'Heal 25 HP.', outcomes: [{ k: 'heal', n: 25 }] },
       { label: 'EXTEND', detail: 'Raise your Max HP by 5.', outcomes: [{ k: 'maxhp', n: 5 }] },
+    ],
+  },
+  {
+    id: 'cursedware',
+    name: 'Cursed Firmware',
+    glyph: '☠',
+    text: 'A payment terminal offers an absurd bounty for one small install. The changelog is a single line: "minor latency issues."',
+    choices: [
+      { label: 'INSTALL IT', detail: 'Gain 120¤. A Lag curse is permanently added to your deck.', outcomes: [{ k: 'gold', n: 120 }, { k: 'curse' }] },
+      { label: 'REFUSE', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
   {

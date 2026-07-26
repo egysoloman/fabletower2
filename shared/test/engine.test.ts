@@ -700,3 +700,55 @@ describe('relics & shops', () => {
     expect(run.relics.includes('goldchip')).toBe(true)
   })
 })
+
+describe('curses & score (cycle 4)', () => {
+  it('A2+ runs start with a Lag curse and Lag is unplayable', () => {
+    expect(newRun(1, 0).deck.some((c) => c.id === 'lag')).toBe(false)
+    expect(newRun(1, 2).deck.some((c) => c.id === 'lag')).toBe(true)
+    expect(CARDS.lag.unplayable).toBe(true)
+    const cs = fixedCombat(['lag', 'lag', 'lag', 'lag', 'lag'], ['golem'])
+    const res = combatReduce(cs, { t: 'play', hand: 0 })
+    expect(res.error).toBeTruthy()
+  })
+
+  it('curse outcome infects the deck with Lag', () => {
+    const run = newRun(4)
+    const before = run.deck.length
+    applyOutcomes(run, [{ k: 'gold', n: 120 }, { k: 'curse' }])
+    expect(run.deck.length).toBe(before + 1)
+    expect(run.deck[run.deck.length - 1].id).toBe('lag')
+  })
+
+  it('negative max-hp relic clamps and never kills', () => {
+    const run = newRun(6)
+    run.hp = 5
+    addRelic(run, 'berserkerchip')
+    expect(run.maxHp).toBe(65)
+    expect(run.hp).toBeGreaterThanOrEqual(1)
+    expect(run.hp).toBeLessThanOrEqual(run.maxHp)
+  })
+
+  it('exoframe adds bonus block to card block', () => {
+    const plain = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem'])
+    const boosted = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem'], 42, ['exoframe'])
+    const a = combatReduce(plain, { t: 'play', hand: 0 }).state.player.block
+    const b = combatReduce(boosted, { t: 'play', hand: 0 }).state.player.block
+    expect(b).toBe(a + 2)
+  })
+
+  it('scores a run with a breakdown that sums to the total', async () => {
+    const { scoreRun } = await import('../src/run')
+    const run = newRun(9, 3)
+    run.floor = 12
+    run.act = 2
+    run.gold = 140
+    addRelic(run, 'goldchip')
+    upgradeCard(run, run.deck[0].uid)
+    const lose = scoreRun(run, false)
+    expect(lose.total).toBe(lose.lines.reduce((s, l) => s + l.pts, 0))
+    const win = scoreRun(run, true)
+    expect(win.total).toBe(lose.total + 100)
+    expect(win.lines.some((l) => l.k === 'win')).toBe(true)
+    expect(win.lines.find((l) => l.k === 'asc')?.pts).toBe(120)
+  })
+})

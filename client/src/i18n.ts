@@ -105,6 +105,14 @@ const EN = {
   runItBack: 'RUN IT BACK',
   menuBtn: 'MENU',
   seedLabel: 'seed: {n}',
+  scoreTitle: 'SCORE',
+  scFloors: 'Floors climbed ×{n}',
+  scActs: 'Acts cleared ×{n}',
+  scRelics: 'Relics collected ×{n}',
+  scUpgrades: 'Cards upgraded ×{n}',
+  scGold: 'Credits banked {n}¤',
+  scAsc: 'Ascension {n}',
+  scWin: 'SPIRE DELETED',
   cleansed: 'CLEANSED',
   // cheat console
   cheats: 'CHEATS',
@@ -146,7 +154,7 @@ const EN = {
   rematch: 'REMATCH QUEUE',
 }
 
-type Key = keyof typeof EN
+export type Key = keyof typeof EN
 
 const ZH: Record<Key, string> = {
   tagline: '接入 · 攀登 · 脑死',
@@ -240,6 +248,14 @@ const ZH: Record<Key, string> = {
   runItBack: '再来一局',
   menuBtn: '主菜单',
   seedLabel: '种子：{n}',
+  scoreTitle: '分数',
+  scFloors: '攀登层数 ×{n}',
+  scActs: '通过幕数 ×{n}',
+  scRelics: '收集遗物 ×{n}',
+  scUpgrades: '升级卡牌 ×{n}',
+  scGold: '存留信用点 {n}¤',
+  scAsc: '飞升等级 {n}',
+  scWin: '尖塔已删除',
   cleansed: '净化',
   cheats: '作弊',
   cheatTitle: '▚ 作弊控制台 ▞',
