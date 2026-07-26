@@ -173,9 +173,10 @@ function hashSeed(s: string): number {
   return h >>> 0
 }
 
-/** Settings: audio, animation quality, screen shake, language. */
+/** Settings: paginated tabs — general, cloud account, mods. */
 export function SettingsScreen() {
   const st = settings.value
+  const [tab, setTab] = useState<'general' | 'account' | 'mods'>('general')
   const slider = (label: string, key: 'master' | 'sfx') => (
     <label class="setrow">
       <span>{label}</span>
@@ -197,7 +198,15 @@ export function SettingsScreen() {
       <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
         SET<span>UP</span>
       </div>
-      <div class="panel popin" style={{ minWidth: '340px' }}>
+      <div class="mp-row">
+        {(['general', 'account', 'mods'] as const).map((k) => (
+          <button key={k} class={`btn ghost ${tab === k ? 'on' : ''}`} onClick={() => (sfx.click(), setTab(k))}>
+            {t(('setTab_' + k) as Parameters<typeof t>[0])}
+          </button>
+        ))}
+      </div>
+      {tab === 'general' && (
+      <div class="panel popin" key="general" style={{ minWidth: '340px' }}>
         {slider(t('setMaster'), 'master')}
         {slider(t('setSfx'), 'sfx')}
         <label class="setrow">
@@ -228,21 +237,22 @@ export function SettingsScreen() {
             <SoundIcon muted={muted.value} />
           </button>
         </label>
+        {installPrompt.value && (
+          <button
+            class="btn gold"
+            style={{ borderColor: 'var(--gold)', color: 'var(--gold)', alignSelf: 'center' }}
+            onClick={() => {
+              void installPrompt.value?.prompt()
+              installPrompt.value = null
+            }}
+          >
+            {t('installApp')}
+          </button>
+        )}
       </div>
-      {installPrompt.value && (
-        <button
-          class="btn gold"
-          style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
-          onClick={() => {
-            void installPrompt.value?.prompt()
-            installPrompt.value = null
-          }}
-        >
-          {t('installApp')}
-        </button>
       )}
-      <AccountPanel />
-      <ModsPanel />
+      {tab === 'account' && <AccountPanel key="account" />}
+      {tab === 'mods' && <ModsPanel key="mods" />}
       <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
         {t('back')}
       </button>
