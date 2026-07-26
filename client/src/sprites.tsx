@@ -223,6 +223,63 @@ const ART: Record<string, JSX.Element> = {
     </>
   ),
 
+  leech: (
+    <>
+      <path d="M12 40 C18 30 26 46 32 36 C38 26 46 42 52 32" stroke-width="2.6" />
+      <path d="M50 30 L56 28 M50 34 L56 36" stroke-width="1.6" />
+      {dot(14, 38, 1.8)}
+    </>
+  ),
+  watchdog: (
+    <>
+      <path d="M14 52 V30 L24 20 H40 L50 30 V52" />
+      <path d="M18 20 L24 28 M46 20 L40 28" stroke-width="1.8" />
+      <ellipse cx="26" cy="36" rx="2.4" ry="3" fill="currentColor" stroke="none" />
+      <ellipse cx="38" cy="36" rx="2.4" ry="3" fill="currentColor" stroke="none" />
+      <path d="M26 46 L30 43 L34 46 L38 43" stroke-width="1.8" />
+    </>
+  ),
+  minelayer: (
+    <>
+      <circle cx="32" cy="36" r="13" />
+      <path d="M32 23 V15 M22 27 L16 21 M42 27 L48 21 M32 49 V55 M22 45 L16 51 M42 45 L48 51" stroke-width="1.8" />
+      {dot(32, 36, 2.6)}
+    </>
+  ),
+  overseer: (
+    <>
+      <path d="M8 32 C18 18 46 18 56 32 C46 46 18 46 8 32 Z" />
+      <circle cx="32" cy="32" r="7" />
+      {dot(32, 32, 2.6)}
+      <path d="M32 12 V6 M20 15 L17 9 M44 15 L47 9" stroke-width="1.6" />
+    </>
+  ),
+  botnetlord: (
+    <>
+      <rect x="20" y="20" width="24" height="24" rx="3" />
+      <path d="M20 28 H44 M28 20 V16 M36 20 V16" stroke-width="1.6" />
+      <ellipse cx="27" cy="36" rx="2.2" ry="2.6" fill="currentColor" stroke="none" />
+      <ellipse cx="37" cy="36" rx="2.2" ry="2.6" fill="currentColor" stroke="none" />
+      <path d="M14 52 L20 44 M50 52 L44 44 M24 52 H40" stroke-width="1.8" />
+      <path d="M22 12 L27 8 M32 12 V6 M42 12 L37 8" stroke-width="1.6" />
+    </>
+  ),
+  phantom: (
+    <>
+      <path d="M18 54 C12 22 52 22 46 54 L41 48 L37 55 L32 48 L27 55 L23 48 Z" stroke-dasharray="4 3" />
+      <ellipse cx="27" cy="33" rx="2.4" ry="3.6" fill="currentColor" stroke="none" />
+      <ellipse cx="38" cy="33" rx="2.4" ry="3.6" fill="currentColor" stroke="none" />
+    </>
+  ),
+  nullmonarch: (
+    <>
+      <path d="M16 24 L22 32 L32 20 L42 32 L48 24 V44 H16 Z" />
+      {dot(32, 14, 2.2)}
+      <path d="M20 50 H44 M24 56 H40" stroke-width="1.8" />
+      <path d="M26 38 H30 M34 38 H38" stroke-width="1.6" />
+    </>
+  ),
+
   // --- act 4: the root --------------------------------------------------
   spearproc: (
     <>

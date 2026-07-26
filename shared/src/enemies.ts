@@ -72,6 +72,24 @@ reg(E({
   ],
 }))
 
+reg(E({
+  id: 'leech', name: 'Cache Leech', glyph: '🪱', hp: [26, 30],
+  moves: [
+    { id: 'siphon', name: 'Siphon', weight: 3, effects: [{ k: 'atk', n: 5 }, { k: 'heal', n: 5 }] },
+    { id: 'numb', name: 'Numbing Coat', weight: 2, maxRepeat: 1, effects: [{ k: 'debuff', id: 'weak', n: 1 }] },
+    { id: 'gnaw', name: 'Gnaw', weight: 2, effects: [{ k: 'atk', n: 7 }] },
+  ],
+}))
+reg(E({
+  id: 'watchdog', name: 'WATCHDOG PRIME', glyph: '🐕', hp: [115, 115], boss: true,
+  moves: [
+    { id: 'bark', name: 'Bark Signal', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'block', n: 8 }] },
+    { id: 'bite', name: 'Bite', weight: 3, effects: [{ k: 'atk', n: 8, times: 2 }] },
+    { id: 'pounce', name: 'Pounce', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 14 }] },
+    { id: 'leash', name: 'SNAPPED LEASH', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'thorns', n: 4 }, { k: 'buff', id: 'str', n: 2 }] },
+  ],
+}))
+
 // --- Act 2 ------------------------------------------------------------------
 
 reg(E({
@@ -142,6 +160,33 @@ reg(E({
   ],
 }))
 
+reg(E({
+  id: 'minelayer', name: 'Mine Layer', glyph: '💣', hp: [44, 50],
+  moves: [
+    { id: 'seed', name: 'Seed Mines', weight: 3, maxRepeat: 2, effects: [{ k: 'addCard', id: 'glitch', n: 1 }, { k: 'block', n: 5 }] },
+    { id: 'shrapnel', name: 'Shrapnel', weight: 3, effects: [{ k: 'atk', n: 4, times: 2 }] },
+    { id: 'detonate', name: 'Detonate', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 14 }] },
+  ],
+}))
+reg(E({
+  id: 'overseer', name: 'Overseer', glyph: '👁', hp: [92, 98],
+  traits: { artifact: 1 },
+  moves: [
+    { id: 'judge', name: 'Judgement', weight: 3, effects: [{ k: 'atk', n: 12 }, { k: 'debuff', id: 'weak', n: 1 }] },
+    { id: 'decree', name: 'Decree', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }, { k: 'block', n: 10 }] },
+    { id: 'sentence', name: 'Sentence', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 18 }] },
+  ],
+}))
+reg(E({
+  id: 'botnetlord', name: 'BOTNET GENERAL', glyph: '🎖', hp: [175, 175], boss: true,
+  moves: [
+    { id: 'conscript', name: 'Conscript', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'subproc' }] },
+    { id: 'command', name: 'Command Volley', weight: 3, effects: [{ k: 'atk', n: 9, times: 2 }] },
+    { id: 'rally', name: 'Rally', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 14 }, { k: 'buff', id: 'str', n: 2 }] },
+    { id: 'surge2', name: 'FULL MOBILIZATION', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'summon', id: 'subproc', n: 2 }, { k: 'buff', id: 'str', n: 2 }] },
+  ],
+}))
+
 // --- Act 3 ------------------------------------------------------------------
 
 reg(E({
@@ -193,6 +238,26 @@ reg(E({
     { id: 'rewrite', name: 'Rewrite', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'glitch', n: 2 }, { k: 'debuff', id: 'weak', n: 2 }] },
     { id: 'cascade', name: 'Cascade', weight: 3, effects: [{ k: 'atk', n: 9, times: 3 }] },
     { id: 'awaken', name: 'AWAKEN', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'buff', id: 'str', n: 4 }, { k: 'buff', id: 'ritual', n: 1 }, { k: 'summon', id: 'botnode', n: 2 }] },
+  ],
+}))
+
+reg(E({
+  id: 'phantom', name: 'Phantom Process', glyph: '👻', hp: [40, 46],
+  // Permanent Stealth: everything you throw at it lands at half strength.
+  traits: { stealth: 1 },
+  moves: [
+    { id: 'haunt', name: 'Haunt', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+    { id: 'dread', name: 'Dread', weight: 2, maxRepeat: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+    { id: 'shriek', name: 'Shriek', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 7 }, { k: 'debuff', id: 'vuln', n: 1 }] },
+  ],
+}))
+reg(E({
+  id: 'nullmonarch', name: 'NULL MONARCH', glyph: '👑', hp: [265, 265], boss: true,
+  moves: [
+    { id: 'decay', name: 'Decay Edict', weight: 3, effects: [{ k: 'atk', n: 10 }, { k: 'debuff', id: 'corrupt', n: 4 }] },
+    { id: 'voidlance', name: 'Void Lance', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 24 }] },
+    { id: 'crown', name: 'Hollow Crown', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 16 }, { k: 'buff', id: 'plating', n: 3 }] },
+    { id: 'coronation', name: 'DARK CORONATION', weight: 13, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'buff', id: 'artifact', n: 2 }, { k: 'buff', id: 'str', n: 3 }] },
   ],
 }))
 
@@ -261,9 +326,11 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['kiddie', 'spambot'],
       ['hatchery'],
       ['hatchery', 'spambot'],
+      ['leech'],
+      ['leech', 'spambot'],
     ],
     elite: [['hound'], ['hatchery', 'golem']],
-    boss: [['compiler']],
+    boss: [['compiler'], ['watchdog']],
   },
   2: {
     normal: [
@@ -275,9 +342,11 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['netrunner', 'sentry'],
       ['loadbalancer'],
       ['loadbalancer', 'subproc'],
+      ['minelayer'],
+      ['minelayer', 'ice'],
     ],
-    elite: [['blackice'], ['loadbalancer', 'sentry']],
-    boss: [['mainframe']],
+    elite: [['blackice'], ['loadbalancer', 'sentry'], ['overseer']],
+    boss: [['mainframe'], ['botnetlord']],
   },
   3: {
     normal: [
@@ -288,9 +357,11 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['wraith', 'botnode'],
       ['hivemind'],
       ['hivemind', 'botnode'],
+      ['phantom'],
+      ['phantom', 'botnode'],
     ],
     elite: [['rootdaemon'], ['hivemind', 'wraith']],
-    boss: [['architect']],
+    boss: [['architect'], ['nullmonarch']],
   },
   4: {
     // The Root's gauntlet has no normal combat floors; table kept for safety.

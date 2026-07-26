@@ -986,6 +986,33 @@ describe('relic & event volume (cycle 10)', () => {
   })
 })
 
+describe('boss & enemy variety (cycle 11)', () => {
+  it('acts 1-3 rotate between two bosses', async () => {
+    const { ENCOUNTERS } = await import('../src/enemies')
+    for (const act of [1, 2, 3]) {
+      expect(ENCOUNTERS[act].boss.length, `act ${act}`).toBe(2)
+      for (const group of ENCOUNTERS[act].boss) {
+        expect(ENEMIES[group[0]].boss).toBe(true)
+      }
+    }
+    // both bosses of an act are reachable through pickEncounter
+    const { pickEncounter } = await import('../src/run')
+    const seen = new Set<string>()
+    for (let seed = 0; seed < 30; seed++) {
+      const run = newRun(seed)
+      seen.add(pickEncounter(run, 'boss')[0])
+    }
+    expect(seen.size).toBe(2)
+  })
+
+  it('phantom takes half damage through permanent stealth', () => {
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['phantom'])
+    const hp0 = cs.enemies[0].hp
+    const s = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+    expect(hp0 - s.enemies[0].hp).toBe(3) // floor(6 * 0.5)
+  })
+})
+
 describe('ascension 6-10 (cycle 8)', () => {
   it('A10 doubles the curse and cuts max hp to 60', async () => {
     const { MAX_ASC } = await import('../src/run')

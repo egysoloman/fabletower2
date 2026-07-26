@@ -229,6 +229,13 @@ export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, stri
   hivemind: { name: '蜂巢意识', moves: { assimilate: '同化', mindlash: '精神鞭挞', 'sync-all': '同步全域' } },
   rootdaemon: { name: 'ROOT 守护进程', moves: { sudo: 'SUDO', smite: '重惩', chainatk: '连锁攻击' } },
   architect: { name: '架构师', moves: { genesis: '创世构建', deleterow: '删除行', rewrite: '重写', cascade: '级联', awaken: '觉醒' } },
+  leech: { name: '缓存水蛭', moves: { siphon: '虹吸', numb: '麻痹涂层', gnaw: '啃噬' } },
+  watchdog: { name: '看门狗至尊', moves: { bark: '吠叫信号', bite: '撕咬', pounce: '扑击', leash: '挣脱锁链' } },
+  minelayer: { name: '布雷者', moves: { seed: '播撒地雷', shrapnel: '弹片', detonate: '引爆' } },
+  overseer: { name: '监察者', moves: { judge: '审判', decree: '敕令', sentence: '宣判' } },
+  botnetlord: { name: '僵尸网络将军', moves: { conscript: '征召', command: '齐射令', rally: '整军', surge2: '全面动员' } },
+  phantom: { name: '幻影进程', moves: { haunt: '萦扰', dread: '惊惧', shriek: '尖啸' } },
+  nullmonarch: { name: '虚无君主', moves: { decay: '衰变敕令', voidlance: '虚空长枪', crown: '空洞王冠', coronation: '黑暗加冕' } },
   spearproc: { name: '长矛进程', moves: { skewer: '穿刺连击', pierce: '贯穿', sharpen: '磨锋' } },
   shieldproc: { name: '坚盾进程', moves: { bulwark: '壁垒', bashwall: '盾墙猛击', mend: '修补', suppress: '压制' } },
   theroot: {
