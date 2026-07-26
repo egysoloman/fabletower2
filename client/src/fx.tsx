@@ -476,6 +476,45 @@ function ParticleCanvas() {
 }
 
 export const wipe = signal<{ label: string; color: string } | null>(null)
+
+/** Float a small text at a registered anchor + pulse it (stat deltas). */
+export function statFlash(anchor: string, text: string, cls: 'stat' | 'dmg' = 'stat') {
+  const p = anchorCenter(anchor)
+  if (!p) return
+  spawnFloatAt(p.x, p.y + 14, text, cls)
+  pulse(anchor, 'stat-pop')
+}
+
+/** Coins stream from a point into the gold counter, then the total flashes. */
+export function flyGoldTo(from: { x: number; y: number }, n: number) {
+  const to = anchorCenter('gold')
+  if (!to) return
+  for (let i = 0; i < Math.min(8, 3 + Math.floor(n / 12)); i++) {
+    setTimeout(() => flyMini(from, to, '#ffd166'), i * 70)
+  }
+  setTimeout(() => statFlash('gold', `+${n}¤`), 620)
+}
+
+/** Card-removal cinematic: fly out of the deck, hold full-size, shatter. */
+export const removalCine = signal<{ card: import('@neonspire/engine').CardInst; stage: 'in' | 'hold' | 'out' } | null>(null)
+
+export function playRemovalCine(card: import('@neonspire/engine').CardInst) {
+  const from = anchorCenter('deck') ?? { x: window.innerWidth - 80, y: 30 }
+  document.documentElement.style.setProperty('--rc-x', `${from.x}px`)
+  document.documentElement.style.setProperty('--rc-y', `${from.y}px`)
+  removalCine.value = { card, stage: 'in' }
+  setTimeout(() => {
+    removalCine.value = { card, stage: 'hold' }
+  }, 620)
+  setTimeout(() => {
+    const c = { x: window.innerWidth / 2, y: window.innerHeight / 2 }
+    glyphSplash(c.x, c.y, '#ff3b5b', 16)
+    burst(c.x, c.y, '#ff3b5b', 22, 3.6)
+    removalCine.value = { card, stage: 'out' }
+    statFlash('deck', '-1', 'dmg')
+  }, 1650)
+  setTimeout(() => (removalCine.value = null), 2100)
+}
 let wipeTimer = 0
 
 /**

@@ -13,7 +13,8 @@ import {
   restHealAmount,
 } from '@neonspire/engine'
 import { CardById, TopBar } from '../components'
-import { burst, flyToDeck, uiRipple } from '../fx'
+import { useEffect } from 'preact/hooks'
+import { anchorCenter, burst, flyGoldTo, flyMini, flyToDeck, uiRipple } from '../fx'
 import { sfx } from '../sfx'
 import { Sprite } from '../sprites'
 import { t, tf } from '../i18n'
@@ -65,6 +66,14 @@ function RelicOffer(props: { id: string; note?: string; onClick?: (e?: MouseEven
 
 export function RewardScreen() {
   const b = reward.value
+  // Coins stream from the spoils panel into the topbar counter on entry.
+  useEffect(() => {
+    if (!b || b.gold <= 0) return
+    const timer = setTimeout(() => {
+      flyGoldTo({ x: window.innerWidth / 2, y: window.innerHeight * 0.32 }, b.gold)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [])
   if (!b) return null
   return (
     <div class="screen">
@@ -75,12 +84,36 @@ export function RewardScreen() {
           <div class="sub" style={{ color: 'var(--gold)' }}>
             {tf('recovered', { n: b.gold })}
           </div>
-          {b.relic && !b.relicTaken && <RelicOffer id={b.relic} note={t('takeNote')} onClick={() => takeRelicReward()} />}
+          {b.relic && !b.relicTaken && <RelicOffer
+              id={b.relic}
+              note={t('takeNote')}
+              onClick={(e) => {
+                if (e) {
+                  const p = evCenter(e)
+                  const dest = anchorCenter('relics')
+                  if (dest) flyMini(p, dest, '#ffd166')
+                  burst(p.x, p.y, '#ffd166', 12, 2.6)
+                }
+                takeRelicReward()
+              }}
+            />}
           {b.bossChoices.length > 0 && !b.bossChoiceTaken && (
             <>
               <div class="sub">{t('bossCachePick')}</div>
               {b.bossChoices.map((id) => (
-                <RelicOffer key={id} id={id} note={t('bossCache')} onClick={() => takeBossRelic(id)} />
+                <RelicOffer
+                  key={id}
+                  id={id}
+                  note={t('bossCache')}
+                  onClick={(e) => {
+                    if (e) {
+                      const p = evCenter(e)
+                      const dest = anchorCenter('relics')
+                      if (dest) flyMini(p, dest, '#ffd166')
+                    }
+                    takeBossRelic(id)
+                  }}
+                />
               ))}
             </>
           )}
@@ -90,6 +123,8 @@ export function RewardScreen() {
               onClick={(e) => {
                 const p = evCenter(e)
                 burst(p.x, p.y, '#3dffa2', 12, 2.8)
+                const dest = anchorCenter('belt')
+                if (dest) flyMini(p, dest, '#3dffa2')
                 takePotionReward()
               }}
             >
@@ -327,7 +362,7 @@ export function EventScreen() {
               {ev.choices.map((c, i) => {
                 const blocked = !!c.needGold && r.gold < c.needGold
                 return (
-                  <div key={i} class={`bigchoice ${i % 2 ? 'pink' : ''} ${blocked ? 'disabled' : ''}`} onClick={() => chooseEventOption(i)}>
+                  <div key={i} class={`bigchoice pop-in ${i % 2 ? 'pink' : ''} ${blocked ? 'disabled' : ''}`} style={{ '--i': i } as never} onClick={() => chooseEventOption(i)}>
                     <div class="t">{eventChoiceLabel(ev, i)}</div>
                     <div class="d">{eventChoiceDetail(ev, i)}</div>
                   </div>

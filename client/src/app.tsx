@@ -4,6 +4,8 @@ import { screen } from './store'
 import { MenuScreen, NewRunScreen, SettingsScreen } from './screens/menu'
 import { CodexScreen } from './screens/codex'
 import { achToasts } from './meta'
+import { removalCine } from './fx'
+import { CardView } from './components'
 import { GateScreen } from './screens/gate'
 import { gate } from './account'
 import { netOnline } from './settings'
@@ -41,6 +43,13 @@ export function App() {
         {s === 'climb' && <ClimbScreen />}
         {s === 'coop' && <CoopScreen />}
       </div>
+      {removalCine.value && (
+        <div class="removecine">
+          <div class={`rc-card ${removalCine.value.stage}`}>
+            <CardView card={removalCine.value.card} />
+          </div>
+        </div>
+      )}
       {!netOnline.value && <div class="offlinebadge">{t('offlineBadge')}</div>}
       <div class="achtoasts">
         {achToasts.value.map((id) => (

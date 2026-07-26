@@ -21,7 +21,8 @@ import {
 } from '@neonspire/engine'
 import { cheatOpen, picker, pileView, run, screen } from './store'
 import { muted, sfx, toggleMute } from './sfx'
-import { burst, fxPulses, registerAnchor } from './fx'
+import { burst, fxPulses, registerAnchor, statFlash } from './fx'
+import { useEffect, useRef } from 'preact/hooks'
 import { lang, t, tf, toggleLang } from './i18n'
 import { SoundIcon } from './sprites'
 import { abandonRun, discardPotion } from './game'
@@ -160,21 +161,37 @@ export function PotionBelt(props: {
 /** Standard header for all run screens. */
 export function TopBar(props: { showAbandon?: boolean }) {
   const r = run.value
+  // Deck-size pop: any acquisition/removal (rewards, shops, events, curses,
+  // cheats) flashes +n/-n on the deck counter automatically.
+  const prevDeck = useRef<number | null>(null)
+  useEffect(() => {
+    if (!r) return
+    const prev = prevDeck.current
+    prevDeck.current = r.deck.length
+    if (prev !== null && prev !== r.deck.length) {
+      const d = r.deck.length - prev
+      statFlash('deck', d > 0 ? `+${d}` : `${d}`, d > 0 ? 'stat' : 'dmg')
+    }
+  }, [r?.deck.length])
   if (!r) return null
   return (
     <div class="topbar">
       <span class="stat hp-txt" data-tip={t('hpTip')}>
         ♥ <b>{r.hp}/{r.maxHp}</b>
       </span>
-      <span class="stat gold-txt" data-tip={t('creditsTip')}>
+      <span class={`stat gold-txt ${fxPulses.value['gold'] ?? ''}`} data-tip={t('creditsTip')} ref={(el) => registerAnchor('gold', el)}>
         ¤ <b>{r.gold}</b>
       </span>
       <span class="stat floor-txt">
         {tf('actFloor', { act: r.act, floor: r.floor })}
         {r.asc > 0 ? ` · A${r.asc}` : ''}
       </span>
-      <RelicBar relics={r.relics} />
-      {screen.value !== 'combat' && <PotionBelt cls="inbar" onDrop={discardPotion} />}
+      <span class={fxPulses.value['relics'] ?? ''} ref={(el) => registerAnchor('relics', el)}>
+        <RelicBar relics={r.relics} />
+      </span>
+      <span class={fxPulses.value['belt'] ?? ''} ref={(el) => registerAnchor('belt', el)}>
+        {screen.value !== 'combat' && <PotionBelt cls="inbar" onDrop={discardPotion} />}
+      </span>
       <span class="spacer" />
       <span
         class={`stat linkish ${fxPulses.value['deck'] ?? ''}`}
@@ -230,9 +247,9 @@ export function PileModal() {
     <div class="overlay" onClick={() => (pileView.value = null)}>
       <div class="panel" onClick={(e) => e.stopPropagation()}>
         <h2>{view.title}</h2>
-        <div class="gridcards">
+        <div class="gridcards fan">
           {view.cards.map((c, i) => (
-            <CardView key={c.uid} card={c} style={{ '--fan': Math.min(i, 14) } as never} />
+            <CardView key={c.uid} card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
           ))}
           {view.cards.length === 0 && <div class="sub">{t('empty')}</div>}
         </div>
@@ -254,7 +271,7 @@ export function PickerModal() {
     <div class="overlay">
       <div class="panel">
         <h2 class="pink">{req.title}</h2>
-        <div class="gridcards">
+        <div class="gridcards fan">
           {cards.map((c, i) => (
             <div
               key={c.uid}

@@ -54,7 +54,7 @@ import {
   shop,
   touch,
 } from './store'
-import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processEvents, screenWipe } from './fx'
+import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, playRemovalCine, processEvents, screenWipe } from './fx'
 import { climbActive, climbBossKill, climbDied, climbLeave, climbReport } from './climb'
 import { checkCombat, checkRun, discoverEnemies, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
@@ -585,7 +585,9 @@ export function shopRemoveService() {
     title: tf('purgeTitle', { n: s.removePrice }),
     cancellable: true,
     onPick: (uid) => {
+      const gone = r.deck.find((c) => c.uid === uid)
       if (!removeCard(r, uid)) return
+      if (gone) playRemovalCine(gone)
       r.gold -= s.removePrice
       r.removesBought++
       s.removePrice = 75 + 25 * r.removesBought
@@ -644,7 +646,9 @@ export function chooseEventOption(idx: number) {
       title: t('removeTitle'),
       cancellable: false,
       onPick: (uid) => {
+        const gone = r.deck.find((c) => c.uid === uid)
         if (removeCard(r, uid)) {
+          if (gone) playRemovalCine(gone)
           eventLines.value = [...(eventLines.value ?? []), t('cardDeleted')]
           picker.value = null
           touch()
@@ -782,7 +786,9 @@ export function cheatRemoveCard() {
     title: t('removeTitle'),
     cancellable: true,
     onPick: (uid) => {
+      const gone = r.deck.find((c) => c.uid === uid)
       removeCard(r, uid)
+      if (gone) playRemovalCine(gone)
       picker.value = null
       sfx.buy()
       touch()
