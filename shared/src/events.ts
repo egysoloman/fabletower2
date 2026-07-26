@@ -222,6 +222,93 @@ export const EVENTS: EventDef[] = [
       { label: 'KEEP YOUR DISTANCE', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
+  {
+    id: 'vending',
+    name: 'Haunted Vending Machine',
+    glyph: '🥤',
+    text: 'The machine hums a tune nobody wrote and stocks flavors nobody ordered. The coin slot breathes.',
+    choices: [
+      { label: 'INSERT COINS', detail: 'Pay 15¤: gain a random potion.', needGold: 15, outcomes: [{ k: 'gold', n: -15 }, { k: 'potion' }] },
+      { label: 'SHAKE IT', detail: 'Gain 25¤. Take 4 damage.', outcomes: [{ k: 'gold', n: 25 }, { k: 'damage', n: 4 }] },
+      { label: 'WALK PAST', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'streetdoc',
+    name: 'Street Doc',
+    glyph: '💉',
+    text: 'A back-alley clinic with a suspicious autoclave and immaculate hands. "Cash up front. Anesthesia extra."',
+    choices: [
+      { label: 'FULL AUGMENTATION', detail: 'Pay 60¤: raise your Max HP by 7.', needGold: 60, outcomes: [{ k: 'gold', n: -60 }, { k: 'maxhp', n: 7 }] },
+      { label: 'QUICK PATCH', detail: 'Pay 25¤: heal 20 HP.', needGold: 25, outcomes: [{ k: 'gold', n: -25 }, { k: 'heal', n: 20 }] },
+      { label: 'DECLINE', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'signaltower',
+    name: 'Pirate Signal Tower',
+    glyph: '📡',
+    text: 'A rogue transmitter stitched to a rooftop, screaming encrypted treasure into the void. The climb looks bad. The payload looks worse.',
+    choices: [
+      { label: 'CLIMB', detail: 'Gain a random relic. Take 14 damage.', outcomes: [{ k: 'relic' }, { k: 'damage', n: 14 }] },
+      { label: 'TAP THE FEED', detail: 'Gain 40¤.', outcomes: [{ k: 'gold', n: 40 }] },
+      { label: 'STAY GROUNDED', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'memoryleak',
+    name: 'Memory Leak',
+    glyph: '💧',
+    text: 'Something in your deck is dripping cycles into the floor. You could patch it out — or bottle the runoff and sell it.',
+    choices: [
+      { label: 'PATCH IT', detail: 'Remove a card from your deck.', outcomes: [{ k: 'removeChoose' }] },
+      { label: 'EXPLOIT IT', detail: 'Gain 55¤. A Glitch is added to your deck.', outcomes: [{ k: 'gold', n: 55 }, { k: 'cardGlitch' }] },
+      { label: 'IGNORE IT', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'straydrone',
+    name: 'Stray Drone',
+    glyph: '🛩',
+    text: 'A limping courier drone bumps against your shin, cargo light blinking. Its manifest lists one item: "gift".',
+    choices: [
+      { label: 'REPAIR IT', detail: 'Pay 30¤: it leads you to a random relic.', needGold: 30, outcomes: [{ k: 'gold', n: -30 }, { k: 'relic' }] },
+      { label: 'SCRAP IT', detail: 'Gain 35¤.', outcomes: [{ k: 'gold', n: 35 }] },
+      { label: 'SHOO IT AWAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'forcedupdate',
+    name: 'Forced Firmware Update',
+    glyph: '⟳',
+    text: 'UPDATE REQUIRED, insists every surface of the corridor. The changelog promises optimizations. The EULA is 40,000 pages.',
+    choices: [
+      { label: 'ACCEPT ALL', detail: 'Upgrade 2 random cards. A Lag curse is added to your deck.', outcomes: [{ k: 'upgradeRandom' }, { k: 'upgradeRandom' }, { k: 'curse' }] },
+      { label: 'REMIND ME LATER', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'blackice',
+    name: 'Black ICE Node',
+    glyph: '🧊',
+    text: 'A fortune in credits, wrapped in counter-intrusion ICE that is already tasting your firewall. It knows you are reading this.',
+    choices: [
+      { label: 'CRACK IT', detail: 'Gain 90¤. Take 14 damage.', outcomes: [{ k: 'gold', n: 90 }, { k: 'damage', n: 14 }] },
+      { label: 'SAFE PROBE', detail: 'Gain 30¤.', outcomes: [{ k: 'gold', n: 30 }] },
+      { label: 'DISCONNECT', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'timecapsule',
+    name: 'Data Time Capsule',
+    glyph: '⧗',
+    text: 'A sealed archive from the city that stood here before the Spire. Collectors pay well for unopened history — but you want to look.',
+    choices: [
+      { label: 'OPEN IT', detail: 'Gain a random potion and 20¤.', outcomes: [{ k: 'potion' }, { k: 'gold', n: 20 }] },
+      { label: 'SELL IT SEALED', detail: 'Gain 65¤.', outcomes: [{ k: 'gold', n: 65 }] },
+      { label: 'BURY IT AGAIN', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
 ]
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */

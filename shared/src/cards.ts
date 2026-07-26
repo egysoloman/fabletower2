@@ -558,7 +558,7 @@ reg(c({
   upEffects: [{ k: 'status', to: 'self', id: 'stancewall', n: 5 }],
 }))
 reg(c({
-  id: 'momentumdrive', name: 'Momentum Drive', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  id: 'momentumdrive', name: 'Inertia Engine', type: 'power', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'momentum', n: 1 }],
   upEffects: [{ k: 'status', to: 'self', id: 'momentum', n: 2 }],
   flavor: 'objects in motion stay furious',

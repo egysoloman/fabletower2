@@ -944,6 +944,48 @@ describe('GHOST stances (cycle 9)', () => {
   })
 })
 
+describe('relic & event volume (cycle 10)', () => {
+  it('catalog grew: 51+ relics, 25+ events', () => {
+    expect(Object.keys(RELICS).length).toBeGreaterThanOrEqual(51)
+    expect(EVENTS.length).toBeGreaterThanOrEqual(25)
+  })
+
+  it('char-gated relics stay out of other characters\' pools', async () => {
+    const { obtainableRelics } = await import('../src/relics')
+    const runnerPool = obtainableRelics([], true, 'runner').map((r) => r.id)
+    const vectorPool = obtainableRelics([], true, 'vector').map((r) => r.id)
+    const ghostPool = obtainableRelics([], true, 'ghost').map((r) => r.id)
+    expect(runnerPool).not.toContain('pilotlight')
+    expect(runnerPool).not.toContain('metronome')
+    expect(vectorPool).toContain('pilotlight')
+    expect(vectorPool).not.toContain('flywheel')
+    expect(ghostPool).toContain('metronome')
+    expect(ghostPool).not.toContain('coldplate')
+    expect(runnerPool).toContain('faradaycage') // neutral shared
+  })
+
+  it('ring buffer grants block on reshuffle', async () => {
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike', 'strike'], ['golem'], 42, ['ringbuffer'])
+    // 5 drawn, 1 in draw pile; dump hand and draw through the shuffle
+    cs.player.discard.push(...cs.player.hand)
+    cs.player.hand = []
+    const evs: any[] = []
+    const { drawCards } = await import('../src/core')
+    drawCards(cs.player, 5, cs, 'p', evs)
+    expect(cs.player.block).toBe(6)
+  })
+
+  it('every relic has a describable hook set and unique id', () => {
+    const ids = new Set<string>()
+    for (const r of Object.values(RELICS)) {
+      expect(ids.has(r.id)).toBe(false)
+      ids.add(r.id)
+      expect(Object.keys(r.hooks).length, `${r.id} has no hooks`).toBeGreaterThan(0)
+      expect(r.desc.length).toBeGreaterThan(0)
+    }
+  })
+})
+
 describe('ascension 6-10 (cycle 8)', () => {
   it('A10 doubles the curse and cuts max hp to 60', async () => {
     const { MAX_ASC } = await import('../src/run')

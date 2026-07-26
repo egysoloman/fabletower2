@@ -89,7 +89,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
-- **34 relics** with combat/economy hooks — including double-edged boss picks
+- **51 relics** with combat/economy hooks (including character-exclusive relics that only appear in the right pools) — including double-edged boss picks
   like the Berserker Chip (+2 Strength, −10 Max HP) — plus a **choice of boss
   relics** after each act boss and a Neow-style **BOOT SEQUENCE** bonus at run
   start.
@@ -117,7 +117,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 - **3 acts + a secret Act 4, 24 enemies, 4 bosses** + elites — summoner
   broods, phase-shifting bosses — with a Spire-style branching node map:
   combats, elites, rest sites, shops (buy/remove/potions), treasure vaults,
-  and 17 narrative events. Beat Act 3 and choose: jack out with the win, or
+  and 25 narrative events. Beat Act 3 and choose: jack out with the win, or
   **descend into THE ROOT** — a fixed gauntlet ending in a true final boss
   that grows stronger every turn — for the deep-clear score bonus.
 - **Smart enemy AI**: enemies pick intents by scoring moves against the actual

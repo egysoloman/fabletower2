@@ -105,7 +105,7 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   nullstep: { name: '虚步' },
   eclipse: { name: '蚀' },
   shroudloop: { name: '裹尸布循环' },
-  momentumdrive: { name: '动量引擎', flavor: '运动中的物体保持愤怒' },
+  momentumdrive: { name: '惯性引擎', flavor: '运动中的物体保持愤怒' },
   wraithform: { name: '幽魂形态' },
   deathblossom: { name: '死亡绽放', flavor: '每位见证者只开一次' },
   dualitycore: { name: '二象核心', flavor: '两者皆是。账单后付。' },
@@ -188,6 +188,23 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   exoframe: { name: '外骨骼框架', desc: '每当卡牌为你提供格挡，额外获得 2 点。' },
   berserkerchip: { name: '狂战士芯片', desc: '每场战斗开始时获得 2 点力量……代价是生命上限 -10。' },
   faradaycage: { name: '法拉第笼', desc: '每场战斗开始时获得 1 层人工制品（抵消下一次减益）。' },
+  sentrymount: { name: '哨戒炮架', desc: '每场战斗开始时获得 2 层炮塔（每回合对随机敌人造成 2 点伤害）。' },
+  sporerouter: { name: '孢子路由器', desc: '每场战斗开始时获得 1 层病毒扩散（每回合对所有敌人施加 1 层侵蚀）。' },
+  kernelmod: { name: '内核模组', desc: '每场战斗开始时获得 2 层内核（格挡牌对随机敌人造成 2 点伤害）。' },
+  hyperlink: { name: '超链接', desc: '每场战斗开始时获得 1 层超线程（打出 0 费牌时抽 1 张）。' },
+  subdermalplate: { name: '皮下装甲', desc: '生命上限提高 8。' },
+  nanoweave: { name: '纳米织物', desc: '每当卡牌为你提供格挡，额外获得 1 点。' },
+  necrocompiler: { name: '死灵编译器', desc: '你对敌人施加的侵蚀增加 2 层。' },
+  targetpainter: { name: '目标标记器', desc: '敌人在战斗开始时带有 1 层易伤。' },
+  ringbuffer: { name: '环形缓冲区', desc: '每当你的抽牌堆被洗牌，获得 6 点格挡。' },
+  bootrom: { name: '引导 ROM', desc: '每场战斗的第一回合：+1 能量并额外抽 2 张牌。' },
+  unstablegov: { name: '失稳调速器', desc: '每回合额外抽 1 张牌……代价是生命上限 -8。' },
+  crondaemon: { name: 'Cron 守护进程', desc: '每场战斗开始时获得 1 层仪式（每回合结束获得 1 点力量）。' },
+  slowfuse: { name: '慢速引信', desc: '每场战斗开始时获得 1 层点火（每回合结束获得 1 点高热）。' },
+  coldplate: { name: '冷凝板', desc: '每场战斗开始时获得 4 点冷却液（过热阈值 +4）。' },
+  shadowweave: { name: '暗影织网', desc: '每场战斗开始时获得 2 层姿态壁垒（进入姿态时获得 2 点格挡）。' },
+  flywheel: { name: '飞轮', desc: '每场战斗开始时获得 1 层动量（进入超载时获得 1 点力量）。' },
+  metronome: { name: '节拍器', desc: '每场战斗开始时获得 1 层节奏循环（进入姿态时抽 1 张牌）。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
@@ -368,6 +385,77 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
       { label: '跳入', detail: '加入一张随机稀有牌。受到 10 点伤害并获得一张「故障」。' },
       { label: '掠过水面', detail: '升级一张随机卡牌。' },
       { label: '保持距离', detail: '什么都不会发生。' },
+    ],
+  },
+  vending: {
+    name: '闹鬼的自动贩卖机',
+    text: '这台机器哼着没人写过的曲子，卖着没人点过的口味。投币口在呼吸。',
+    choices: [
+      { label: '投币', detail: '支付 15¤：获得一瓶随机药剂。' },
+      { label: '摇晃它', detail: '获得 25¤。受到 4 点伤害。' },
+      { label: '走开', detail: '什么都不会发生。' },
+    ],
+  },
+  streetdoc: {
+    name: '街头医生',
+    text: '一间后巷诊所：高压灭菌器很可疑，双手却一尘不染。「先付钱。麻醉另算。」',
+    choices: [
+      { label: '全套改造', detail: '支付 60¤：生命上限提高 7。' },
+      { label: '快速缝合', detail: '支付 25¤：回复 20 点生命。' },
+      { label: '拒绝', detail: '什么都不会发生。' },
+    ],
+  },
+  signaltower: {
+    name: '海盗信号塔',
+    text: '一台缝在屋顶上的流氓发射器，向虚空嘶吼着加密的宝藏。攀爬看起来很糟。载荷看起来更糟。',
+    choices: [
+      { label: '攀爬', detail: '获得一个随机遗物。受到 14 点伤害。' },
+      { label: '窃听馈线', detail: '获得 40¤。' },
+      { label: '留在地面', detail: '什么都不会发生。' },
+    ],
+  },
+  memoryleak: {
+    name: '内存泄漏',
+    text: '你牌组里的某样东西正把运算周期滴进地板。你可以修补它——也可以把漏出的东西装瓶卖掉。',
+    choices: [
+      { label: '修补', detail: '从牌组移除一张牌。' },
+      { label: '利用它', detail: '获得 55¤。一张「故障」加入你的牌组。' },
+      { label: '无视', detail: '什么都不会发生。' },
+    ],
+  },
+  straydrone: {
+    name: '流浪无人机',
+    text: '一架跛行的快递无人机撞上你的小腿，货舱灯闪烁。它的货单上只有一项：「礼物」。',
+    choices: [
+      { label: '修好它', detail: '支付 30¤：它会带你找到一个随机遗物。' },
+      { label: '拆了卖', detail: '获得 35¤。' },
+      { label: '赶走它', detail: '什么都不会发生。' },
+    ],
+  },
+  forcedupdate: {
+    name: '强制固件更新',
+    text: '走廊的每一面墙都在坚持：必须更新。更新日志承诺优化。用户协议长达四万页。',
+    choices: [
+      { label: '全部接受', detail: '升级 2 张随机卡牌。一张「延迟」诅咒加入你的牌组。' },
+      { label: '稍后提醒我', detail: '什么都不会发生。' },
+    ],
+  },
+  blackice: {
+    name: '黑冰节点',
+    text: '一笔巨款，包裹在反入侵黑冰之中——它已经在品尝你的防火墙。它知道你正在读这段话。',
+    choices: [
+      { label: '破解', detail: '获得 90¤。受到 14 点伤害。' },
+      { label: '安全探测', detail: '获得 30¤。' },
+      { label: '断开连接', detail: '什么都不会发生。' },
+    ],
+  },
+  timecapsule: {
+    name: '数据时间胶囊',
+    text: '一份来自尖塔之前那座城市的密封档案。收藏家愿为未开封的历史出高价——但你想看看。',
+    choices: [
+      { label: '打开', detail: '获得一瓶随机药剂和 20¤。' },
+      { label: '原封卖掉', detail: '获得 65¤。' },
+      { label: '重新埋好', detail: '什么都不会发生。' },
     ],
   },
   boot: {

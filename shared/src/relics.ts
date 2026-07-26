@@ -1,4 +1,4 @@
-import type { Statuses } from './types'
+import type { CharId, Statuses } from './types'
 import { isZh } from './i18n'
 import { RELIC_ZH } from './locale-zh'
 
@@ -8,6 +8,8 @@ export interface RelicDef {
   desc: string
   rarity: 'starter' | 'common' | 'rare' | 'boss'
   sym: string
+  /** Character-exclusive relic; undefined = neutral (any character). */
+  char?: CharId
   hooks: {
     maxHp?: number
     /** Statuses granted at combat start (str, thorns, ...). */
@@ -45,6 +47,8 @@ export interface RelicDef {
     powerDiscount?: number
     /** Extra block whenever a card grants you block. */
     cardBlockBonus?: number
+    /** Gain block whenever your draw pile is shuffled. */
+    onShuffleBlock?: number
   }
 }
 
@@ -161,12 +165,12 @@ reg(R({
   hooks: { powerDiscount: 1 },
 }))
 reg(R({
-  id: 'pilotlight', name: 'Pilot Light', rarity: 'common', sym: '△',
+  id: 'pilotlight', name: 'Pilot Light', rarity: 'common', sym: '△', char: 'vector',
   desc: 'Start each combat with 2 Heat.',
   hooks: { combatStatuses: { heat: 2 } },
 }))
 reg(R({
-  id: 'thermalpaste', name: 'Thermal Paste', rarity: 'common', sym: '❄',
+  id: 'thermalpaste', name: 'Thermal Paste', rarity: 'common', sym: '❄', char: 'vector',
   desc: 'Start each combat with 2 Coolant (overheat threshold +2).',
   hooks: { combatStatuses: { coolant: 2 } },
 }))
@@ -225,6 +229,91 @@ reg(R({
   desc: 'Start each combat with 1 Artifact (negates the next debuff).',
   hooks: { combatStatuses: { artifact: 1 } },
 }))
+reg(R({
+  id: 'sentrymount', name: 'Sentry Mount', rarity: 'common', sym: '✛',
+  desc: 'Start each combat with 2 Turret (2 damage to a random enemy each turn).',
+  hooks: { combatStatuses: { turret: 2 } },
+}))
+reg(R({
+  id: 'sporerouter', name: 'Spore Router', rarity: 'rare', sym: '☢',
+  desc: 'Start each combat with 1 Viral (apply 1 Corrupt to ALL enemies each turn).',
+  hooks: { combatStatuses: { viral: 1 } },
+}))
+reg(R({
+  id: 'kernelmod', name: 'Kernel Mod', rarity: 'rare', sym: '☲',
+  desc: 'Start each combat with 2 Kernel (block cards deal 2 damage to a random enemy).',
+  hooks: { combatStatuses: { kernel: 2 } },
+}))
+reg(R({
+  id: 'hyperlink', name: 'Hyperlink', rarity: 'rare', sym: '⋙',
+  desc: 'Start each combat with 1 Hyperthread (draw 1 when you play a 0-cost card).',
+  hooks: { combatStatuses: { hyper: 1 } },
+}))
+reg(R({
+  id: 'subdermalplate', name: 'Subdermal Plate', rarity: 'common', sym: '▦',
+  desc: 'Raise your Max HP by 8.',
+  hooks: { maxHp: 8 },
+}))
+reg(R({
+  id: 'nanoweave', name: 'Nanoweave', rarity: 'common', sym: '⧉',
+  desc: 'Whenever a card grants you Block, gain 1 more.',
+  hooks: { cardBlockBonus: 1 },
+}))
+reg(R({
+  id: 'necrocompiler', name: 'Necro Compiler', rarity: 'rare', sym: '♆',
+  desc: 'Corrupt you apply to enemies is increased by 2.',
+  hooks: { corruptBonus: 2 },
+}))
+reg(R({
+  id: 'targetpainter', name: 'Target Painter', rarity: 'rare', sym: '⊕',
+  desc: 'Enemies start combat with 1 Vulnerable.',
+  hooks: { combatStartEnemyStatuses: { vuln: 1 } },
+}))
+reg(R({
+  id: 'ringbuffer', name: 'Ring Buffer', rarity: 'common', sym: '◎',
+  desc: 'Whenever your draw pile is shuffled, gain 6 Block.',
+  hooks: { onShuffleBlock: 6 },
+}))
+reg(R({
+  id: 'bootrom', name: 'Boot ROM', rarity: 'boss', sym: '⏻',
+  desc: 'On your first turn each combat: +1 Energy and draw 2 more cards.',
+  hooks: { firstTurnEnergy: 1, firstTurnDraw: 2 },
+}))
+reg(R({
+  id: 'unstablegov', name: 'Unstable Governor', rarity: 'boss', sym: '↯',
+  desc: 'Draw 1 additional card every turn… at the cost of 8 Max HP.',
+  hooks: { drawPerTurn: 1, maxHp: -8 },
+}))
+reg(R({
+  id: 'crondaemon', name: 'Cron Daemon', rarity: 'boss', sym: '↺',
+  desc: 'Start each combat with 1 Ritual (gain 1 Strength at end of each turn).',
+  hooks: { combatStatuses: { ritual: 1 } },
+}))
+reg(R({
+  id: 'slowfuse', name: 'Slow Fuse', rarity: 'common', sym: 'Δ', char: 'vector',
+  desc: 'Start each combat with 1 Ignition (gain 1 Heat at end of each turn).',
+  hooks: { combatStatuses: { ignition: 1 } },
+}))
+reg(R({
+  id: 'coldplate', name: 'Cold Plate', rarity: 'rare', sym: '❆', char: 'vector',
+  desc: 'Start each combat with 4 Coolant (overheat threshold +4).',
+  hooks: { combatStatuses: { coolant: 4 } },
+}))
+reg(R({
+  id: 'shadowweave', name: 'Shadow Weave', rarity: 'rare', sym: '⛉', char: 'ghost',
+  desc: 'Start each combat with 2 Stance Wall (gain 2 Block on stance entry).',
+  hooks: { combatStatuses: { stancewall: 2 } },
+}))
+reg(R({
+  id: 'flywheel', name: 'Flywheel', rarity: 'common', sym: '⤁', char: 'ghost',
+  desc: 'Start each combat with 1 Momentum (gain 1 Strength on Overdrive entry).',
+  hooks: { combatStatuses: { momentum: 1 } },
+}))
+reg(R({
+  id: 'metronome', name: 'Metronome', rarity: 'rare', sym: '∿', char: 'ghost',
+  desc: 'Start each combat with 1 Tempo Loop (draw 1 on stance entry).',
+  hooks: { combatStatuses: { tempoloop: 1 } },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)
@@ -234,8 +323,12 @@ export function relicDesc(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.desc ?? RELICS[id]?.desc ?? '') : (RELICS[id]?.desc ?? '')
 }
 
-export function obtainableRelics(owned: string[], includeBoss = false): RelicDef[] {
+export function obtainableRelics(owned: string[], includeBoss = false, char?: CharId): RelicDef[] {
   return Object.values(RELICS).filter(
-    (r) => r.rarity !== 'starter' && (includeBoss || r.rarity !== 'boss') && !owned.includes(r.id),
+    (r) =>
+      r.rarity !== 'starter' &&
+      (includeBoss || r.rarity !== 'boss') &&
+      !owned.includes(r.id) &&
+      (!char || !r.char || r.char === char),
   )
 }

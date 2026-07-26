@@ -149,6 +149,8 @@ export function drawCards(side: DeckSide, n: number, env: PlayEnv, who: string, 
       }
       const str = relicHook(env, 'onShuffleStr')
       if (str) applyStatus(side, 'str', str, who, evs)
+      const blk = relicHook(env, 'onShuffleBlock')
+      if (blk) gainBlock(side, blk, who, evs)
     }
     side.hand.push(side.draw.pop()!)
   }

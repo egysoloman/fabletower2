@@ -392,6 +392,65 @@ const ART: Record<string, JSX.Element> = {
       {dot(32, 32, 2)}
     </>
   ),
+  'ev-vending': (
+    <>
+      <rect x="16" y="8" width="32" height="48" rx="2" />
+      <rect x="21" y="14" width="14" height="26" rx="1" stroke-width="1.6" />
+      <path d="M40 16 V22 M40 28 V34" stroke-width="2.2" />
+      <path d="M21 48 H43" stroke-width="1.6" />
+    </>
+  ),
+  'ev-streetdoc': (
+    <>
+      <path d="M20 44 L44 20" stroke-width="2.4" />
+      <path d="M40 12 L52 24 L44 32 L32 20 Z" />
+      <path d="M14 50 L20 44 M12 56 L18 50" stroke-width="1.8" />
+      <path d="M36 24 L40 28" stroke-width="1.4" />
+    </>
+  ),
+  'ev-signaltower': (
+    <>
+      <path d="M26 56 L32 20 L38 56 M28 44 H36" />
+      {dot(32, 14, 2.4)}
+      <path d="M22 12 C18 16 18 22 22 26 M42 12 C46 16 46 22 42 26" stroke-width="1.6" />
+    </>
+  ),
+  'ev-memoryleak': (
+    <>
+      <rect x="14" y="10" width="36" height="22" rx="2" />
+      <path d="M20 16 H34 M20 21 H42 M20 26 H30" stroke-width="1.4" />
+      <path d="M32 38 C28 44 26 47 26 50 A6 6 0 0 0 38 50 C38 47 36 44 32 38" />
+    </>
+  ),
+  'ev-straydrone': (
+    <>
+      <rect x="24" y="26" width="16" height="12" rx="2" />
+      <path d="M24 30 L12 24 M40 30 L52 24" />
+      <path d="M8 22 H16 M48 22 H56" stroke-width="1.8" />
+      <path d="M28 38 L26 46 M36 38 L38 46" stroke-width="1.6" />
+      {dot(32, 32, 1.8)}
+    </>
+  ),
+  'ev-forcedupdate': (
+    <>
+      <path d="M18 24 A16 16 0 0 1 46 24 L46 16 M46 24 H38" />
+      <path d="M46 40 A16 16 0 0 1 18 40 L18 48 M18 40 H26" />
+    </>
+  ),
+  'ev-blackice': (
+    <>
+      <path d="M32 6 L52 18 V40 L32 58 L12 40 V18 Z" />
+      <path d="M32 6 V58 M12 18 L52 40 M52 18 L12 40" stroke-width="1.2" />
+    </>
+  ),
+  'ev-timecapsule': (
+    <>
+      <rect x="14" y="22" width="36" height="24" rx="4" />
+      <path d="M14 34 H50" stroke-width="1.4" />
+      <circle cx="32" cy="34" r="5" />
+      <path d="M32 31 V34 L35 36" stroke-width="1.6" />
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />

@@ -155,13 +155,13 @@ export function rollCardRewards(run: RunState, kind: 'normal' | 'elite' | 'boss'
 }
 
 export function randomRelicId(run: RunState, includeBoss = false): string | null {
-  const pool = obtainableRelics(run.relics, includeBoss)
+  const pool = obtainableRelics(run.relics, includeBoss, run.char)
   if (pool.length === 0) return null
   return pick(run.rng, pool).id
 }
 
 export function bossRelicId(run: RunState): string | null {
-  const pool = obtainableRelics(run.relics, true).filter((r) => r.rarity === 'boss')
+  const pool = obtainableRelics(run.relics, true, run.char).filter((r) => r.rarity === 'boss')
   if (pool.length === 0) return null
   return pick(run.rng, pool).id
 }
@@ -169,7 +169,7 @@ export function bossRelicId(run: RunState): string | null {
 /** Up to 3 relics offered after a boss (A9+: only 2): boss-rarity first, rare fills in. */
 export function bossRelicChoices(run: RunState): string[] {
   const want = run.asc >= 9 ? 2 : 3
-  const pool = obtainableRelics(run.relics, true)
+  const pool = obtainableRelics(run.relics, true, run.char)
   const bosses = pool.filter((r) => r.rarity === 'boss')
   const rares = pool.filter((r) => r.rarity === 'rare')
   const out: string[] = []
@@ -237,7 +237,7 @@ export function genShop(run: RunState): ShopStock {
     const [lo, hi] = CARD_PRICE[rarity]
     cards.push({ id: def.id, price: mark(randInt(run.rng, lo, hi)), sold: false })
   }
-  const relicPool = obtainableRelics(run.relics)
+  const relicPool = obtainableRelics(run.relics, false, run.char)
   const relics: ShopStock['relics'] = []
   for (let i = 0; i < 2 && relicPool.length > 0; i++) {
     const def = relicPool.splice(Math.floor(rand(run.rng) * relicPool.length), 1)[0]
