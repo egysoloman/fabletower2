@@ -139,7 +139,10 @@ export function tickTurnStart(f: Fighter, who: string, evs: GameEvent[]): boolea
     if (corrupt - 1 <= 0) delete f.statuses.corrupt
     else f.statuses.corrupt = corrupt - 1
   }
-  return f.hp <= 0
+  if (f.hp <= 0) return true
+  const regen = f.statuses.regen ?? 0
+  if (regen > 0) healHp(f, regen, who, evs)
+  return false
 }
 
 /** End-of-turn upkeep: timed debuffs wind down, Ritual grows Strength. */

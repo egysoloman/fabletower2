@@ -7,6 +7,7 @@ import { CombatScreen } from './screens/combat'
 import { EventScreen, RestScreen, RewardScreen, ShopScreen } from './screens/overlays'
 import { FinaleScreen } from './screens/finale'
 import { PvpScreen } from './screens/pvp'
+import { CheatMenu } from './screens/cheats'
 
 export function App() {
   const s = screen.value
@@ -22,6 +23,7 @@ export function App() {
       {s === 'gameover' && <FinaleScreen win={false} />}
       {s === 'victory' && <FinaleScreen win />}
       {s === 'pvp' && <PvpScreen />}
+      <CheatMenu />
       <PileModal />
       <PickerModal />
       <FxLayer />

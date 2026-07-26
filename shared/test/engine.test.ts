@@ -194,6 +194,16 @@ describe('PvE combat', () => {
     }
   })
 
+  it('regen heals at the start of your turn', () => {
+    const cs = fixedCombat(['autorepair', 'defend', 'defend', 'defend', 'defend'], ['golem'])
+    const played = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'autorepair') }).state
+    expect(played.player.statuses.regen).toBe(2)
+    played.player.hp = 40
+    const res = combatReduce(played, { t: 'end' })
+    expect(res.state.over).toBeNull()
+    expect(res.events.some((ev) => ev.e === 'heal' && ev.who === 'p' && ev.n === 2)).toBe(true)
+  })
+
   it('powers vanish from play and their effects trigger at end of turn', () => {
     const cs = fixedCombat(['nanoplating', 'defend', 'defend', 'defend', 'defend'], ['golem'])
     const played = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'nanoplating') }).state

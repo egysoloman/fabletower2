@@ -44,6 +44,8 @@ export const eventLines = signal<string[] | null>(null)
 export const restUsed = signal(false)
 export const picker = signal<PickerRequest | null>(null)
 export const pileView = signal<{ title: string; cards: CardInst[] } | null>(null)
+/** Solo-mode cheat console visibility (never persisted). */
+export const cheatOpen = signal(false)
 
 /** Re-emit a signal whose inner object was mutated in place. */
 export function touch() {
@@ -56,7 +58,9 @@ const SAVE_KEY = 'neonspire-save-v1'
 
 export function saveGame() {
   try {
-    if (!run.value) {
+    // Never persist a finished run — a save pointing at the game-over screen
+    // would turn CONTINUE RUN into a dead end.
+    if (!run.value || screen.value === 'gameover' || screen.value === 'victory') {
       localStorage.removeItem(SAVE_KEY)
       return
     }

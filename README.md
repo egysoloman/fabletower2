@@ -73,13 +73,20 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 ## Game content
 
-- **41 playable cards** (30+ obtainable): attacks / skills / powers, costs 0–3,
+- **45 playable cards** (35+ obtainable): attacks / skills / powers, costs 0–3,
   every card has a distinct upgrade (`Strike.sh+`). Junk **Glitch** cards can
   infect your deck — bosses literally shove them into your discard pile.
 - **16 relics** with combat/economy hooks (free first card, energy on shuffle,
   thorns auras, boss relics like +1 energy per turn).
 - **Statuses**: Strength, Weak, Vulnerable, Corrupt (poison), Thorns, Plating,
-  Turret, Viral, Overclock, Uplink, Ritual.
+  Turret, Viral, Overclock, Uplink, Ritual, Regen.
+- **Sustain package** for softer runs: Hotfix, Checkpoint, Backup Restore
+  (heals), Leech Query (lifesteal), Auto-Repair (Regen power), Nano Medkit /
+  Solar Cell relics.
+- **Cheat console** (solo only — the PvP server validates every move): the
+  `⌁ CHEATS` button in the top bar opens full heal, +credits, +max HP,
+  upgrade-everything, add-any-card/relic, free card deletion, and in-combat
+  kill-all / +energy / draw. Difficulty is a suggestion.
 - **3 acts, 16 enemies, 3 bosses** + elites, with a Spire-style branching node
   map: combats, elites, rest sites, shops (buy/remove), treasure vaults, and
   5 narrative events.

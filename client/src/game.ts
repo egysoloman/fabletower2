@@ -21,11 +21,13 @@ import {
   withGoldBonus,
   CARDS,
   cardName,
+  drawCards,
   firstAliveEnemy,
   type CombatAction,
   type CombatState,
 } from '@neonspire/engine'
 import {
+  cheatOpen,
   clearSave,
   combat,
   combatKind,
@@ -199,6 +201,7 @@ export function resolveCombatIfOver() {
 function finishCombat(cs: CombatState) {
   const r = run.value
   if (!r || combat.value !== cs) return
+  cheatOpen.value = false
   applyCombatResult(r, cs)
   combat.value = null
   if (cs.over === 'lose') {
@@ -393,5 +396,167 @@ export function leaveNode() {
   currentEvent.value = null
   eventLines.value = null
   screen.value = 'map'
+  saveGame()
+}
+
+// --- Cheat console (solo mode only) ------------------------------------------
+// Cheats mutate the run directly and clone the combat state like any reducer
+// step would, so saves/replays stay consistent. PvP never sees any of this —
+// the server validates every move against the shared engine.
+
+/**
+ * Apply a cheat to the live combat state (on a clone, like any reducer step).
+ * `allowOver` lets HP cheats work during the end-of-combat banner — otherwise
+ * applyCombatResult would overwrite them with the stale combat HP.
+ */
+function withCombat(fn: (cs: CombatState) => void, allowOver = false): boolean {
+  const cs = combat.value
+  if (!cs || (cs.over && !allowOver)) return false
+  const clone = structuredClone(cs)
+  fn(clone)
+  combat.value = clone
+  return true
+}
+
+export function cheatFullHeal() {
+  const r = run.value
+  if (!r) return
+  let healed = 0
+  const inCombat = withCombat((cs) => {
+    healed = cs.player.maxHp - cs.player.hp
+    cs.player.hp = cs.player.maxHp
+  }, true)
+  if (!inCombat) healed = r.maxHp - r.hp
+  r.hp = r.maxHp
+  // The 'heal' event handler plays the sfx — don't double it here.
+  if (healed > 0) processEvents([{ e: 'heal', who: 'p', n: healed }])
+  else sfx.click()
+  touch()
+  saveGame()
+}
+
+export function cheatGold() {
+  const r = run.value
+  if (!r) return
+  r.gold += 100
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function cheatMaxHp() {
+  const r = run.value
+  if (!r) return
+  r.maxHp += 10
+  r.hp += 10
+  withCombat((cs) => {
+    cs.player.maxHp += 10
+    cs.player.hp += 10
+  }, true)
+  sfx.heal()
+  touch()
+  saveGame()
+}
+
+export function cheatUpgradeAll() {
+  const r = run.value
+  if (!r) return
+  for (const c of r.deck) if (!c.up && CARDS[c.id].rarity !== 'special') c.up = true
+  withCombat((cs) => {
+    for (const pile of [cs.player.hand, cs.player.draw, cs.player.discard, cs.player.exhausted]) {
+      for (const c of pile) if (!c.up && CARDS[c.id].rarity !== 'special') c.up = true
+    }
+  })
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function cheatAddCard(id: string) {
+  const r = run.value
+  if (!r || !CARDS[id]) return
+  addCardToDeck(r, id)
+  // Mid-fight, also shuffle a copy into the live discard pile (mirroring the
+  // engine's own addCard effect) so the cheat takes effect immediately.
+  withCombat((cs) => {
+    cs.player.discard.push({ uid: cs.uid++, id, up: false })
+  })
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function cheatAddRelic(id: string) {
+  const r = run.value
+  if (!r || r.relics.includes(id)) return
+  const hpBefore = r.hp
+  const maxBefore = r.maxHp
+  addRelic(r, id)
+  const dHp = r.hp - hpBefore
+  const dMax = r.maxHp - maxBefore
+  // Mirror into the live combat: HP grants would otherwise be reverted by
+  // applyCombatResult, and per-turn hooks read the combat's relic snapshot.
+  withCombat((cs) => {
+    cs.player.maxHp += dMax
+    cs.player.hp += dHp
+    if (!cs.relics.includes(id)) cs.relics.push(id)
+  }, true)
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function cheatRemoveCard() {
+  const r = run.value
+  if (!r) return
+  cheatOpen.value = false
+  picker.value = {
+    title: t('removeTitle'),
+    cancellable: true,
+    onPick: (uid) => {
+      removeCard(r, uid)
+      picker.value = null
+      sfx.buy()
+      touch()
+      saveGame()
+    },
+  }
+}
+
+export function cheatKillAll() {
+  const evs: { e: 'die'; who: string }[] = []
+  const done = withCombat((cs) => {
+    cs.enemies.forEach((e, i) => {
+      if (!e.dead) {
+        e.hp = 0
+        e.dead = true
+        e.intent = null
+        evs.push({ e: 'die', who: 'e' + i })
+      }
+    })
+    cs.over = 'win'
+  })
+  if (!done) return
+  cheatOpen.value = false
+  processEvents(evs, { step: 130 })
+  saveGame()
+}
+
+export function cheatEnergy() {
+  withCombat((cs) => {
+    cs.player.energy += 3
+  })
+  sfx.buy()
+  saveGame()
+}
+
+export function cheatDraw() {
+  const evs: import('@neonspire/engine').GameEvent[] = []
+  const done = withCombat((cs) => {
+    drawCards(cs.player, 3, cs, 'p', evs)
+  })
+  if (!done) return
+  processEvents(evs)
+  sfx.play()
   saveGame()
 }

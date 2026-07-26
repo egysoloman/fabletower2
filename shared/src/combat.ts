@@ -83,7 +83,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
     enemies,
     over: null,
     firstCardFree: o.relics.some((r) => RELICS[r]?.hooks.firstCardFree),
-    relics: o.relics,
+    relics: [...o.relics],
     uid: o.uidStart,
     encounterId: o.encounterId,
   }

@@ -16,6 +16,7 @@ export type StatusId =
   | 'energyGain' // +N energy each turn
   | 'drawGain' // +N cards drawn each turn
   | 'ritual' // gain N strength at end of own turn
+  | 'regen' // restore N HP at start of own turn
 
 export type Statuses = Partial<Record<StatusId, number>>
 
@@ -41,6 +42,7 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   energyGain: { name: 'Overclock', sym: '⬢', bad: false, desc: '{n} extra Energy each turn.', powerText: 'Gain {n} additional Energy at the start of each turn.' },
   drawGain: { name: 'Uplink', sym: '≡', bad: false, desc: 'Draws {n} extra cards each turn.', powerText: 'Draw {n} additional card(s) at the start of each turn.' },
   ritual: { name: 'Ritual', sym: '↺', bad: false, desc: 'Gains {n} Strength at end of turn.', powerText: 'At the end of your turn, gain {n} Strength.' },
+  regen: { name: 'Regen', sym: '✚', bad: false, desc: 'Restores {n} HP at the start of its turn.', powerText: 'At the start of your turn, restore {n} HP.' },
 }
 
 export const DEBUFFS: StatusId[] = ['weak', 'vuln', 'corrupt']

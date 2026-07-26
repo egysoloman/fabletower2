@@ -22,6 +22,10 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   forkbomb: { name: '分叉炸弹', flavor: ':(){ :|:& };:' },
   firewall: { name: '防火墙' },
   hotfix: { name: '热修复' },
+  checkpoint: { name: '存档点', flavor: '进度已保存' },
+  leechquery: { name: '吸血查询', flavor: 'SELECT hp FROM target' },
+  backuprestore: { name: '备份还原', flavor: '最后一次正常的配置' },
+  autorepair: { name: '自动修复', flavor: '自愈式基础设施' },
   shortcircuit: { name: '短路' },
   debugprobe: { name: '调试探针' },
   cachehit: { name: '缓存命中' },
@@ -58,6 +62,7 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   energyGain: { name: '超频', desc: '每回合额外获得 {n} 点能量。', powerText: '每回合开始时，额外获得 {n} 点能量。' },
   drawGain: { name: '上行链路', desc: '每回合额外抽 {n} 张牌。', powerText: '每回合开始时，额外抽 {n} 张牌。' },
   ritual: { name: '仪式', desc: '回合结束时获得 {n} 点力量。', powerText: '你的回合结束时，获得 {n} 点力量。' },
+  regen: { name: '再生', desc: '回合开始时回复 {n} 点生命。', powerText: '你的回合开始时，回复 {n} 点生命。' },
 }
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {

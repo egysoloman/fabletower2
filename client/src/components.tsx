@@ -16,7 +16,7 @@ import {
   type Statuses,
   type StatusId,
 } from '@neonspire/engine'
-import { picker, pileView, run } from './store'
+import { cheatOpen, picker, pileView, run } from './store'
 import { muted, sfx, toggleMute } from './sfx'
 import { lang, t, tf, toggleLang } from './i18n'
 import { abandonRun } from './game'
@@ -131,6 +131,16 @@ export function TopBar(props: { showAbandon?: boolean }) {
         }}
       >
         {tf('deckBtn', { n: r.deck.length })}
+      </span>
+      <span
+        class="stat linkish"
+        style={{ color: 'var(--gold)' }}
+        onClick={() => {
+          sfx.click()
+          cheatOpen.value = true
+        }}
+      >
+        ⌁ {t('cheats')}
       </span>
       <span class="stat linkish" onClick={toggleLang} style={{ color: 'var(--dim)' }} data-tip="EN / 中文">
         {lang.value === 'zh' ? 'EN' : '中'}

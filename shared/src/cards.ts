@@ -102,6 +102,13 @@ reg(c({
   effects: [{ k: 'dmgVulnBonus', n: 6, bonus: 6 }], upEffects: [{ k: 'dmgVulnBonus', n: 8, bonus: 8 }],
 }))
 
+reg(c({
+  id: 'leechquery', name: 'Leech Query', type: 'attack', rarity: 'uncommon', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmg', n: 6 }, { k: 'heal', n: 3 }],
+  upEffects: [{ k: 'dmg', n: 9 }, { k: 'heal', n: 5 }],
+  flavor: 'SELECT hp FROM target',
+}))
+
 // --- Rare attacks -----------------------------------------------------------
 
 reg(c({
@@ -126,6 +133,12 @@ reg(c({
   id: 'hotfix', name: 'Hotfix', type: 'skill', rarity: 'common', cost: 1, target: 'none',
   effects: [{ k: 'heal', n: 4 }], upEffects: [{ k: 'heal', n: 6 }],
   exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'checkpoint', name: 'Checkpoint', type: 'skill', rarity: 'uncommon', cost: 1, target: 'none',
+  effects: [{ k: 'heal', n: 8 }], upEffects: [{ k: 'heal', n: 11 }],
+  exhaust: true, upExhaust: true,
+  flavor: 'progress saved',
 }))
 reg(c({
   id: 'shortcircuit', name: 'Short-Circuit', type: 'skill', rarity: 'common', cost: 1, target: 'enemy',
@@ -201,6 +214,12 @@ reg(c({
   upEffects: [{ k: 'block', n: 15 }, { k: 'status', to: 'self', id: 'thorns', n: 3 }],
 }))
 reg(c({
+  id: 'backuprestore', name: 'Backup Restore', type: 'skill', rarity: 'rare', cost: 2, target: 'none',
+  effects: [{ k: 'heal', n: 14 }], upEffects: [{ k: 'heal', n: 20 }],
+  exhaust: true, upExhaust: true,
+  flavor: 'last known good configuration',
+}))
+reg(c({
   id: 'rootaccess', name: 'Root Access', type: 'skill', rarity: 'rare', cost: 0, target: 'none',
   effects: [{ k: 'energy', n: 2 }, { k: 'draw', n: 2 }],
   upEffects: [{ k: 'energy', n: 3 }, { k: 'draw', n: 3 }],
@@ -244,6 +263,12 @@ reg(c({
   id: 'viralload', name: 'Viral Load', type: 'power', rarity: 'rare', cost: 2, target: 'none',
   effects: [{ k: 'status', to: 'self', id: 'viral', n: 2 }],
   upEffects: [{ k: 'status', to: 'self', id: 'viral', n: 3 }],
+}))
+reg(c({
+  id: 'autorepair', name: 'Auto-Repair', type: 'power', rarity: 'uncommon', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'regen', n: 2 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'regen', n: 3 }],
+  flavor: 'self-healing infrastructure',
 }))
 reg(c({
   id: 'compilerloop', name: 'Compiler Loop', type: 'power', rarity: 'rare', cost: 2, target: 'none',
