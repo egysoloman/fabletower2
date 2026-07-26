@@ -4,12 +4,13 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
-import { BlockChip, CardView, HpBar, StatusRow } from '../components'
-import { processEvents, registerAnchor } from '../fx'
+import { CARDS, cardName, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
+import { BlockChip, HpBar, StatusRow } from '../components'
+import { anchorCenter, flyCard, processEvents, registerAnchor, useShake } from '../fx'
 import { screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
+import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
 
@@ -33,6 +34,7 @@ export function PvpScreen() {
   const [toast, setToast] = useState('')
   const ws = useRef<WebSocket | null>(null)
   const toastTimer = useRef<number>()
+  const shakeCls = useShake()
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -72,7 +74,7 @@ export function PvpScreen() {
             break
           case 'st': {
             setView(data.view)
-            processEvents((data.events ?? []) as GameEvent[])
+            processEvents((data.events ?? []) as GameEvent[], { delay: 220, step: 130 })
             if (data.view?.over) {
               setPhase('over')
             }
@@ -144,11 +146,41 @@ export function PvpScreen() {
   const them = view.sides[1 - view.you]
   const myTurn = view.active === view.you && !view.over
   const hand = me.hand ?? []
-  const n = hand.length
   const iWon = view.over ? view.over.winner === view.you : forfeitWin
+  const meWho = 'p' + view.you
+  const oppWho = 'p' + (1 - view.you)
+
+  const playableSet = new Set(
+    myTurn
+      ? hand
+          .map((c, i) => {
+            const def = CARDS[c.id]
+            const cost = c.up && def.upCost !== undefined ? def.upCost : def.cost
+            return !def.unplayable && me.energy >= cost ? i : -1
+          })
+          .filter((i) => i >= 0)
+      : [],
+  )
+
+  const playFromHand = (idx: number, _who: string | undefined, from?: { x: number; y: number }) => {
+    if (!myTurn) return
+    const card = hand[idx]
+    if (!card) return
+    const def = CARDS[card.id]
+    const dest = anchorCenter(def.target === 'enemy' ? oppWho : meWho)
+    const src = from ?? anchorCenter(meWho)
+    if (src && dest) {
+      flyCard(src, dest, def.type, cardName(card))
+      sfx.whoosh()
+    }
+    sfx.play()
+    send({ t: 'play', hand: idx })
+  }
+
+  const oppHl = dragMode.value === 'target' ? (dragHoverWho.value === oppWho ? 'snap' : 'targetable') : ''
 
   return (
-    <div class="combat screen">
+    <div class={`combat screen ${shakeCls}`}>
       <div class="topbar">
         <span class="stat" style={{ color: 'var(--purple)' }}>
           {tf('pvpTurn', { n: view.turn })}
@@ -178,7 +210,7 @@ export function PvpScreen() {
           </div>
         </div>
 
-        <div class="opp-zone" ref={(el) => registerAnchor('p' + (1 - view.you), el)}>
+        <div class={`opp-zone ${oppHl}`} ref={(el) => registerAnchor('p' + (1 - view.you), el)}>
           <div class="facedown-row">
             {Array.from({ length: them.handCount }).map((_, i) => (
               <div key={i} class="facedown" />
@@ -222,21 +254,14 @@ export function PvpScreen() {
         </div>
       ) : (
         <div class="dock">
-          <div class="hand">
-            {hand.map((c, i) => {
-              const mid = (n - 1) / 2
-              const playable = myTurn && !CARDS[c.id].unplayable && me.energy >= (c.up && CARDS[c.id].upCost !== undefined ? CARDS[c.id].upCost! : CARDS[c.id].cost)
-              return (
-                <CardView
-                  key={c.uid}
-                  card={c}
-                  cls={playable ? '' : 'unplayable'}
-                  style={{ '--rot': `${(i - mid) * 4}deg`, '--lift': `${Math.abs(i - mid) * 8}px`, zIndex: i }}
-                  onClick={() => playable && (sfx.play(), send({ t: 'play', hand: i }))}
-                />
-              )
-            })}
-          </div>
+          <DraggableHand
+            cards={hand}
+            playable={playableSet}
+            targets={myTurn ? [oppWho] : []}
+            disabled={!myTurn}
+            onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
+            onPlay={playFromHand}
+          />
           <button class="btn pink endturn" disabled={!myTurn} onClick={() => send({ t: 'end' })}>
             {t('endTurn')}
           </button>

@@ -20,6 +20,8 @@ import {
   upgradeCard,
   withGoldBonus,
   CARDS,
+  cardName,
+  firstAliveEnemy,
   type CombatAction,
   type CombatState,
 } from '@neonspire/engine'
@@ -38,7 +40,7 @@ import {
   shop,
   touch,
 } from './store'
-import { processEvents } from './fx'
+import { anchorCenter, flyCard, processEvents } from './fx'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
@@ -131,7 +133,57 @@ export function doCombat(action: CombatAction) {
   }
   if (action.t === 'play') sfx.play()
   combat.value = res.state
-  processEvents(res.events)
+  // End-turn resolves the whole enemy phase at once — pace the beats so each
+  // enemy's move reads as its own action.
+  processEvents(res.events, action.t === 'end' ? { delay: 80, step: 150 } : {})
+  saveGame()
+}
+
+/**
+ * Play a card with full presentation: a card ghost flies from the release
+ * point (or the hand) to its destination, and the engine's impact events are
+ * delayed to land exactly when it arrives.
+ */
+export function playCardWithFx(handIdx: number, targetWho?: string, from?: { x: number; y: number }) {
+  const cs = combat.value
+  if (!cs || cs.over) return
+  const card = cs.player.hand[handIdx]
+  if (!card) return
+  const def = CARDS[card.id]
+  const target = targetWho ? Number(targetWho.slice(1)) : undefined
+
+  const res = combatReduce(cs, { t: 'play', hand: handIdx, target })
+  if (res.error) {
+    sfx.click()
+    return
+  }
+
+  let dest: { x: number; y: number } | null = null
+  if (def.target === 'enemy') {
+    const idx = target ?? firstAliveEnemy(cs)
+    if (idx !== undefined) dest = anchorCenter('e' + idx)
+  } else if (def.effects.some((e) => e.k === 'dmgAll' || (e.k === 'status' && e.to === 'all'))) {
+    const pts = cs.enemies
+      .map((en, i) => (en.dead ? null : anchorCenter('e' + i)))
+      .filter((p): p is { x: number; y: number } => p !== null)
+    if (pts.length > 0) {
+      dest = {
+        x: pts.reduce((s, p) => s + p.x, 0) / pts.length,
+        y: pts.reduce((s, p) => s + p.y, 0) / pts.length,
+      }
+    }
+  } else {
+    dest = anchorCenter('p')
+  }
+
+  const src = from ?? anchorCenter('p') ?? { x: window.innerWidth / 2, y: window.innerHeight - 200 }
+  if (dest) {
+    flyCard(src, dest, def.type, cardName(card))
+    sfx.whoosh()
+  }
+  sfx.play()
+  combat.value = res.state
+  processEvents(res.events, { delay: dest ? 250 : 60 })
   saveGame()
 }
 

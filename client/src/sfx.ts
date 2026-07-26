@@ -50,6 +50,11 @@ export const sfx = {
     blip(700, 0.07, 'square', 0.03)
     setTimeout(() => blip(1050, 0.09, 'square', 0.03), 70)
   },
+  whoosh: () => blip(880, 0.16, 'sawtooth', 0.018, -640),
+  boom: () => {
+    blip(130, 0.38, 'sawtooth', 0.07, -80)
+    setTimeout(() => blip(62, 0.5, 'triangle', 0.06, -30), 40)
+  },
   win: () => {
     blip(523, 0.12, 'square', 0.035)
     setTimeout(() => blip(659, 0.12, 'square', 0.035), 110)

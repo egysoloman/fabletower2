@@ -1,19 +1,19 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import {
   CARDS,
   enemyName,
   moveName,
   playableCards,
-  type CombatState,
   type EnemyC,
   type Intent,
 } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow, TopBar } from '../components'
-import { doCombat, resolveCombatIfOver } from '../game'
-import { registerAnchor, shakeTick } from '../fx'
+import { doCombat, playCardWithFx, resolveCombatIfOver } from '../game'
+import { registerAnchor, useShake } from '../fx'
 import { combat, pileView } from '../store'
 import { byName } from '../components'
 import { t, tf } from '../i18n'
+import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 function intentText(intent: Intent): string {
   switch (intent.kind) {
@@ -30,13 +30,16 @@ function intentText(intent: Intent): string {
   }
 }
 
-function EnemyBox(props: { e: EnemyC; idx: number; targetable: boolean; onTarget: () => void }) {
+type Highlight = 'none' | 'candidate' | 'snap'
+
+function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarget: () => void }) {
   const { e, idx } = props
   const boss = e.maxHp >= 100
+  const hl = props.highlight
   return (
     <div
-      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${props.targetable ? 'targetable' : ''}`}
-      onClick={() => props.targetable && props.onTarget()}
+      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''}`}
+      onClick={() => hl !== 'none' && props.onTarget()}
       ref={(el) => registerAnchor('e' + idx, el)}
     >
       <BlockChip block={e.block} />
@@ -60,32 +63,22 @@ function EnemyBox(props: { e: EnemyC; idx: number; targetable: boolean; onTarget
 export function CombatScreen() {
   const cs = combat.value
   const [selected, setSelected] = useState<number | null>(null)
-  const [shaking, setShaking] = useState(false)
-  const lastShake = useRef(shakeTick.value)
-  const tick = shakeTick.value
-
-  useEffect(() => {
-    if (tick !== lastShake.current) {
-      lastShake.current = tick
-      setShaking(true)
-      const t = setTimeout(() => setShaking(false), 400)
-      return () => clearTimeout(t)
-    }
-  }, [tick])
+  const shakeCls = useShake()
 
   const over = cs?.over ?? null
   useEffect(() => {
     if (over) {
-      const t = setTimeout(() => resolveCombatIfOver(), 1000)
-      return () => clearTimeout(t)
+      const timer = setTimeout(() => resolveCombatIfOver(), 1000)
+      return () => clearTimeout(timer)
     }
   }, [over])
 
   if (!cs) return null
   const playable = new Set(playableCards(cs))
-  const aliveIdxs = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+  const aliveWhos = cs.enemies.map((e, i) => (e.dead ? null : 'e' + i)).filter((w): w is string => w !== null)
   const p = cs.player
 
+  // Classic tap fallback: select targeted cards (multi-enemy), play the rest.
   const clickCard = (i: number) => {
     if (cs.over || !playable.has(i)) return
     if (selected === i) {
@@ -93,11 +86,11 @@ export function CombatScreen() {
       return
     }
     const def = CARDS[p.hand[i].id]
-    if (def.target === 'enemy' && aliveIdxs.length > 1) {
+    if (def.target === 'enemy' && aliveWhos.length > 1) {
       setSelected(i)
     } else {
       setSelected(null)
-      doCombat({ t: 'play', hand: i })
+      playCardWithFx(i)
     }
   }
 
@@ -105,13 +98,20 @@ export function CombatScreen() {
     if (selected === null) return
     const hand = selected
     setSelected(null)
-    doCombat({ t: 'play', hand, target: idx })
+    playCardWithFx(hand, 'e' + idx)
   }
 
-  const n = p.hand.length
+  const dm = dragMode.value
+  const dh = dragHoverWho.value
+  const highlightOf = (i: number, e: EnemyC): Highlight => {
+    if (e.dead) return 'none'
+    if (dm === 'target') return dh === 'e' + i ? 'snap' : 'candidate'
+    return selected !== null ? 'candidate' : 'none'
+  }
+
   return (
     <div
-      class={`combat screen ${shaking ? 'shake' : ''}`}
+      class={`combat screen ${shakeCls}`}
       onContextMenu={(e) => {
         e.preventDefault()
         setSelected(null)
@@ -141,7 +141,7 @@ export function CombatScreen() {
 
         <div class="enemies">
           {cs.enemies.map((e, i) => (
-            <EnemyBox key={i} e={e} idx={i} targetable={selected !== null && !e.dead} onTarget={() => clickEnemy(i)} />
+            <EnemyBox key={i} e={e} idx={i} highlight={highlightOf(i, e)} onTarget={() => clickEnemy(i)} />
           ))}
         </div>
       </div>
@@ -161,22 +161,18 @@ export function CombatScreen() {
         >
           {tf('drawBtn', { n: p.draw.length })}
         </div>
-        <div class="hand">
-          {p.hand.map((c, i) => {
-            const mid = (n - 1) / 2
-            const rot = (i - mid) * 3.5
-            const lift = Math.abs(i - mid) * 6
-            return (
-              <CardView
-                key={c.uid}
-                card={c}
-                cls={`${playable.has(i) ? '' : 'unplayable'} ${selected === i ? 'selected' : ''}`}
-                style={{ '--rot': `${rot}deg`, '--lift': `${lift}px`, zIndex: i }}
-                onClick={() => clickCard(i)}
-              />
-            )
-          })}
-        </div>
+        <DraggableHand
+          cards={p.hand}
+          playable={playable}
+          targets={aliveWhos}
+          disabled={!!cs.over}
+          selected={selected}
+          onCardClick={clickCard}
+          onPlay={(idx, who, from) => {
+            setSelected(null)
+            playCardWithFx(idx, who, from)
+          }}
+        />
         <div
           class="pilebtn right"
           onClick={() =>
