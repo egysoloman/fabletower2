@@ -38,12 +38,18 @@ function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarge
   const { e, idx } = props
   const boss = e.maxHp >= 100
   const hl = props.highlight
+  // Materialize animation only right after mount (combat start / summon).
+  const [justIn, setJustIn] = useState(true)
+  useEffect(() => {
+    const timer = setTimeout(() => setJustIn(false), 560)
+    return () => clearTimeout(timer)
+  }, [])
   // No impact pulses on a corpse: the recoil animation would override the
   // .dead fade transform and pop the fading panel back to full size.
   const pulseCls = e.dead ? '' : (fxPulses.value['e' + idx] ?? '')
   return (
     <div
-      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''} ${pulseCls}`}
+      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${justIn ? 'spawn-in' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''} ${pulseCls}`}
       onClick={() => hl !== 'none' && props.onTarget()}
       ref={(el) => registerAnchor('e' + idx, el)}
     >

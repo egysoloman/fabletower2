@@ -46,6 +46,14 @@ reg(E({
   ],
 }))
 reg(E({
+  id: 'hatchery', name: 'Hatchery', glyph: '☗', hp: [34, 40],
+  moves: [
+    { id: 'spawn', name: 'Spawn', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'spambot' }] },
+    { id: 'spit', name: 'Acid Spit', weight: 2, effects: [{ k: 'atk', n: 6 }] },
+    { id: 'shell', name: 'Shell Up', weight: 1, maxRepeat: 1, effects: [{ k: 'block', n: 7 }] },
+  ],
+}))
+reg(E({
   id: 'hound', name: 'Cyber Hound', glyph: '🐺', hp: [64, 70],
   moves: [
     { id: 'maul', name: 'Maul', weight: 3, effects: [{ k: 'atk', n: 12 }] },
@@ -60,6 +68,7 @@ reg(E({
     { id: 'execute', name: 'Execute', weight: 3, cooldown: 1, effects: [{ k: 'atk', n: 16 }] },
     { id: 'forloop', name: 'For Loop', weight: 2, effects: [{ k: 'atk', n: 5, times: 3 }] },
     { id: 'segfault', name: 'Segfault', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 8 }, { k: 'debuff', id: 'vuln', n: 2 }] },
+    { id: 'recompile', name: 'RECOMPILE', weight: 14, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'block', n: 20 }, { k: 'buff', id: 'str', n: 3 }] },
   ],
 }))
 
@@ -99,6 +108,21 @@ reg(E({
   ],
 }))
 reg(E({
+  id: 'subproc', name: 'Sub-Process', glyph: '·', hp: [13, 16],
+  moves: [
+    { id: 'nip', name: 'Nip', weight: 3, effects: [{ k: 'atk', n: 4 }] },
+    { id: 'feed', name: 'Feed Cycles', weight: 1, maxRepeat: 1, effects: [{ k: 'buffAll', id: 'str', n: 1 }] },
+  ],
+}))
+reg(E({
+  id: 'loadbalancer', name: 'Load Balancer', glyph: '⌸', hp: [46, 54],
+  moves: [
+    { id: 'forkchild', name: 'fork()', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'subproc' }] },
+    { id: 'rebalance', name: 'Rebalance', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 9 }, { k: 'buffAll', id: 'str', n: 1 }] },
+    { id: 'swapout', name: 'Swap Out', weight: 2, effects: [{ k: 'atk', n: 9 }] },
+  ],
+}))
+reg(E({
   id: 'blackice', name: 'BLACK ICE', glyph: '🕸', hp: [96, 104],
   traits: { thorns: 3 },
   moves: [
@@ -114,6 +138,7 @@ reg(E({
     { id: 'purgebeam', name: 'Purge Beam', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 22 }] },
     { id: 'forkproc', name: 'Fork Process', weight: 3, effects: [{ k: 'atk', n: 8, times: 2 }, { k: 'debuff', id: 'weak', n: 1 }] },
     { id: 'corruptdata', name: 'Corrupt Data', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'glitch', n: 2 }, { k: 'debuff', id: 'corrupt', n: 3 }] },
+    { id: 'hotreboot', name: 'HOT REBOOT', weight: 14, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'cleanseSelf' }, { k: 'heal', n: 25 }, { k: 'summon', id: 'sentry' }] },
   ],
 }))
 
@@ -144,6 +169,14 @@ reg(E({
   ],
 }))
 reg(E({
+  id: 'hivemind', name: 'Hive Mind', glyph: '◈', hp: [66, 74],
+  moves: [
+    { id: 'assimilate', name: 'Assimilate', weight: 3, maxRepeat: 2, effects: [{ k: 'summon', id: 'botnode' }] },
+    { id: 'mindlash', name: 'Mind Lash', weight: 2, effects: [{ k: 'atk', n: 11 }] },
+    { id: 'sync-all', name: 'Synchronize', weight: 2, maxRepeat: 1, effects: [{ k: 'buffAll', id: 'str', n: 1 }] },
+  ],
+}))
+reg(E({
   id: 'rootdaemon', name: 'ROOT DAEMON', glyph: '🐲', hp: [130, 140],
   traits: { str: 2 },
   moves: [
@@ -159,7 +192,7 @@ reg(E({
     { id: 'deleterow', name: 'DELETE ROW', weight: 2, cooldown: 2, effects: [{ k: 'atk', n: 26 }] },
     { id: 'rewrite', name: 'Rewrite', weight: 2, cooldown: 2, effects: [{ k: 'addCard', id: 'glitch', n: 2 }, { k: 'debuff', id: 'weak', n: 2 }] },
     { id: 'cascade', name: 'Cascade', weight: 3, effects: [{ k: 'atk', n: 9, times: 3 }] },
-    { id: 'awaken', name: 'AWAKEN', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'buff', id: 'str', n: 4 }, { k: 'buff', id: 'ritual', n: 1 }] },
+    { id: 'awaken', name: 'AWAKEN', weight: 12, cond: { hpBelow: 0.5, once: true }, effects: [{ k: 'buff', id: 'str', n: 4 }, { k: 'buff', id: 'ritual', n: 1 }, { k: 'summon', id: 'botnode', n: 2 }] },
   ],
 }))
 
@@ -191,8 +224,10 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['golem'],
       ['drone', 'spambot'],
       ['kiddie', 'spambot'],
+      ['hatchery'],
+      ['hatchery', 'spambot'],
     ],
-    elite: [['hound']],
+    elite: [['hound'], ['hatchery', 'golem']],
     boss: [['compiler']],
   },
   2: {
@@ -203,8 +238,10 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['sentry', 'ice'],
       ['daemon', 'spambot'],
       ['netrunner', 'sentry'],
+      ['loadbalancer'],
+      ['loadbalancer', 'subproc'],
     ],
-    elite: [['blackice']],
+    elite: [['blackice'], ['loadbalancer', 'sentry']],
     boss: [['mainframe']],
   },
   3: {
@@ -214,8 +251,10 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['botnode', 'botnode', 'botnode'],
       ['nullptr', 'wraith'],
       ['wraith', 'botnode'],
+      ['hivemind'],
+      ['hivemind', 'botnode'],
     ],
-    elite: [['rootdaemon']],
+    elite: [['rootdaemon'], ['hivemind', 'wraith']],
     boss: [['architect']],
   },
 }
@@ -226,8 +265,8 @@ function moveTags(m: MoveDef): IntentKind[] {
   const tags = new Set<IntentKind>()
   for (const e of m.effects) {
     if (e.k === 'atk') tags.add('attack')
-    if (e.k === 'block' || e.k === 'heal') tags.add('defend')
-    if (e.k === 'buff' || e.k === 'buffAll') tags.add('buff')
+    if (e.k === 'block' || e.k === 'heal' || e.k === 'cleanseSelf') tags.add('defend')
+    if (e.k === 'buff' || e.k === 'buffAll' || e.k === 'summon') tags.add('buff')
     if (e.k === 'debuff' || e.k === 'addCard') tags.add('debuff')
   }
   return [...tags]
@@ -267,7 +306,11 @@ function isLegal(m: MoveDef, e: EnemyC, turn: number): boolean {
  */
 export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   const def = ENEMIES[e.defId]
-  let legal = def.moves.filter((m) => isLegal(m, e, cs.turn))
+  // No summoning into a full arena.
+  const aliveCount = cs.enemies.filter((x) => !x.dead).length
+  const noSummon = (m: MoveDef) => !(aliveCount >= 4 && m.effects.some((x) => x.k === 'summon'))
+  let legal = def.moves.filter((m) => isLegal(m, e, cs.turn) && noSummon(m))
+  if (legal.length === 0) legal = def.moves.filter(noSummon)
   if (legal.length === 0) legal = def.moves
   const player = cs.player
   const hpFrac = e.hp / e.maxHp

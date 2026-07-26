@@ -596,6 +596,19 @@ function playOne(ev: GameEvent) {
       spawnFloat(ev.who, `+${ev.n} ${ev.name ?? 'card'}`, 'stat')
       pulse(ev.who, 'fx-pulse-bad')
       break
+    case 'summon': {
+      // Anchor may not exist until the new enemy renders — place at arena side.
+      setTimeout(() => {
+        const p = anchorCenter(ev.who)
+        if (p) {
+          burst(p.x, p.y, '#a855f7', 20, 3.8)
+          spawnRing(p.x, p.y, '#a855f7')
+          spawnFloatAt(p.x, p.y - 40, ev.name ?? '', 'name')
+        }
+      }, 80)
+      sfx.whoosh()
+      break
+    }
   }
 }
 

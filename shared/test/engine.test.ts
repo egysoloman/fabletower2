@@ -473,6 +473,44 @@ describe('archetype mechanics', () => {
   })
 })
 
+describe('summons & boss phases', () => {
+  it('summoners spawn reinforcements with summoning sickness', () => {
+    const cs = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['hatchery'])
+    cs.enemies[0].intent = { moveId: 'spawn', name: 'Spawn', kind: 'buff' }
+    const res = combatReduce(cs, { t: 'end' })
+    expect(res.state.enemies.length).toBe(2)
+    expect(res.state.enemies[1].defId).toBe('spambot')
+    expect(res.state.enemies[1].hp).toBeGreaterThan(0)
+    expect(res.state.enemies[1].intent).not.toBeNull() // rolled for NEXT turn
+    expect(res.events.some((ev) => ev.e === 'summon')).toBe(true)
+  })
+
+  it('caps the arena at 5 living enemies', () => {
+    const cs = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['hatchery', 'spambot', 'spambot'])
+    // inflate to the cap with two extra clones
+    for (let i = 0; i < 2; i++) cs.enemies.push(structuredClone(cs.enemies[1]))
+    cs.enemies.forEach((e) => (e.intent = null))
+    cs.enemies[0].intent = { moveId: 'spawn', name: 'Spawn', kind: 'buff' }
+    const res = combatReduce(cs, { t: 'end' })
+    expect(res.state.enemies.filter((e) => !e.dead).length).toBeLessThanOrEqual(5)
+    expect(res.state.enemies.length).toBe(5) // nothing was added
+  })
+
+  it('boss phase move cleanses debuffs and stabilizes', () => {
+    const cs = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['compiler'])
+    cs.enemies[0].hp = 40 // below 50%
+    cs.enemies[0].statuses.weak = 3
+    cs.enemies[0].statuses.corrupt = 5
+    cs.enemies[0].intent = { moveId: 'recompile', name: 'RECOMPILE', kind: 'defend' }
+    const res = combatReduce(cs, { t: 'end' })
+    const boss = res.state.enemies[0]
+    expect(boss.statuses.weak).toBeUndefined()
+    expect(boss.statuses.corrupt).toBeUndefined()
+    expect(boss.block).toBeGreaterThanOrEqual(20)
+    expect(boss.statuses.str).toBeGreaterThanOrEqual(3)
+  })
+})
+
 describe('potions', () => {
   it('applies effects through the shared interpreter', async () => {
     const { applyPotion } = await import('../src/combat')

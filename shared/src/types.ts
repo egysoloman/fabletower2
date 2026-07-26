@@ -143,6 +143,8 @@ export type MoveEffect =
   | { k: 'debuff'; id: StatusId; n: number }
   | { k: 'heal'; n: number }
   | { k: 'addCard'; id: string; n: number }
+  | { k: 'summon'; id: string; n?: number }
+  | { k: 'cleanseSelf' }
 
 export interface MoveCond {
   /** Only when own hp fraction is below this. */
@@ -223,7 +225,7 @@ export type CombatAction = { t: 'play'; hand: number; target?: number } | { t: '
  * `who`: 'p' for the player, 'e0'/'e1'/'e2' for enemies, 'p0'/'p1' in PvP.
  */
 export interface GameEvent {
-  e: 'hit' | 'blocked' | 'block' | 'status' | 'heal' | 'die' | 'move' | 'lifted' | 'addcard'
+  e: 'hit' | 'blocked' | 'block' | 'status' | 'heal' | 'die' | 'move' | 'lifted' | 'addcard' | 'summon'
   who: string
   n?: number
   id?: string

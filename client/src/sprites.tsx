@@ -64,6 +64,40 @@ const ART: Record<string, JSX.Element> = {
       <path d="M45 33 L52 33" stroke-width="1.6" />
     </>
   ),
+  hatchery: (
+    <>
+      <path d="M12 44 A20 22 0 0 1 52 44 Z" />
+      <path d="M24 24 L28 30 L32 22 L36 30 L40 24" stroke-width="1.8" />
+      <path d="M20 50 H44" stroke-width="1.6" />
+      {dot(26, 40)} {dot(32, 44)} {dot(38, 40)}
+      <path d="M12 44 H52" />
+    </>
+  ),
+  subproc: (
+    <>
+      <circle cx="32" cy="32" r="9" />
+      <path d="M18 22 L14 26 L14 38 L18 42 M46 22 L50 26 L50 38 L46 42" stroke-width="1.8" />
+      {dot(32, 32, 2.4)}
+    </>
+  ),
+  loadbalancer: (
+    <>
+      <rect x="14" y="22" width="36" height="20" rx="3" />
+      {dot(21, 32)} {dot(28, 32)} {dot(35, 32)}
+      <path d="M20 22 V10 M32 22 V10 M44 22 V10" stroke-width="1.6" />
+      <path d="M20 42 L14 54 M32 42 V54 M44 42 L50 54" stroke-width="1.6" />
+      <path d="M42 30 L46 34 M46 30 L42 34" stroke-width="1.4" />
+    </>
+  ),
+  hivemind: (
+    <>
+      <path d="M32 10 L44 17 V31 L32 38 L20 31 V17 Z" />
+      <path d="M44 24 L54 30 V42 L44 48 L34 42" stroke-width="1.8" />
+      <path d="M20 24 L10 30 V42 L20 48 L30 42" stroke-width="1.8" />
+      <path d="M32 38 V54" stroke-width="1.6" />
+      {dot(32, 24, 2.6)} {dot(47, 36, 2)} {dot(17, 36, 2)} {dot(32, 56, 2)}
+    </>
+  ),
   compiler: (
     <>
       <rect x="14" y="14" width="36" height="36" rx="3" />

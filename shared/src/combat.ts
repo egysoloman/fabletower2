@@ -8,6 +8,7 @@ import type {
   MoveEffect,
   StepResult,
 } from './types'
+import { DEBUFFS } from './types'
 import { CARDS, cardCost } from './cards'
 import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
 import { POTIONS } from './potions'
@@ -170,6 +171,36 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
           cs.player.discard.push({ uid: cs.uid++, id: eff.id, up: false })
         }
         evs.push({ e: 'addcard', who: 'p', n: eff.n, name: CARDS[eff.id].name })
+        break
+      }
+      case 'summon': {
+        for (let s = 0; s < (eff.n ?? 1); s++) {
+          const alive = cs.enemies.filter((x) => !x.dead).length
+          if (alive >= 5 || cs.enemies.length >= 8) break
+          const def2 = ENEMIES[eff.id]
+          if (!def2) break
+          const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc))
+          cs.enemies.push({
+            defId: eff.id,
+            name: def2.name,
+            glyph: def2.glyph,
+            hp,
+            maxHp: hp,
+            block: 0,
+            statuses: { ...(def2.traits ?? {}) },
+            // Summoning sickness: no intent until the next roll, acts next phase.
+            intent: null,
+            lastMoves: [],
+            usedOn: {},
+            dead: false,
+          })
+          evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })
+        }
+        break
+      }
+      case 'cleanseSelf': {
+        for (const d of DEBUFFS) delete e.statuses[d]
+        evs.push({ e: 'lifted', who })
         break
       }
     }
