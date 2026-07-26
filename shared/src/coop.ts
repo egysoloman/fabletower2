@@ -131,11 +131,10 @@ export function startCoopCombat(opts: {
   }
   rollIntents(cs)
   const evs: GameEvent[] = []
-  players.forEach((side, i) => {
-    cs.relics = playerRelics[i]
-    refillSide(side, cs, whoP(i), evs, { firstTurn: true })
-  })
+  // Turns are sequential: only the opening player draws now — everyone else
+  // draws when their own turn arrives (startPlayerTurn), never both.
   cs.relics = playerRelics[0]
+  refillSide(players[0], cs, whoP(0), evs, { firstTurn: true })
   return cs
 }
 
@@ -327,7 +326,8 @@ function startPlayerTurn(cs: CoopState, idx: number, evs: GameEvent[]) {
   }
   const died = applyOverheat(side, who, foesOf(cs).filter((x) => x.f.hp > 0), evs)
   markDeaths(cs, evs)
-  if (!died && !cs.over) refillSide(side, cs, who, evs)
+  // A player's first-ever turn still counts as "first turn" for relic hooks.
+  if (!died && !cs.over) refillSide(side, cs, who, evs, { firstTurn: cs.turn === 1 })
 }
 
 /** Everyone sees everything in co-op; the view is the state minus the RNG guts. */

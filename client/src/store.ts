@@ -15,6 +15,7 @@ export type Screen =
   | 'victory'
   | 'pvp'
   | 'climb'
+  | 'coop'
 
 export interface RewardBundle {
   gold: number
@@ -76,7 +77,7 @@ export function saveGame() {
       JSON.stringify({
         // Multiplayer screens can't be resurrected from a save — a restored
         // climb continues as an ordinary solo run from the map.
-        screen: screen.value === 'pvp' ? 'menu' : screen.value === 'climb' ? 'map' : screen.value,
+        screen: screen.value === 'pvp' || screen.value === 'coop' ? 'menu' : screen.value === 'climb' ? 'map' : screen.value,
         run: run.value,
         combat: combat.value,
         combatKind: combatKind.value,

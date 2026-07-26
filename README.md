@@ -130,7 +130,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   board — they go for lethal when it's on the table, turtle when wounded, apply
   Weak when you stack Strength, punish your Vulnerability, and never repeat
   moves into the ground. See `chooseMove` in `shared/src/enemies.ts`.
-- **Two multiplayer modes** on one WebSocket server, every move validated
+- **Three multiplayer modes** on one WebSocket server, every move validated
   server-side by the same shared engine:
   - **Direct duel** — quick match, mirrored 25-card decks, alternating
     turns, +1 energy to the second player's first turn.
@@ -140,6 +140,13 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
     run decks** (upgrades, summons and all) at their run Max HP. The winner
     keeps climbing; the loser is eliminated. Dying mid-climb or
     disconnecting forfeits the race.
+  - **Co-op expedition** — party up (2-4) and climb ONE shared Spire: the
+    host picks the path, every battle is fought side by side against
+    enemies scaled to party size (HP ×1.55 per extra member), each player
+    keeps an independent deck/energy/relics/HP, ally-target support cards
+    (Med Patch, Cover Fire, Ration Pack) patch teammates mid-fight, rest
+    sites let you sacrifice your rest to heal an ally, downed players are
+    revived at 30% after victory, and everyone drafts their own rewards.
 
 ![pvp](docs/pvp.png)
 

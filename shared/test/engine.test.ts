@@ -1125,6 +1125,7 @@ describe('co-op combat (cycle 27)', () => {
     expect(cs.players[0].hand.length).toBe(5)
     cs = coopReduce(cs, 0, { t: 'end' }).state
     expect(cs.active).toBe(1)
+    expect(cs.players[1].hand.length).toBe(5) // drew exactly one opening hand
     expect(coopReduce(cs, 0, { t: 'end' }).error).toBe('not your turn')
     const turnBefore = cs.turn
     cs = coopReduce(cs, 1, { t: 'end' }).state
@@ -1156,8 +1157,9 @@ describe('co-op combat (cycle 27)', () => {
     cs.downed[0] = true
     cs.active = 1
     cs.enemies[0].hp = 1
-    const idx = cs.players[1].hand.findIndex((c) => c.id === 'strike')
-    const res = coopReduce(cs, 1, { t: 'play', hand: idx, target: 0 })
+    cs.players[1].hand = [{ uid: 9001, id: 'strike', up: false }]
+    cs.players[1].energy = 3
+    const res = coopReduce(cs, 1, { t: 'play', hand: 0, target: 0 })
     expect(res.state.over).toBe('win')
     expect(res.state.downed[0]).toBe(false)
     expect(res.state.players[0].hp).toBe(Math.floor(70 * 0.3))

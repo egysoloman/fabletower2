@@ -8,6 +8,7 @@ import { DescendScreen, EventScreen, RestScreen, RewardScreen, ShopScreen } from
 import { FinaleScreen } from './screens/finale'
 import { PvpScreen } from './screens/pvp'
 import { ClimbScreen } from './screens/climb'
+import { CoopScreen } from './screens/coop'
 import { CheatMenu } from './screens/cheats'
 
 export function App() {
@@ -28,6 +29,7 @@ export function App() {
         {s === 'victory' && <FinaleScreen win />}
         {s === 'pvp' && <PvpScreen />}
         {s === 'climb' && <ClimbScreen />}
+        {s === 'coop' && <CoopScreen />}
       </div>
       <CheatMenu />
       <PileModal />

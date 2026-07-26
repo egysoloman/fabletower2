@@ -12,7 +12,32 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
-import { CARDS, pvpReduce, newPvp, viewFor, type PvpAction, type PvpState } from '@neonspire/engine'
+import {
+  CARDS,
+  ENCOUNTERS,
+  STARTER_DECKS,
+  cardsByRarity,
+  coopReduce,
+  coopViewFor,
+  genActMap,
+  newPvp,
+  nodeById,
+  obtainableRelics,
+  pvpReduce,
+  rngFromSeed,
+  randInt,
+  pick,
+  startCoopCombat,
+  viewFor,
+  type ActMap,
+  type CardInst,
+  type CharId,
+  type CoopAction,
+  type CoopState,
+  type PvpAction,
+  type PvpState,
+  type Rng,
+} from '@neonspire/engine'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -84,6 +109,169 @@ interface Room {
 }
 
 const waiting: Record<Mode, Client | null> = { duel: null, climb: null }
+
+// --- Co-op: shared climb, shared battles -------------------------------------
+
+interface CoopPlayer {
+  client: Client
+  char: CharId
+  hp: number
+  maxHp: number
+  deck: CardInst[]
+  relics: string[]
+  gold: number
+  /** Pending per-node reply (reward pick / rest pick). */
+  replied: boolean
+}
+
+interface CoopRoom {
+  players: CoopPlayer[]
+  rng: Rng
+  uid: number
+  act: number
+  floor: number
+  pos: string | null
+  map: ActMap
+  combat: CoopState | null
+  kind: 'normal' | 'elite' | 'boss'
+  rewards: { cards: string[]; relic: string | null; gold: number }[] | null
+  lastEncounter: string
+  ended: boolean
+}
+
+const coopQueues: Record<number, Client[]> = { 2: [], 3: [], 4: [] }
+const coopRooms = new Map<Client, CoopRoom>()
+
+/** Co-op map profile: no per-player shops/events in v1 — retype to keep the party together. */
+function coopMap(act: number, rng: Rng): ActMap {
+  const map = genActMap(act, rng)
+  for (const row of map.rows) {
+    for (const n of row) {
+      if (n.type === 'shop') n.type = 'rest'
+      else if (n.type === 'event') n.type = 'combat'
+    }
+  }
+  return map
+}
+
+function coopBroadcast(room: CoopRoom, msg: (idx: number) => unknown) {
+  room.players.forEach((p, i) => send(p.client.ws, msg(i)))
+}
+
+function coopMapMsg(room: CoopRoom, idx: number) {
+  return {
+    t: 'coopmap',
+    you: idx,
+    host: 0,
+    act: room.act,
+    floor: room.floor,
+    pos: room.pos,
+    map: room.map,
+    party: room.players.map((p) => ({
+      name: p.client.name, char: p.char, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
+    })),
+  }
+}
+
+function startCoopParty(clients: Client[], chars: CharId[]) {
+  const seed = randomBytes(4).readUInt32LE(0)
+  const rng = rngFromSeed(seed)
+  let uid = 1
+  const players: CoopPlayer[] = clients.map((client, i) => ({
+    client,
+    char: chars[i],
+    hp: 75,
+    maxHp: 75,
+    deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
+    relics: ['cortexlink'],
+    gold: 99,
+    replied: false,
+  }))
+  const room: CoopRoom = {
+    players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null,
+    map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, lastEncounter: '', ended: false,
+  }
+  for (const c of clients) coopRooms.set(c, room)
+  coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed }))
+}
+
+function coopAvailable(room: CoopRoom): string[] {
+  if (room.pos === null) return room.map.rows[0].map((n) => n.id)
+  return nodeById(room.map, room.pos)?.next ?? []
+}
+
+function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
+  const pool = ENCOUNTERS[room.act][kind]
+  let enc = pick(room.rng, pool)
+  if (pool.length > 1 && enc.join(',') === room.lastEncounter) enc = pick(room.rng, pool)
+  room.lastEncounter = enc.join(',')
+  room.kind = kind
+  room.combat = startCoopCombat({
+    players: room.players.map((p) => ({ name: p.client.name, hp: p.hp, maxHp: p.maxHp, deck: p.deck, relics: p.relics })),
+    enemyIds: enc,
+    encounterId: enc.join(','),
+    seed: randInt(room.rng, 1, 0x7fffffff),
+    uidStart: room.uid,
+  })
+  coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!) }))
+}
+
+function coopFinishFight(room: CoopRoom) {
+  const cs = room.combat!
+  room.combat = null
+  room.uid = cs.uid
+  room.players.forEach((p, i) => {
+    p.hp = Math.max(1, cs.players[i].hp)
+  })
+  // Per-player rewards: gold for all, card choices from each char's pool,
+  // a relic on elite/boss kills.
+  room.rewards = room.players.map((p) => {
+    const gold = randInt(room.rng, 15, 28) + room.act * 4
+    p.gold += gold
+    const cards: string[] = []
+    let guard = 0
+    while (cards.length < 3 && guard++ < 30) {
+      const r = randInt(room.rng, 1, 100)
+      const rarity = room.kind === 'boss' ? 'rare' : r <= 8 ? 'rare' : r <= 40 ? 'uncommon' : 'common'
+      const def = pick(room.rng, cardsByRarity(rarity, p.char))
+      if (!cards.includes(def.id)) cards.push(def.id)
+    }
+    let relic: string | null = null
+    if (room.kind !== 'normal') {
+      const rpool = obtainableRelics(p.relics, room.kind === 'boss', p.char)
+      if (rpool.length > 0) relic = pick(room.rng, rpool).id
+    }
+    p.replied = false
+    return { cards, relic, gold }
+  })
+  coopBroadcast(room, (i) => ({ t: 'coopreward', you: i, ...room.rewards![i] }))
+}
+
+function coopMaybeAdvance(room: CoopRoom) {
+  if (!room.players.every((p) => p.replied)) return
+  room.rewards = null
+  const wasBoss = room.kind === 'boss'
+  room.kind = 'normal'
+  if (wasBoss) {
+    if (room.act >= 3) {
+      coopBroadcast(room, () => ({ t: 'coopvictory' }))
+      endCoop(room)
+      return
+    }
+    room.act++
+    room.map = coopMap(room.act, room.rng)
+    room.pos = null
+    room.players.forEach((p) => {
+      p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.25))
+    })
+  }
+  coopBroadcast(room, (i) => coopMapMsg(room, i))
+}
+
+function endCoop(room: CoopRoom) {
+  room.ended = true
+  for (const p of room.players) coopRooms.delete(p.client)
+}
 
 function send(ws: WebSocket, msg: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
@@ -217,6 +405,114 @@ wss.on('connection', (ws) => {
       case 'action':
         handleAction(client, msg.action)
         break
+      case 'coopqueue': {
+        if (client.room || coopRooms.has(client)) return send(ws, { t: 'err', msg: 'already in a match' })
+        client.name = cleanName(msg.name)
+        const size = Math.max(2, Math.min(4, Math.floor(Number(msg.size) || 2)))
+        const char: CharId = (['runner', 'vector', 'ghost', 'array'] as CharId[]).includes(msg.char) ? msg.char : 'runner'
+        ;(client as any).coopChar = char
+        for (const q of Object.values(coopQueues)) {
+          const at = q.indexOf(client)
+          if (at >= 0) q.splice(at, 1)
+        }
+        coopQueues[size].push(client)
+        send(ws, { t: 'queued', mode: 'coop', size })
+        const q = coopQueues[size].filter((c) => c.ws.readyState === WebSocket.OPEN)
+        coopQueues[size] = q
+        if (q.length >= size) {
+          const party = q.splice(0, size)
+          startCoopParty(party, party.map((c) => (c as any).coopChar ?? 'runner'))
+        }
+        break
+      }
+      case 'cooppick': {
+        const room = coopRooms.get(client)
+        if (!room || room.ended || room.combat || room.rewards) break
+        if (room.players[0].client !== client) return send(ws, { t: 'err', msg: 'only the host picks the path' })
+        const id = String(msg.id ?? '')
+        if (!coopAvailable(room).includes(id)) return send(ws, { t: 'err', msg: 'invalid node' })
+        const node = nodeById(room.map, id)
+        if (!node) break
+        room.pos = id
+        room.floor++
+        if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
+          coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
+        } else if (node.type === 'treasure') {
+          room.players.forEach((p) => {
+            p.gold += randInt(room.rng, 22, 40)
+            p.replied = true
+          })
+          coopMaybeAdvance(room)
+        } else {
+          // rest: every player chooses heal / heal-an-ally / upgrade
+          room.players.forEach((p) => (p.replied = false))
+          coopBroadcast(room, (i) => ({ t: 'cooprest', you: i }))
+        }
+        break
+      }
+      case 'coopaction': {
+        const room = coopRooms.get(client)
+        if (!room || !room.combat || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const a = msg.action as CoopAction
+        const valid = a && typeof a === 'object' && ((a.t === 'play' && Number.isInteger(a.hand)) || a.t === 'end')
+        if (!valid) return send(ws, { t: 'err', msg: 'malformed action' })
+        const res = coopReduce(room.combat, idx, a)
+        if (res.error) return send(ws, { t: 'err', msg: res.error })
+        room.combat = res.state
+        coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events }))
+        if (room.combat.over === 'win') coopFinishFight(room)
+        else if (room.combat.over === 'lose') {
+          coopBroadcast(room, () => ({ t: 'coopdefeat' }))
+          endCoop(room)
+        }
+        break
+      }
+      case 'cooptake': {
+        // Reward reply: optional card pick, always acknowledges.
+        const room = coopRooms.get(client)
+        if (!room || !room.rewards || room.ended) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const player = room.players[idx]
+        if (player.replied) break
+        const cardId = msg.card ? String(msg.card) : null
+        if (cardId && room.rewards[idx].cards.includes(cardId)) {
+          player.deck.push({ uid: room.uid++, id: cardId, up: false })
+        }
+        if (msg.relic && room.rewards[idx].relic) {
+          player.relics.push(room.rewards[idx].relic!)
+        }
+        player.replied = true
+        coopMaybeAdvance(room)
+        break
+      }
+      case 'cooprestpick': {
+        const room = coopRooms.get(client)
+        if (!room || room.ended || room.combat) break
+        const idx = room.players.findIndex((p) => p.client === client)
+        const player = room.players[idx]
+        if (player.replied) break
+        const what = String(msg.what ?? 'heal')
+        if (what === 'ally') {
+          // Sacrifice your rest to patch a teammate for 40%.
+          const allyIdx = Math.floor(Number(msg.ally))
+          const ally = room.players[allyIdx]
+          if (ally && ally !== player) {
+            ally.hp = Math.min(ally.maxHp, ally.hp + Math.floor(ally.maxHp * 0.4))
+          }
+        } else if (what === 'upgrade') {
+          const uid = Math.floor(Number(msg.uid))
+          const card = player.deck.find((c) => c.uid === uid)
+          if (card && !card.up && CARDS[card.id]?.rarity !== 'special') card.up = true
+        } else {
+          player.hp = Math.min(player.maxHp, player.hp + Math.floor(player.maxHp * 0.3))
+        }
+        player.replied = true
+        if (room.players.every((p) => p.replied)) {
+          coopBroadcast(room, (i) => coopMapMsg(room, i))
+        }
+        break
+      }
       case 'progress': {
         // Climb race telemetry: relay the racer's position to the rival.
         const room = client.room
@@ -264,6 +560,16 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     if (waiting.duel === client) waiting.duel = null
     if (waiting.climb === client) waiting.climb = null
+    for (const q of Object.values(coopQueues)) {
+      const at = q.indexOf(client)
+      if (at >= 0) q.splice(at, 1)
+    }
+    const coop = coopRooms.get(client)
+    if (coop && !coop.ended) {
+      // v1: a departure ends the expedition for everyone.
+      coopBroadcast(coop, () => ({ t: 'coopend', reason: `${client.name} disconnected` }))
+      endCoop(coop)
+    }
     const room = client.room
     if (room) {
       const over = room.state?.over

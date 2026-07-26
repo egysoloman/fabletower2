@@ -121,6 +121,16 @@ export function MenuScreen() {
         >
           {t('climbRace')}
         </button>
+        <button
+          class="btn big"
+          style={{ borderColor: 'var(--green)', color: 'var(--green)' }}
+          onClick={() => {
+            sfx.click()
+            screen.value = 'coop'
+          }}
+        >
+          {t('coopMode')}
+        </button>
         <div class="seedrow">
           <input
             class="neon"
