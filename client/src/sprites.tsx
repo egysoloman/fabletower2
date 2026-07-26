@@ -561,6 +561,60 @@ const ART: Record<string, JSX.Element> = {
       <path d="M38 40 V48 M34 44 H42" stroke-width="1.8" />
     </>
   ),
+  'ev-ghostsignal': (
+    <>
+      <path d="M10 32 C16 22 22 42 28 32 C34 22 40 42 46 32 C50 26 52 28 54 32" stroke-width="2" />
+      {dot(54, 32, 2)}
+      <path d="M46 20 L54 12 M50 22 L56 16" stroke-width="1.2" />
+    </>
+  ),
+  'ev-antivirus': (
+    <>
+      <path d="M32 6 L52 14 V32 C52 46 43 54 32 58 C21 54 12 46 12 32 V14 Z" />
+      <path d="M22 32 L29 39 L43 24" stroke-width="2.4" />
+    </>
+  ),
+  'ev-foundry': (
+    <>
+      <circle cx="32" cy="32" r="10" />
+      <path d="M32 18 V12 M32 46 V52 M18 32 H12 M46 32 H52 M22 22 L18 18 M42 22 L46 18 M22 42 L18 46 M42 42 L46 46" stroke-width="1.8" />
+      {dot(32, 32, 2.6)}
+    </>
+  ),
+  'ev-lottery': (
+    <>
+      <path d="M32 10 L37 24 L52 24 L40 33 L45 48 L32 39 L19 48 L24 33 L12 24 L27 24 Z" />
+      {dot(32, 30, 1.8)}
+    </>
+  ),
+  'ev-coldstorage': (
+    <>
+      <rect x="20" y="8" width="24" height="48" rx="8" />
+      <path d="M32 18 V34 M26 24 L38 30 M38 24 L26 30" stroke-width="1.6" />
+      <path d="M26 44 H38" stroke-width="1.8" />
+    </>
+  ),
+  'ev-adbot': (
+    <>
+      <rect x="14" y="16" width="36" height="26" rx="3" />
+      <path d="M27 22 L39 29 L27 36 Z" />
+      <path d="M24 50 L20 56 M40 50 L44 56 M32 42 V50" stroke-width="1.6" />
+    </>
+  ),
+  'ev-mirrormaze': (
+    <>
+      <rect x="12" y="14" width="12" height="36" rx="1" />
+      <rect x="27" y="14" width="12" height="36" rx="1" />
+      <rect x="42" y="14" width="12" height="36" rx="1" />
+      <path d="M16 20 L20 44 M31 20 L35 44 M46 20 L50 44" stroke-width="1.1" />
+    </>
+  ),
+  'ev-quine': (
+    <>
+      <path d="M20 32 C20 24 30 24 32 32 C34 40 44 40 44 32 C44 24 34 24 32 32 C30 40 20 40 20 32 Z" stroke-width="2.2" />
+      {dot(32, 32, 1.8)}
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />

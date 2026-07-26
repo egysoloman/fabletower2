@@ -261,6 +261,18 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   packetsniffer: { name: '抓包嗅探器', desc: '第一回合额外抽 1 张牌，信用点收益提高 10%。' },
   focuscrystal: { name: '聚焦水晶', desc: '每场战斗开始时获得 1 点聚焦（自动装置触发增强 1 点）。' },
   prefabnest: { name: '预制巢穴', desc: '每场战斗开始时获得 1 层炮塔和 1 层镀层。' },
+  coprocessor: { name: '协处理器', desc: '每回合额外获得 1 点能量……代价是生命上限 -12。' },
+  battlecache: { name: '战备缓存', desc: '每场战斗开始时获得 5 点格挡，信用点收益提高 5%。' },
+  triagebot: { name: '分诊机器人', desc: '每场战斗后回复 12 点生命。' },
+  spinalrig: { name: '脊柱支架', desc: '生命上限提高 20。' },
+  ionfilter: { name: '离子滤网', desc: '生命上限提高 3；休整时额外回复 5 点生命。' },
+  warcache: { name: '战争储备', desc: '每场战斗开始时获得 1 点力量和 2 层荆棘。' },
+  overseerlens: { name: '监察者透镜', desc: '敌人在战斗开始时带有 1 层虚弱和 1 层易伤。' },
+  mempooldump: { name: '内存池转储', desc: '每场战斗的第一回合额外抽 3 张牌。' },
+  daemonleash: { name: '进程锁链', desc: '每场战斗开始时获得 2 层炮塔。' },
+  nanofoundry: { name: '纳米铸造厂', desc: '每场战斗开始时获得 1 点聚焦和 1 层镀层。' },
+  containbreach: { name: '安全壳破裂', desc: '每场战斗开始时获得反应堆：过热改为轰击所有敌人而不是你。' },
+  echochamber: { name: '回音室', desc: '战斗开始时获得 1 层姿态壁垒和 3 点格挡。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
@@ -554,6 +566,78 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
     choices: [
       { label: '结清', detail: '支付 55¤：它顺手升级了你的机体——生命上限提高 5。' },
       { label: '拒绝', detail: '它扣押你的硬件抵债：受到 8 点伤害。' },
+    ],
+  },
+  ghostsignal: {
+    name: '幽灵信号',
+    text: '一段没有源头的传输反复呼叫你的代号——然后是一组坐标，指向三层不该存在任何东西的楼层。',
+    choices: [
+      { label: '循迹而去', detail: '获得一个随机遗物。受到 10 点伤害。' },
+      { label: '录下来卖掉', detail: '获得 35¤。' },
+      { label: '干扰频段', detail: '什么都不会发生。' },
+    ],
+  },
+  antivirus: {
+    name: '激进杀毒程序',
+    text: '一个百年前的杀毒守护进程扫描了你，对结果皱起了眉。「隔离，」它伸出一只利爪建议道，「或者合作。」',
+    choices: [
+      { label: '接受清除', detail: '从牌组移除一张牌。' },
+      { label: '安静配合', detail: '回复 15 点生命。' },
+      { label: '反抗', detail: '从它的赏金库获得 50¤。受到 8 点伤害。' },
+    ],
+  },
+  foundry: {
+    name: '自动铸造厂',
+    text: '生产线从未停转：它只是用完了图纸。你喂给它什么，它就锻造什么——包括你自己。',
+    choices: [
+      { label: '投喂熔炉', detail: '升级 2 张随机卡牌。受到 8 点伤害。' },
+      { label: '回收废料', detail: '获得 45¤。' },
+      { label: '请勿投喂', detail: '什么都不会发生。' },
+    ],
+  },
+  lottery: {
+    name: '霓虹彩票',
+    text: '一座售货亭用比你还高的字号承诺：稀有科技，保证到手。免责条款用一门死语言写成。',
+    choices: [
+      { label: '买一张', detail: '支付 25¤：将一张随机稀有牌加入牌组。' },
+      { label: '抢劫售货亭', detail: '获得 40¤。一张「故障」加入你的牌组。' },
+      { label: '继续走', detail: '什么都不会发生。' },
+    ],
+  },
+  coldstorage: {
+    name: '冷藏库',
+    text: '成排的低温舱在四开尔文下嗡鸣。大多数是空的。一个装满了医疗物资。一个装着某种心怀感激的东西。',
+    choices: [
+      { label: '解冻舱体', detail: '回复 20 点生命，生命上限提高 3。' },
+      { label: '搜刮物资', detail: '获得一瓶随机药剂和 25¤。' },
+      { label: '重新封门', detail: '什么都不会发生。' },
+    ],
+  },
+  adbot: {
+    name: '故障广告机器人',
+    text: '「一个神奇小技巧，」广告机器人直接往你的视网膜上投影，「赞助商恨死它了。立即观看。立即观看。立即观——」',
+    choices: [
+      { label: '看完 30 条广告', detail: '获得 60¤。一张「延迟」诅咒加入你的牌组。' },
+      { label: '砸了它', detail: '捡到 20¤ 零钱。受到 5 点伤害。' },
+      { label: '广告拦截', detail: '什么都不会发生。' },
+    ],
+  },
+  mirrormaze: {
+    name: '镜像迷宫',
+    text: '一间映出无穷倒影的校准室。某处藏着一个做出过更好选择的你。而那个你有武器。',
+    choices: [
+      { label: '直面自己', detail: '升级一张随机卡牌。一张「故障」加入你的牌组。' },
+      { label: '测绘出口', detail: '获得 30¤。' },
+      { label: '移开视线', detail: '什么都不会发生。' },
+    ],
+  },
+  quine: {
+    name: '自指程序',
+    text: '一个唯一输出就是自身的程序，早在尖塔有名字之前就在运行。注视它的感觉，像正在被改写。',
+    choices: [
+      { label: '研读循环', detail: '升级一张随机卡牌。受到 4 点伤害。' },
+      { label: '誊抄一份', detail: '将一张随机罕见牌加入牌组。' },
+      { label: '移开目光', detail: '什么都不会发生。' },
     ],
   },
   arcade: {

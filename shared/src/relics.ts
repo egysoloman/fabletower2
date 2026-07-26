@@ -404,6 +404,66 @@ reg(R({
   desc: 'Start each combat with 1 Turret and 1 Plating.',
   hooks: { combatStatuses: { turret: 1, plating: 1 } },
 }))
+reg(R({
+  id: 'coprocessor', name: 'Co-Processor', rarity: 'boss', sym: '⧮',
+  desc: 'Gain 1 additional Energy every turn… at the cost of 12 Max HP.',
+  hooks: { energyPerTurn: 1, maxHp: -12 },
+}))
+reg(R({
+  id: 'battlecache', name: 'Battle Cache', rarity: 'common', sym: '▤',
+  desc: 'Start each combat with 5 Block and earn 5% more credits.',
+  hooks: { combatStartBlock: 5, goldBonusPct: 5 },
+}))
+reg(R({
+  id: 'triagebot', name: 'Triage Bot', rarity: 'rare', sym: '✚',
+  desc: 'Heal 12 HP after each combat.',
+  hooks: { afterCombatHeal: 12 },
+}))
+reg(R({
+  id: 'spinalrig', name: 'Spinal Rig', rarity: 'rare', sym: '≑',
+  desc: 'Raise your Max HP by 20.',
+  hooks: { maxHp: 20 },
+}))
+reg(R({
+  id: 'ionfilter', name: 'Ion Filter', rarity: 'common', sym: '⌇',
+  desc: 'Raise your Max HP by 3; rest sites restore 5 more HP.',
+  hooks: { maxHp: 3, restBonus: 5 },
+}))
+reg(R({
+  id: 'warcache', name: 'War Cache', rarity: 'rare', sym: '⚔',
+  desc: 'Start each combat with 1 Strength and 2 Thorns.',
+  hooks: { combatStatuses: { str: 1, thorns: 2 } },
+}))
+reg(R({
+  id: 'overseerlens', name: 'Overseer Lens', rarity: 'rare', sym: '◉',
+  desc: 'Enemies start combat with 1 Weak and 1 Vulnerable.',
+  hooks: { combatStartEnemyStatuses: { weak: 1, vuln: 1 } },
+}))
+reg(R({
+  id: 'mempooldump', name: 'Mempool Dump', rarity: 'rare', sym: '⇊',
+  desc: 'Draw 3 additional cards on your first turn each combat.',
+  hooks: { firstTurnDraw: 3 },
+}))
+reg(R({
+  id: 'daemonleash', name: 'Daemon Leash', rarity: 'rare', sym: '⛓', char: 'array',
+  desc: 'Start each combat with 2 Turret.',
+  hooks: { combatStatuses: { turret: 2 } },
+}))
+reg(R({
+  id: 'nanofoundry', name: 'Nano Foundry', rarity: 'boss', sym: '⌬', char: 'array',
+  desc: 'Start each combat with 1 Focus and 1 Plating.',
+  hooks: { combatStatuses: { focus: 1, plating: 1 } },
+}))
+reg(R({
+  id: 'containbreach', name: 'Containment Breach', rarity: 'boss', sym: '☢', char: 'vector',
+  desc: 'Start each combat with Reactor: overheating blasts ALL enemies instead of you.',
+  hooks: { combatStatuses: { reactor: 1 } },
+}))
+reg(R({
+  id: 'echochamber', name: 'Echo Chamber', rarity: 'common', sym: '⛶', char: 'ghost',
+  desc: 'Start combats with 1 Stance Wall and 3 Block.',
+  hooks: { combatStatuses: { stancewall: 1 }, combatStartBlock: 3 },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)
