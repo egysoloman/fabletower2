@@ -314,6 +314,86 @@ reg(R({
   desc: 'Start each combat with 1 Tempo Loop (draw 1 on stance entry).',
   hooks: { combatStatuses: { tempoloop: 1 } },
 }))
+reg(R({
+  id: 'repairswarm', name: 'Repair Swarm', rarity: 'rare', sym: '❉',
+  desc: 'Start each combat with 2 Regen.',
+  hooks: { combatStatuses: { regen: 2 } },
+}))
+reg(R({
+  id: 'razorchassis', name: 'Razor Chassis', rarity: 'rare', sym: '❖',
+  desc: 'Start each combat with 4 Thorns.',
+  hooks: { combatStatuses: { thorns: 4 } },
+}))
+reg(R({
+  id: 'ballastcore', name: 'Ballast Core', rarity: 'common', sym: '⬓',
+  desc: 'Raise your Max HP by 4 and start each combat with 4 Block.',
+  hooks: { maxHp: 4, combatStartBlock: 4 },
+}))
+reg(R({
+  id: 'ecoreactor', name: 'Eco Reactor', rarity: 'common', sym: '♻',
+  desc: 'Rest sites restore 8 additional HP.',
+  hooks: { restBonus: 8 },
+}))
+reg(R({
+  id: 'scavkit', name: 'Scavenger Kit', rarity: 'common', sym: '⚒',
+  desc: 'Gain 10% more credits and heal 2 HP after each combat.',
+  hooks: { goldBonusPct: 10, afterCombatHeal: 2 },
+}))
+reg(R({
+  id: 'powergauntlet', name: 'Power Gauntlet', rarity: 'rare', sym: '⌾',
+  desc: 'Whenever you play a Power, gain 8 Block.',
+  hooks: { onPowerBlock: 8 },
+}))
+reg(R({
+  id: 'zerodaycache', name: 'Zero-Day Cache', rarity: 'rare', sym: '⌗',
+  desc: 'Whenever you play a 0-cost card, gain 4 Block.',
+  hooks: { zeroCostBlock: 4 },
+}))
+reg(R({
+  id: 'glasscannon', name: 'Glass Cannon', rarity: 'boss', sym: '✦',
+  desc: 'Start each combat with 3 Strength… at the cost of 15 Max HP.',
+  hooks: { combatStatuses: { str: 3 }, maxHp: -15 },
+}))
+reg(R({
+  id: 'leadlining', name: 'Lead Lining', rarity: 'common', sym: '▩',
+  desc: 'Raise your Max HP by 10, but earn 10% fewer credits.',
+  hooks: { maxHp: 10, goldBonusPct: -10 },
+}))
+reg(R({
+  id: 'stimloop', name: 'Stim Loop', rarity: 'rare', sym: '↹',
+  desc: 'On your first turn each combat: +1 Energy and draw 1 more card.',
+  hooks: { firstTurnEnergy: 1, firstTurnDraw: 1 },
+}))
+reg(R({
+  id: 'napalmcask', name: 'Napalm Cask', rarity: 'rare', sym: '✹', char: 'vector',
+  desc: 'Start each combat with 2 Ignition (gain 2 Heat at end of each turn).',
+  hooks: { combatStatuses: { ignition: 2 } },
+}))
+reg(R({
+  id: 'ventvalve', name: 'Vent Valve', rarity: 'common', sym: '⍾', char: 'vector',
+  desc: 'Start combats with 1 Heat; gain 1 Energy whenever you reshuffle.',
+  hooks: { combatStatuses: { heat: 1 }, onShuffleEnergy: 1 },
+}))
+reg(R({
+  id: 'shadowbattery', name: 'Shadow Battery', rarity: 'rare', sym: '⌁', char: 'ghost',
+  desc: 'Start each combat with 1 Momentum and 1 Stance Wall.',
+  hooks: { combatStatuses: { momentum: 1, stancewall: 1 } },
+}))
+reg(R({
+  id: 'phaseanchor', name: 'Phase Anchor', rarity: 'boss', sym: '⚓', char: 'ghost',
+  desc: 'Start each combat with 1 Tempo Loop and 2 Stance Wall.',
+  hooks: { combatStatuses: { tempoloop: 1, stancewall: 2 } },
+}))
+reg(R({
+  id: 'rootkitinjector', name: 'Rootkit Injector', rarity: 'rare', sym: '☣', char: 'runner',
+  desc: 'Enemies start combat with 2 Corrupt, and your Corrupt lands 1 harder.',
+  hooks: { combatStartEnemyStatuses: { corrupt: 2 }, corruptBonus: 1 },
+}))
+reg(R({
+  id: 'packetsniffer', name: 'Packet Sniffer', rarity: 'common', sym: '⌕', char: 'runner',
+  desc: 'Draw 1 more on your first turn and earn 10% more credits.',
+  hooks: { firstTurnDraw: 1, goldBonusPct: 10 },
+}))
 
 export function relicName(id: string): string {
   return isZh() ? (RELIC_ZH[id]?.name ?? RELICS[id]?.name ?? id) : (RELICS[id]?.name ?? id)

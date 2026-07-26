@@ -80,7 +80,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   GHOST, a stance phaser who flickers between **Overdrive** (deal ×1.5, take
   ×1.5) and **Stealth** (take ×0.5, +2 energy on exit), with stance-trigger
   powers that pay block, Strength, and draws on every switch.
-- **113 playable cards** across per-character pools and three RUNNER build
+- **120 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
@@ -89,7 +89,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
-- **51 relics** with combat/economy hooks — character-exclusive relics that
+- **67 relics** with combat/economy hooks — character-exclusive relics that
   only appear in the right pools, double-edged boss picks like the Berserker
   Chip (+2 Strength, −10 Max HP) — plus a **choice of boss relics** after
   each act boss and a Neow-style **BOOT SEQUENCE** bonus at run start.

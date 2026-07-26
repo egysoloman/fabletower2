@@ -117,6 +117,13 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   ghoststride: { name: '幽灵步' },
   crashout: { name: '崩溃退出', flavor: '从目标身上离场' },
   spectralarmor: { name: '幽光护甲' },
+  firewallpatch: { name: '防火墙补丁' },
+  overflowex: { name: '溢出漏洞' },
+  wipecache: { name: '清空缓存', flavor: 'rm -rf ~/.doubt' },
+  induction: { name: '感应线圈' },
+  brightstep: { name: '耀光步' },
+  patchwork: { name: '缝补拼装' },
+  saturate: { name: '饱和打击', flavor: '同时灌满每一条通道' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
@@ -219,6 +226,22 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   shadowweave: { name: '暗影织网', desc: '每场战斗开始时获得 2 层姿态壁垒（进入姿态时获得 2 点格挡）。' },
   flywheel: { name: '飞轮', desc: '每场战斗开始时获得 1 层动量（进入超载时获得 1 点力量）。' },
   metronome: { name: '节拍器', desc: '每场战斗开始时获得 1 层节奏循环（进入姿态时抽 1 张牌）。' },
+  repairswarm: { name: '修复虫群', desc: '每场战斗开始时获得 2 层再生。' },
+  razorchassis: { name: '剃刀机身', desc: '每场战斗开始时获得 4 层荆棘。' },
+  ballastcore: { name: '压舱核心', desc: '生命上限提高 4，每场战斗开始时获得 4 点格挡。' },
+  ecoreactor: { name: '环保反应堆', desc: '休整时额外回复 8 点生命。' },
+  scavkit: { name: '拾荒工具包', desc: '信用点收益提高 10%，每场战斗后回复 2 点生命。' },
+  powergauntlet: { name: '力量护手', desc: '每当你打出能力牌，获得 8 点格挡。' },
+  zerodaycache: { name: '零日缓存', desc: '每当你打出 0 费牌，获得 4 点格挡。' },
+  glasscannon: { name: '玻璃大炮', desc: '每场战斗开始时获得 3 点力量……代价是生命上限 -15。' },
+  leadlining: { name: '铅衬里', desc: '生命上限提高 10，但信用点收益降低 10%。' },
+  stimloop: { name: '兴奋剂回路', desc: '每场战斗的第一回合：+1 能量并额外抽 1 张牌。' },
+  napalmcask: { name: '凝固汽油桶', desc: '每场战斗开始时获得 2 层点火（每回合结束获得 2 点高热）。' },
+  ventvalve: { name: '排气阀', desc: '战斗开始时获得 1 点高热；每次洗牌获得 1 点能量。' },
+  shadowbattery: { name: '暗影电池', desc: '每场战斗开始时获得 1 层动量和 1 层姿态壁垒。' },
+  phaseanchor: { name: '相位锚', desc: '每场战斗开始时获得 1 层节奏循环和 2 层姿态壁垒。' },
+  rootkitinjector: { name: 'Rootkit 注入器', desc: '敌人在战斗开始时带有 2 层侵蚀，你施加的侵蚀增加 1 层。' },
+  packetsniffer: { name: '抓包嗅探器', desc: '第一回合额外抽 1 张牌，信用点收益提高 10%。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {

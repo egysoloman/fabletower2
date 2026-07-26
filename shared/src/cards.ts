@@ -682,6 +682,42 @@ reg(c({
   effects: [{ k: 'block', n: 12 }], upEffects: [{ k: 'block', n: 16 }],
 }))
 
+reg(c({
+  id: 'firewallpatch', name: 'Firewall Patch', type: 'skill', rarity: 'common', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 7 }], upEffects: [{ k: 'block', n: 10 }],
+}))
+reg(c({
+  id: 'overflowex', name: 'Overflow Exploit', type: 'attack', rarity: 'uncommon', char: 'runner', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 11 }, { k: 'status', to: 'target', id: 'vuln', n: 2 }],
+  upEffects: [{ k: 'dmg', n: 14 }, { k: 'status', to: 'target', id: 'vuln', n: 2 }],
+}))
+reg(c({
+  id: 'wipecache', name: 'Wipe Cache', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'draw', n: 3 }], upEffects: [{ k: 'draw', n: 4 }],
+  exhaust: true, upExhaust: true,
+  flavor: 'rm -rf ~/.doubt',
+}))
+reg(c({
+  id: 'induction', name: 'Induction Coil', type: 'power', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'coolant', n: 2 }, { k: 'status', to: 'self', id: 'ignition', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'coolant', n: 3 }, { k: 'status', to: 'self', id: 'ignition', n: 2 }],
+}))
+reg(c({
+  id: 'brightstep', name: 'Bright Step', type: 'skill', rarity: 'common', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'enterStance', id: 'overdrive' }, { k: 'block', n: 4 }],
+  upEffects: [{ k: 'enterStance', id: 'overdrive' }, { k: 'block', n: 7 }],
+}))
+reg(c({
+  id: 'patchwork', name: 'Patchwork', type: 'skill', rarity: 'common', cost: 0, target: 'none',
+  effects: [{ k: 'block', n: 3 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'block', n: 5 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'saturate', name: 'Saturate', type: 'attack', rarity: 'rare', cost: 3, target: 'none',
+  effects: [{ k: 'dmgAll', n: 14 }], upEffects: [{ k: 'dmgAll', n: 18 }],
+  flavor: 'flood every lane at once',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
