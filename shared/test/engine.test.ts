@@ -1199,6 +1199,57 @@ describe('co-op combat (cycle 27)', () => {
   })
 })
 
+describe('summon expansion (cycle 30)', () => {
+  it('minion synergy relics: power boost, extra hp, start-of-combat deploy', async () => {
+    const { endTurnPowers } = await import('../src/core')
+    // Hive Mother deploys a Ferro Drone before the first card is played
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'], 42, ['hivemother', 'commandmodule', 'reinforcedhull'])
+    expect(cs.player.minions.length).toBe(1)
+    expect(cs.player.minions[0].defId).toBe('ferrodrone')
+    // Command Module: strike hits 4+2
+    const hp0 = cs.enemies[0].hp
+    const evs: any[] = []
+    endTurnPowers(cs.player, 'p', [{ f: cs.enemies[0], who: 'e0' }], cs, evs)
+    expect(hp0 - cs.enemies[0].hp).toBe(6)
+    // Reinforced Hull: summons arrive with +4 hp
+    const s = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state // any card; then rig a summon
+    const cs2 = fixedCombat(['summonferro', 'strike', 'strike', 'strike', 'strike'], ['golem'], 42, ['reinforcedhull'])
+    const idx = handIdx(cs2, 'summonferro')
+    const s2 = combatReduce(cs2, { t: 'play', hand: idx }).state
+    expect(s2.player.minions[0].maxHp).toBe(10) // 6 + 4
+    void s
+  })
+
+  it('burn minions strike and feed their owner heat', async () => {
+    const { endTurnPowers } = await import('../src/core')
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'])
+    cs.player.minions = [{ defId: 'cinderimp', hp: 6, maxHp: 6 }]
+    const hp0 = cs.enemies[0].hp
+    const evs: any[] = []
+    endTurnPowers(cs.player, 'p', [{ f: cs.enemies[0], who: 'e0' }], cs, evs)
+    expect(hp0 - cs.enemies[0].hp).toBe(5)
+    expect(cs.player.statuses.heat).toBe(1)
+  })
+
+  it('per-character summon cards summon their own broods', () => {
+    expect(obtainableCards('runner').map((c) => c.id)).toContain('summonproxy')
+    expect(obtainableCards('vector').map((c) => c.id)).toContain('summoncinder')
+    expect(obtainableCards('ghost').map((c) => c.id)).toContain('summonshade')
+    expect(obtainableCards('runner').map((c) => c.id)).not.toContain('summoncinder')
+    const cs = fixedCombat(['summonshade', 'summonshade', 'summonshade', 'summonshade', 'summonshade'], ['golem'])
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.minions[0].defId).toBe('duskshade')
+  })
+
+  it('cardSpecific event outcome adds the exact card', () => {
+    const run = newRun(8)
+    const before = run.deck.length
+    applyOutcomes(run, [{ k: 'cardSpecific', id: 'rentadrone' }])
+    expect(run.deck.length).toBe(before + 1)
+    expect(run.deck[run.deck.length - 1].id).toBe('rentadrone')
+  })
+})
+
 describe('boss & enemy variety (cycle 11)', () => {
   it('acts 1-3 rotate between two bosses', async () => {
     const { ENCOUNTERS } = await import('../src/enemies')

@@ -19,6 +19,7 @@ export interface MinionDef {
     | { k: 'strike'; n: number } // deal n to a random alive foe
     | { k: 'guard'; n: number } // grant the owner n Block
     | { k: 'infect'; n: number } // apply n Corrupt to ALL foes
+    | { k: 'burn'; n: number } // deal n to a random foe; the owner gains 1 Heat
 }
 
 const M = (def: MinionDef) => def
@@ -34,6 +35,12 @@ reg(M({ id: 'bulwarkpod', name: 'Bulwark Pod', sym: '⛨', hp: 8, act: { k: 'gua
 reg(M({ id: 'bulwarkprime', name: 'Bulwark Prime', sym: '⛨', hp: 11, act: { k: 'guard', n: 5 } }))
 reg(M({ id: 'sporemite', name: 'Spore Mite', sym: '☣', hp: 5, act: { k: 'infect', n: 1 } }))
 reg(M({ id: 'sporeprime', name: 'Spore Prime', sym: '☣', hp: 7, act: { k: 'infect', n: 2 } }))
+reg(M({ id: 'proxyworm', name: 'Proxy Worm', sym: '∿', hp: 5, act: { k: 'infect', n: 1 } }))
+reg(M({ id: 'proxyhydra', name: 'Proxy Hydra', sym: '∿', hp: 8, act: { k: 'infect', n: 2 } }))
+reg(M({ id: 'cinderimp', name: 'Cinder Imp', sym: '♨', hp: 6, act: { k: 'burn', n: 5 } }))
+reg(M({ id: 'cinderfiend', name: 'Cinder Fiend', sym: '♨', hp: 9, act: { k: 'burn', n: 7 } }))
+reg(M({ id: 'duskshade', name: 'Dusk Shade', sym: '⌇', hp: 3, act: { k: 'strike', n: 7 } }))
+reg(M({ id: 'duskwraith', name: 'Dusk Wraith', sym: '⌇', hp: 5, act: { k: 'strike', n: 10 } }))
 
 export function minionName(id: string): string {
   return isZh() ? (MINION_ZH[id]?.name ?? MINIONS[id]?.name ?? id) : (MINIONS[id]?.name ?? id)
@@ -51,6 +58,8 @@ export function minionDesc(id: string): string {
         return `${def.hp} 生命：每回合为你提供 ${def.act.n} 点格挡`
       case 'infect':
         return `${def.hp} 生命：每回合对所有敌人施加 ${def.act.n} 层侵蚀`
+      case 'burn':
+        return `${def.hp} 生命：每回合对随机敌人造成 ${def.act.n} 点伤害，并使你获得 1 点高热`
     }
   }
   switch (def.act.k) {
@@ -60,5 +69,7 @@ export function minionDesc(id: string): string {
       return `${def.hp} HP: grants you ${def.act.n} Block each turn`
     case 'infect':
       return `${def.hp} HP: applies ${def.act.n} Corrupt to ALL enemies each turn`
+    case 'burn':
+      return `${def.hp} HP: hits a random enemy for ${def.act.n} each turn and feeds you 1 Heat`
   }
 }

@@ -1231,6 +1231,25 @@ reg(c({
   upEffects: [{ k: 'heal', n: 6 }, { k: 'block', n: 6 }],
 }))
 
+reg(c({
+  id: 'summonproxy', name: 'Summon: Proxy Worm', type: 'skill', rarity: 'uncommon', char: 'runner', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'proxyworm' }],
+  upEffects: [{ k: 'summonAlly', id: 'proxyhydra' }],
+  flavor: 'it tunnels so you do not have to',
+}))
+reg(c({
+  id: 'summoncinder', name: 'Summon: Cinder Imp', type: 'skill', rarity: 'uncommon', char: 'vector', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'cinderimp' }],
+  upEffects: [{ k: 'summonAlly', id: 'cinderfiend' }],
+  flavor: 'it bites AND feeds the furnace',
+}))
+reg(c({
+  id: 'summonshade', name: 'Summon: Dusk Shade', type: 'skill', rarity: 'uncommon', char: 'ghost', cost: 1, target: 'none',
+  effects: [{ k: 'summonAlly', id: 'duskshade' }],
+  upEffects: [{ k: 'summonAlly', id: 'duskwraith' }],
+  flavor: 'a sliver of you, sharpened',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({

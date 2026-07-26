@@ -250,6 +250,9 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   medpatch: { name: '医疗贴片', flavor: '野战级的粘性仁慈' },
   coverfire: { name: '掩护射击' },
   rationpack: { name: '补给包' },
+  summonproxy: { name: '召唤：代理蠕虫', flavor: '它替你打洞' },
+  summoncinder: { name: '召唤：烬火小鬼', flavor: '既咬人又给熔炉添柴' },
+  summonshade: { name: '召唤：暮影', flavor: '你的一片碎影，磨利了' },
   summonferro: { name: '召唤：铁噬', flavor: '现在它替你咬人了' },
   summonbulwark: { name: '召唤：壁垒' },
   summonspore: { name: '召唤：孢螨' },
@@ -268,6 +271,12 @@ export const MINION_ZH: Record<string, { name: string }> = {
   bulwarkprime: { name: '壁垒至尊' },
   sporemite: { name: '孢螨' },
   sporeprime: { name: '孢螨至尊' },
+  proxyworm: { name: '代理蠕虫' },
+  proxyhydra: { name: '代理九头虫' },
+  cinderimp: { name: '烬火小鬼' },
+  cinderfiend: { name: '烬火恶鬼' },
+  duskshade: { name: '暮影' },
+  duskwraith: { name: '暮色怨灵' },
 }
 
 export const POTION_ZH: Record<string, { name: string }> = {
@@ -464,6 +473,10 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   wormfarm: { name: '蠕虫农场', desc: '每场战斗开始时获得 1 层病毒扩散。' },
   sudoers: { name: 'Sudoers 文件', desc: '每场战斗开始时获得 1 层超线程。' },
   patchbay: { name: '跳线板', desc: '开局获得 1 点聚焦和 1 层炮塔。' },
+  commandmodule: { name: '指挥模块', desc: '每个仆从的行动增强 2 点。' },
+  reinforcedhull: { name: '强化舱壳', desc: '你召唤的仆从额外获得 4 点生命。' },
+  swarmbanner: { name: '虫群战旗', desc: '仆从行动增强 3 点；仆从额外获得 2 点生命。' },
+  hivemother: { name: '蜂巢之母', desc: '每场战斗开始时已部署一台铁噬无人机。' },
   ferrofluid: { name: '铁磁流体', desc: '战斗开始时获得 1 层镀层和 1 层荆棘。' },
   pocketwarmer: { name: '怀炉', desc: '每场战斗后回复 4 点生命。' },
   antistatic: { name: '防静电腕带', desc: '开局获得 5 点格挡；休整额外回复 2 点。' },
@@ -984,6 +997,24 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
       { label: '投入代币', detail: '支付 10¤：赢得一瓶随机药剂。' },
       { label: '摇晃机台', detail: '获得 30¤。受到 3 点伤害。' },
       { label: '让它安息', detail: '什么都不会发生。' },
+    ],
+  },
+  dronegrave: {
+    name: '无人机墓场',
+    text: '一条报废无人机堆成的壕沟，像沉积岩一样层层叠叠。靠近时，顶上一具机壳还会抽搐。',
+    choices: [
+      { label: '重新组装', detail: '将一张「租赁无人机」加入牌组，并回复 5 点生命。' },
+      { label: '拆解零件', detail: '获得 45¤。' },
+      { label: '让它们安息', detail: '什么都不会发生。' },
+    ],
+  },
+  signalnest: {
+    name: '野化信号巢',
+    text: '流浪的维护守护进程用劫持来的带宽筑了一个巢。它们用损坏的握手协议朝你叽叽喳喳。看起来……可以领养。',
+    choices: [
+      { label: '领养幼雏', detail: '将 2 张「租赁无人机」加入牌组。过程中受到 6 点伤害。' },
+      { label: '收割巢穴', detail: '获得一瓶随机药剂。' },
+      { label: '缓缓退开', detail: '什么都不会发生。' },
     ],
   },
   boot: {

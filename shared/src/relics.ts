@@ -49,6 +49,12 @@ export interface RelicDef {
     cardBlockBonus?: number
     /** Gain block whenever your draw pile is shuffled. */
     onShuffleBlock?: number
+    /** Every minion action is this much stronger. */
+    minionPower?: number
+    /** Minions are summoned with this much extra HP. */
+    minionHp?: number
+    /** Start each combat with this minion already deployed. */
+    startMinion?: string
   }
 }
 
@@ -619,6 +625,10 @@ reg(R({ id: 'stagehook', name: 'Stage Hook', rarity: 'rare', sym: '⌒', char: '
 reg(R({ id: 'wormfarm', name: 'Worm Farm', rarity: 'common', sym: '∿', char: 'array', desc: 'Start each combat with 1 Viral.', hooks: { combatStatuses: { viral: 1 } } }))
 reg(R({ id: 'sudoers', name: 'Sudoers File', rarity: 'rare', sym: '⍆', char: 'runner', desc: 'Start each combat with 1 Hyperthread.', hooks: { combatStatuses: { hyper: 1 } } }))
 reg(R({ id: 'patchbay', name: 'Patch Bay', rarity: 'rare', sym: '⎌', char: 'array', desc: 'Start with 1 Focus and 1 Turret.', hooks: { combatStatuses: { focus: 1, turret: 1 } } }))
+reg(R({ id: 'commandmodule', name: 'Command Module', rarity: 'rare', sym: '⌘', desc: 'Every minion action is 2 stronger.', hooks: { minionPower: 2 } }))
+reg(R({ id: 'reinforcedhull', name: 'Reinforced Hull', rarity: 'rare', sym: '⛊', desc: 'Your minions are summoned with 4 extra HP.', hooks: { minionHp: 4 } }))
+reg(R({ id: 'swarmbanner', name: 'Swarm Banner', rarity: 'boss', sym: '⚑', desc: 'Minion actions are 3 stronger; minions get 2 extra HP.', hooks: { minionPower: 3, minionHp: 2 } }))
+reg(R({ id: 'hivemother', name: 'Hive Mother', rarity: 'boss', sym: '☖', char: 'array', desc: 'Start every combat with a Ferro Drone already deployed.', hooks: { startMinion: 'ferrodrone' } }))
 reg(R({ id: 'ferrofluid', name: 'Ferrofluid', rarity: 'common', sym: '⊸', desc: 'Start combats with 1 Plating and 1 Thorns.', hooks: { combatStatuses: { plating: 1, thorns: 1 } } }))
 reg(R({ id: 'pocketwarmer', name: 'Pocket Warmer', rarity: 'common', sym: '◖', desc: 'Heal 4 HP after each combat.', hooks: { afterCombatHeal: 4 } }))
 reg(R({ id: 'antistatic', name: 'Anti-Static Strap', rarity: 'common', sym: '⏛', desc: 'Start combats with 5 Block; rests restore 2 more HP.', hooks: { combatStartBlock: 5, restBonus: 2 } }))

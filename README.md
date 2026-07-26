@@ -89,7 +89,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   conductor who deploys Turret / Plating / Viral automations and amplifies
   every trigger with **Focus** — then cashes the stacks with per-automation
   payoff attacks.
-- **252 playable cards** across per-character pools and three RUNNER build
+- **258 playable cards** across per-character pools and three RUNNER build
   archetypes —
   Corrupt/virus (Payload Burst, Fork Virus, Chronic Injector), block-fortress
   (Firmware Lock/Barricade, Kernel Panic, Double Buffer), and 0-cost tempo
@@ -98,7 +98,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Burn never leaves it, Sunflare burns away if you sit on it). Junk
   **Glitch** cards can infect your deck, and **Lag** curses (unplayable dead
   draws) come from cursed events and Ascension 2+.
-- **180 relics** with combat/economy hooks — matching StS relic volume — character-exclusive relics that
+- **189 relics** with combat/economy/minion hooks — beyond StS relic volume — character-exclusive relics that
   only appear in the right pools, double-edged boss picks like the Berserker
   Chip (+2 Strength, −10 Max HP) — plus a **choice of boss relics** after
   each act boss and a Neow-style **BOOT SEQUENCE** bonus at run start.
@@ -129,7 +129,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   Artifact-armored elite and a permanently-stealthed phantom — on a
   Spire-style branching node map:
   combats, elites, rest sites, shops (buy/remove/potions), treasure vaults,
-  and 50 narrative events — matching StS event volume. Beat Act 3 and choose: jack out with the win, or
+  and 52 narrative events — beyond StS event volume. Beat Act 3 and choose: jack out with the win, or
   **descend into THE ROOT** — a fixed gauntlet ending in a true final boss
   that grows stronger every turn — for the deep-clear score bonus.
 - **Smart enemy AI**: enemies pick intents by scoring moves against the actual

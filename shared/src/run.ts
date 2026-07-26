@@ -1,6 +1,6 @@
 /** Run/meta layer: deck-building, map traversal, rewards, shops, events. */
 import type { CardInst, CharId, CombatState, NodeType, RunState, ShopStock } from './types'
-import { CARDS, cardBaseName, cardsByRarity, obtainableCards } from './cards'
+import { CARDS, cardBaseName, cardName, cardsByRarity, obtainableCards } from './cards'
 import { POTIONS, potionName } from './potions'
 import { RELICS, obtainableRelics, relicName } from './relics'
 import { ES } from './i18n'
@@ -329,6 +329,11 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
         const healed = Math.min(o.n, run.maxHp - run.hp)
         run.hp += healed
         lines.push(ES.hpGain(healed))
+        break
+      }
+      case 'cardSpecific': {
+        const inst2 = addCardToDeck(run, o.id)
+        lines.push(ES.addedCard(cardName(inst2)))
         break
       }
       case 'maxhp':

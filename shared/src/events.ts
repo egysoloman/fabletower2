@@ -13,6 +13,7 @@ export type Outcome =
   | { k: 'removeChoose' }
   | { k: 'potion' }
   | { k: 'curse' }
+  | { k: 'cardSpecific'; id: string }
 
 export interface EventChoice {
   label: string
@@ -583,6 +584,31 @@ export const EVENTS: EventDef[] = [
     ],
   },
 ]
+
+EVENTS.push(
+  {
+    id: 'dronegrave',
+    name: 'Drone Graveyard',
+    glyph: '⚰',
+    text: 'A trench of decommissioned drones, stacked like sediment. One chassis near the top still twitches when you get close.',
+    choices: [
+      { label: 'REBUILD IT', detail: 'Add a Rent-a-Drone to your deck and heal 5 HP.', outcomes: [{ k: 'cardSpecific', id: 'rentadrone' }, { k: 'heal', n: 5 }] },
+      { label: 'STRIP FOR PARTS', detail: 'Gain 45¤.', outcomes: [{ k: 'gold', n: 45 }] },
+      { label: 'LET THEM REST', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'signalnest',
+    name: 'Feral Signal Nest',
+    glyph: '☖',
+    text: 'Stray maintenance daemons have built a nest of hijacked bandwidth. They chirp at you in corrupted handshake protocols. They seem… adoptable.',
+    choices: [
+      { label: 'ADOPT THE BROOD', detail: 'Add 2 Rent-a-Drones to your deck. Take 6 damage in the process.', outcomes: [{ k: 'cardSpecific', id: 'rentadrone' }, { k: 'cardSpecific', id: 'rentadrone' }, { k: 'damage', n: 6 }] },
+      { label: 'HARVEST THE NEST', detail: 'Gain a random potion.', outcomes: [{ k: 'potion' }] },
+      { label: 'BACK AWAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+)
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */
 export const BOOT_EVENT: EventDef = {

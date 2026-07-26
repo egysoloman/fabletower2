@@ -12,6 +12,7 @@ import { DEBUFFS } from './types'
 import { CARDS, cardCost } from './cards'
 import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
 import { POTIONS } from './potions'
+import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
 import {
   applyEffects,
@@ -59,6 +60,13 @@ export function startCombat(o: StartCombatOpts): CombatState {
     }
     const blk = RELICS[rid]?.hooks.combatStartBlock
     if (blk) player.block += blk
+    const sm = RELICS[rid]?.hooks.startMinion
+    if (sm && ENEMIES) {
+      const mdef = MINIONS[sm]
+      if (mdef && player.minions.length < MAX_MINIONS) {
+        player.minions.push({ defId: mdef.id, hp: mdef.hp, maxHp: mdef.hp })
+      }
+    }
   }
 
   const asc = o.asc ?? 0

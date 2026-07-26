@@ -256,25 +256,35 @@ export function endTurnPowers(
   if (viral > 0) {
     for (const foe of foes) applyStatus(foe.f, 'corrupt', viral + focus, foe.who, evs)
   }
-  // Summoned allies take their actions.
+  // Summoned allies take their actions (Command relics amplify them).
+  const minionBoost = relicHook(env, 'minionPower')
   for (const m of side.minions) {
     const def = MINIONS[m.defId]
     if (!def) continue
     const alive = foes.filter((x) => x.f.hp > 0)
+    const n = def.act.n + minionBoost
     switch (def.act.k) {
       case 'strike': {
         if (alive.length > 0) {
           const target = alive[randInt(env.rng, 0, alive.length - 1)]
-          plainDamage(target.f, def.act.n, target.who, evs)
+          plainDamage(target.f, n, target.who, evs)
         }
         break
       }
       case 'guard':
-        gainBlock(side, def.act.n, whoSelf, evs)
+        gainBlock(side, n, whoSelf, evs)
         break
       case 'infect':
-        for (const foe of alive) applyStatus(foe.f, 'corrupt', def.act.n, foe.who, evs)
+        for (const foe of alive) applyStatus(foe.f, 'corrupt', n, foe.who, evs)
         break
+      case 'burn': {
+        if (alive.length > 0) {
+          const target = alive[randInt(env.rng, 0, alive.length - 1)]
+          plainDamage(target.f, n, target.who, evs)
+          applyStatus(side, 'heat', 1, whoSelf, evs)
+        }
+        break
+      }
     }
   }
 }
@@ -526,7 +536,8 @@ function resolveEffect(
         if (side.minions.length >= MAX_MINIONS) break
         const def = MINIONS[eff.id]
         if (!def) break
-        side.minions.push({ defId: def.id, hp: def.hp, maxHp: def.hp })
+        const hp = def.hp + relicHook(env, 'minionHp')
+        side.minions.push({ defId: def.id, hp, maxHp: hp })
         evs.push({ e: 'summon', who: whoSelf, name: def.name, id: 'minion' })
       }
       break

@@ -25,6 +25,7 @@ import {
   tickTurnStart,
 } from './core'
 import { randInt, rngFromSeed, type Rng } from './rng'
+import { MAX_MINIONS, MINIONS } from './minions'
 
 export const MAX_PARTY = 4
 
@@ -105,6 +106,13 @@ export function startCoopCombat(opts: {
       }
       const blk = RELICS[rid]?.hooks.combatStartBlock
       if (blk) side.block += blk
+      const sm = RELICS[rid]?.hooks.startMinion
+      if (sm) {
+        const mdef = MINIONS[sm]
+        if (mdef && side.minions.length < MAX_MINIONS) {
+          side.minions.push({ defId: mdef.id, hp: mdef.hp, maxHp: mdef.hp })
+        }
+      }
       const st = RELICS[rid]?.hooks.combatStartEnemyStatuses
       if (st) for (const [k, v] of Object.entries(st)) enemyStart[k] = (enemyStart[k] ?? 0) + (v ?? 0)
     }
