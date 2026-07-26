@@ -282,7 +282,12 @@ export function DraggableHand(props: DraggableHandProps) {
             <div
               key={c.uid}
               class={cls}
-              style={{ '--rot': `${(i - mid) * 3.5}deg`, '--lift': `${Math.abs(i - mid) * 6}px`, zIndex: i } as never}
+              style={{
+                '--rot': `${(i - mid) * 3.5}deg`,
+                '--lift': `${Math.abs(i - mid) * 6}px`,
+                '--deal': `${Math.min(i * 50, 450)}ms`,
+                zIndex: i,
+              } as never}
               ref={(el) => {
                 if (el) slotEls.current.set(i, el)
                 else slotEls.current.delete(i)

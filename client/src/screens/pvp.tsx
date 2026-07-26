@@ -6,10 +6,22 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, cardName, type GameEvent, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, HpBar, StatusRow } from '../components'
-import { anchorCenter, flyCard, fxPulses, localWho, processEvents, registerAnchor, useShake } from '../fx'
+import {
+  anchorCenter,
+  defeatFx,
+  energyRipple,
+  flyCard,
+  fxPulses,
+  localWho,
+  processEvents,
+  registerAnchor,
+  useShake,
+  victoryFx,
+} from '../fx'
 import { screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
+import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
@@ -112,6 +124,14 @@ export function PvpScreen() {
     }
   }, [youIdx])
 
+  // Dramatic duel close-out.
+  const winner = view?.over?.winner
+  useEffect(() => {
+    if (winner === undefined || youIdx === undefined) return
+    if (winner === youIdx) victoryFx(true)
+    else defeatFx()
+  }, [winner])
+
   const send = (action: PvpAction) => {
     setPending(true)
     ws.current?.send(JSON.stringify({ t: 'action', action }))
@@ -188,6 +208,7 @@ export function PvpScreen() {
       flyCard(src, dest, def.type, cardName(card))
       sfx.whoosh()
     }
+    energyRipple()
     sfx.play()
     send({ t: 'play', hand: idx })
   }
@@ -212,11 +233,17 @@ export function PvpScreen() {
 
       <div class="arena">
         <div class={`player-zone ${fxPulses.value[meWho] ?? ''}`} ref={(el) => registerAnchor('p' + view.you, el)}>
-          <div class="energy-orb" data-tip={t('energyTip')}>
+          <div
+            class={`energy-orb ${fxPulses.value['orb'] ?? ''}`}
+            data-tip={t('energyTip')}
+            ref={(el) => registerAnchor('orb', el)}
+          >
             {me.energy}/{me.energyMax}
           </div>
           <BlockChip block={me.block} />
-          <div class="glyph">👤</div>
+          <div class="glyph">
+            <Sprite id="runner" size={58} />
+          </div>
           <div class="pname">{tf('youSuffix', { name: me.name })}</div>
           <HpBar hp={me.hp} maxHp={me.maxHp} mine />
           <StatusRow statuses={me.statuses} />
@@ -232,8 +259,8 @@ export function PvpScreen() {
             ))}
           </div>
           <BlockChip block={them.block} />
-          <div class="glyph" style={{ fontSize: '54px', filter: 'drop-shadow(0 0 12px rgba(255,45,149,.8))' }}>
-            🥷
+          <div class="glyph" style={{ color: '#ff7fc0' }}>
+            <Sprite id="netrunner" size={54} />
           </div>
           <div class="ename" style={{ fontFamily: 'var(--font-head)', fontSize: '12px', color: '#ffb8d9' }}>
             {them.name}

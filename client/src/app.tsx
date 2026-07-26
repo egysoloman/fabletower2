@@ -13,16 +13,19 @@ export function App() {
   const s = screen.value
   return (
     <>
-      {s === 'menu' && <MenuScreen />}
-      {s === 'map' && <MapScreen />}
-      {s === 'combat' && <CombatScreen />}
-      {s === 'reward' && <RewardScreen />}
-      {s === 'shop' && <ShopScreen />}
-      {s === 'rest' && <RestScreen />}
-      {s === 'event' && <EventScreen />}
-      {s === 'gameover' && <FinaleScreen win={false} />}
-      {s === 'victory' && <FinaleScreen win />}
-      {s === 'pvp' && <PvpScreen />}
+      {/* keyed wrapper remounts per screen → fade/settle transition */}
+      <div class="screenwrap" key={s}>
+        {s === 'menu' && <MenuScreen />}
+        {s === 'map' && <MapScreen />}
+        {s === 'combat' && <CombatScreen />}
+        {s === 'reward' && <RewardScreen />}
+        {s === 'shop' && <ShopScreen />}
+        {s === 'rest' && <RestScreen />}
+        {s === 'event' && <EventScreen />}
+        {s === 'gameover' && <FinaleScreen win={false} />}
+        {s === 'victory' && <FinaleScreen win />}
+        {s === 'pvp' && <PvpScreen />}
+      </div>
       <CheatMenu />
       <PileModal />
       <PickerModal />

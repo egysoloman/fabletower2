@@ -18,7 +18,9 @@ import {
 } from '@neonspire/engine'
 import { cheatOpen, picker, pileView, run } from './store'
 import { muted, sfx, toggleMute } from './sfx'
+import { burst, fxPulses, registerAnchor } from './fx'
 import { lang, t, tf, toggleLang } from './i18n'
+import { SoundIcon } from './sprites'
 import { abandonRun } from './game'
 
 export function CardView(props: {
@@ -47,8 +49,10 @@ export function CardView(props: {
   )
 }
 
-export function CardById(props: { id: string; up?: boolean; onClick?: () => void; cls?: string }) {
-  return <CardView card={{ uid: 0, id: props.id, up: props.up ?? false }} onClick={props.onClick} cls={props.cls} />
+export function CardById(props: { id: string; up?: boolean; onClick?: () => void; cls?: string; style?: JSX.CSSProperties }) {
+  return (
+    <CardView card={{ uid: 0, id: props.id, up: props.up ?? false }} onClick={props.onClick} cls={props.cls} style={props.style} />
+  )
 }
 
 export function HpBar(props: { hp: number; maxHp: number; mine?: boolean }) {
@@ -123,8 +127,9 @@ export function TopBar(props: { showAbandon?: boolean }) {
       <RelicBar relics={r.relics} />
       <span class="spacer" />
       <span
-        class="stat linkish"
+        class={`stat linkish ${fxPulses.value['deck'] ?? ''}`}
         style={{ color: 'var(--purple)' }}
+        ref={(el) => registerAnchor('deck', el)}
         onClick={() => {
           sfx.click()
           pileView.value = { title: tf('deckTitle', { n: r.deck.length }), cards: [...r.deck].sort(byName) }
@@ -146,7 +151,7 @@ export function TopBar(props: { showAbandon?: boolean }) {
         {lang.value === 'zh' ? 'EN' : '中'}
       </span>
       <span class="stat linkish" onClick={toggleMute} style={{ color: 'var(--dim)' }}>
-        {muted.value ? '🔇' : '🔊'}
+        <SoundIcon muted={muted.value} />
       </span>
       {props.showAbandon && (
         <span
@@ -201,7 +206,16 @@ export function PickerModal() {
         <h2 class="pink">{req.title}</h2>
         <div class="gridcards">
           {cards.map((c) => (
-            <CardView key={c.uid} card={c} onClick={() => req.onPick(c.uid)} />
+            <div
+              key={c.uid}
+              onClick={(e) => {
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                burst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#ffd166', 16, 3.2)
+                req.onPick(c.uid)
+              }}
+            >
+              <CardView card={c} />
+            </div>
           ))}
           {cards.length === 0 && <div class="sub">{t('noEligible')}</div>}
         </div>

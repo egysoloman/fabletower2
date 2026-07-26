@@ -85,16 +85,58 @@ interface FloatItem {
 export const floats = signal<FloatItem[]>([])
 let fxId = 1
 
+function spawnFloatAt(x: number, y: number, text: string, cls: string, life = 1050) {
+  const id = fxId++
+  floats.value = [...floats.value, { id, x, y, text, cls }]
+  setTimeout(() => {
+    floats.value = floats.value.filter((f) => f.id !== id)
+  }, life)
+}
+
 function spawnFloat(who: string, text: string, cls: string) {
   const p = anchorCenter(who)
   if (!p) return
-  const id = fxId++
   const jx = (Math.random() - 0.5) * 46
   const jy = (Math.random() - 0.5) * 20 - 30
-  floats.value = [...floats.value, { id, x: p.x + jx, y: p.y + jy, text, cls }]
-  setTimeout(() => {
-    floats.value = floats.value.filter((f) => f.id !== id)
-  }, 1050)
+  spawnFloatAt(p.x + jx, p.y + jy, text, cls)
+}
+
+// --- Terminal-style effects ---------------------------------------------------
+
+/** Stacked console lines ("> strike.sh --exec") typed out near a point. */
+export function codeBurstPt(p: { x: number; y: number }, lines: string[]) {
+  lines.forEach((line, i) =>
+    setTimeout(() => spawnFloatAt(p.x + 26, p.y - 8 + i * 17, line, 'code', 950), i * 110),
+  )
+}
+
+export function codeBurstAt(who: string, lines: string[]) {
+  const p = anchorCenter(who)
+  if (p) codeBurstPt(p, lines)
+}
+
+const CODE_CHARS = '01<>/{}$#;&*'
+
+/** Spray of glowing code glyphs (digital shrapnel). */
+export function glyphSplash(x: number, y: number, color: string, n = 10) {
+  for (let i = 0; i < n; i++) {
+    if (parts.length >= MAX_PARTICLES) return
+    const a = Math.random() * Math.PI * 2
+    const v = (0.5 + Math.random()) * 2.6
+    parts.push({
+      x,
+      y,
+      vx: Math.cos(a) * v,
+      vy: Math.sin(a) * v - 1,
+      life: 0,
+      maxLife: 40 + Math.random() * 26,
+      color,
+      size: 1.6 + Math.random() * 1.6,
+      gravity: 0.05,
+      ambient: false,
+      char: CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)],
+    })
+  }
 }
 
 // --- Impact rings ------------------------------------------------------------
@@ -131,6 +173,8 @@ interface FlightItem {
   cls: string
   label: string
   gone: boolean
+  /** Explicit glow color (mini flights); card flights color by class. */
+  color?: string
 }
 
 export const flights = signal<FlightItem[]>([])
@@ -160,6 +204,97 @@ export function flyCard(from: { x: number; y: number }, to: { x: number; y: numb
   setTimeout(() => {
     flights.value = flights.value.filter((f) => f.id !== id)
   }, 460)
+}
+
+/** Small glowing card-back that streaks between two points (discard sweeps,
+ * cards swooping into the deck, shop purchases). */
+export function flyMini(from: { x: number; y: number }, to: { x: number; y: number }, color = '#00e5ff') {
+  const id = fxId++
+  flights.value = [...flights.value, { id, x: from.x, y: from.y, cls: 'mini', label: '', gone: false, color }]
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => {
+      flights.value = flights.value.map((f) => (f.id === id ? { ...f, x: to.x, y: to.y, gone: true } : f))
+    }),
+  )
+  setTimeout(() => {
+    flights.value = flights.value.filter((f) => f.id !== id)
+  }, 420)
+}
+
+/** Fly a mini card from a screen point into the top-bar deck counter. */
+export function flyToDeck(from: { x: number; y: number }, color = '#00e5ff') {
+  const d = anchorCenter('deck')
+  if (d) flyMini(from, d, color)
+  pulse('deck', 'fx-pulse-buff')
+}
+
+/** Ripple on the energy orb whenever energy is spent. */
+export function energyRipple() {
+  const p = anchorCenter('orb')
+  if (p) spawnRing(p.x, p.y, '#a855f7')
+  pulse('orb', 'fx-pulse-buff')
+}
+
+/** Confirm/skip ripple at a pointer position. */
+export function uiRipple(x: number, y: number, color = '#00e5ff') {
+  spawnRing(x, y, color, true)
+  burst(x, y, color, 8, 2.4)
+}
+
+// --- Fullscreen vignette flashes ---------------------------------------------
+
+export const vignettes = signal<{ id: number; color: string }[]>([])
+
+export function flashVignette(color: string) {
+  const id = fxId++
+  vignettes.value = [...vignettes.value, { id, color }]
+  setTimeout(() => {
+    vignettes.value = vignettes.value.filter((v) => v.id !== id)
+  }, 750)
+}
+
+// --- Victory / defeat set pieces ---------------------------------------------
+
+const FEST = ['#ffd166', '#ff2d95', '#00e5ff', '#a855f7']
+
+function confettiRain(n = 46) {
+  const w = window.innerWidth
+  for (let i = 0; i < n; i++) {
+    setTimeout(() => {
+      if (parts.length >= MAX_PARTICLES) return
+      parts.push({
+        x: Math.random() * w,
+        y: -12,
+        vx: (Math.random() - 0.5) * 1.4,
+        vy: 1.4 + Math.random() * 2.2,
+        life: 0,
+        maxLife: 210 + Math.random() * 80,
+        color: FEST[i % FEST.length],
+        size: 2 + Math.random() * 2.6,
+        gravity: 0.016,
+        ambient: false,
+      })
+    }, i * 45)
+  }
+}
+
+/** Gold pulse + neon bursts; `big` adds the full confetti cascade. */
+export function victoryFx(big = false) {
+  flashVignette('rgba(255, 209, 102, 0.26)')
+  setTimeout(() => flashVignette('rgba(255, 209, 102, 0.18)'), 320)
+  const w = window.innerWidth
+  for (let i = 0; i < (big ? 6 : 4); i++) {
+    setTimeout(() => burst(60 + Math.random() * (w - 120), 70 + Math.random() * 200, FEST[i % FEST.length], 22, 4.6), i * 150)
+  }
+  if (big) confettiRain()
+}
+
+/** Red shatter: heavy shake + stacked crimson vignettes. */
+export function defeatFx() {
+  flashVignette('rgba(255, 45, 60, 0.42)')
+  setTimeout(() => flashVignette('rgba(120, 0, 20, 0.5)'), 300)
+  fireShake(true)
+  burst(window.innerWidth / 2, window.innerHeight / 2, '#ff3b5b', 40, 5.2)
 }
 
 // --- Screen shake ------------------------------------------------------------
@@ -208,6 +343,8 @@ interface Particle {
   size: number
   gravity: number
   ambient: boolean
+  /** Render as a code glyph instead of a dot. */
+  char?: string
 }
 
 const parts: Particle[] = []
@@ -311,9 +448,14 @@ function ParticleCanvas() {
         ctx.fillStyle = p.color
         ctx.shadowColor = p.color
         ctx.shadowBlur = p.ambient ? 4 : 6
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fill()
+        if (p.char) {
+          ctx.font = `${8 + p.size * 3}px monospace`
+          ctx.fillText(p.char, p.x, p.y)
+        } else {
+          ctx.beginPath()
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
+          ctx.fill()
+        }
       }
       ctx.globalAlpha = 1
       ctx.shadowBlur = 0
@@ -338,13 +480,17 @@ export function FxLayer() {
           key={f.id}
           class={`fx-flight ${f.cls} ${f.gone ? 'gone' : ''}`}
           style={{
+            ...(f.color ? { '--fc': f.color } : {}),
             transform:
               `translate3d(${f.x}px, ${f.y}px, 0) translate(-50%,-50%)` +
               (f.gone ? ' scale(0.38) rotate(9deg)' : ''),
-          }}
+          } as never}
         >
           {f.label}
         </div>
+      ))}
+      {vignettes.value.map((v) => (
+        <div key={v.id} class="vignette-flash" style={{ '--vc': v.color } as never} />
       ))}
       {rings.value.map((r) => (
         <div
@@ -370,25 +516,29 @@ function playOne(ev: GameEvent) {
     case 'hit': {
       if (!ev.n) break
       spawnFloat(ev.who, `-${ev.n}`, 'dmg')
-      burstAt(ev.who, '#ff3b5b', 10 + Math.min(14, ev.n), 3.4 + Math.min(2.4, ev.n / 8))
-      ringAt(ev.who, '#ff3b5b')
+      // cyan damage explosions (numbers stay red for readability)
+      burstAt(ev.who, '#00e5ff', 10 + Math.min(14, ev.n), 3.4 + Math.min(2.4, ev.n / 8))
+      ringAt(ev.who, '#00e5ff')
       pulse(ev.who, `fx-recoil-${sideOf(ev.who)}`)
       sfx.hit()
-      // Big "ouch" shake only when the LOCAL player takes the hit.
-      if (ev.who === localWho.value) fireShake(ev.n >= 10)
-      else if (ev.n >= 14) fireShake(false)
+      // Big "ouch" shake + red vignette only when the LOCAL player takes it.
+      if (ev.who === localWho.value) {
+        fireShake(ev.n >= 10)
+        if (ev.n >= 12) flashVignette('rgba(255, 59, 91, 0.30)')
+      } else if (ev.n >= 14) fireShake(false)
       break
     }
     case 'blocked':
       spawnFloat(ev.who, `⛨${ev.n}`, 'blk')
-      burstAt(ev.who, '#00e5ff', 12, 4.4)
-      ringAt(ev.who, '#00e5ff')
+      spawnFloat(ev.who, '⛨', 'flare')
+      burstAt(ev.who, '#ff2d95', 12, 4.4)
+      ringAt(ev.who, '#ff2d95')
       pulse(ev.who, 'fx-pulse-block')
       sfx.block()
       break
     case 'block':
       spawnFloat(ev.who, `+${ev.n}⛨`, 'blk')
-      burstAt(ev.who, '#00e5ff', 5, 1.8)
+      burstAt(ev.who, '#ff2d95', 5, 1.8)
       pulse(ev.who, 'fx-pulse-block')
       break
     case 'heal': {
@@ -403,11 +553,12 @@ function playOne(ev: GameEvent) {
       if (!ev.n) break
       const id = ev.id as StatusId | undefined
       const info = id ? STATUS_INFO[id] : null
-      spawnFloat(ev.who, `${info?.sym ?? '★'}${ev.n} ${id ? statusName(id) : ''}`, 'stat')
-      pulse(ev.who, info?.bad ? 'fx-pulse-bad' : 'fx-pulse-buff')
-      if (!info?.bad) {
+      const bad = !!info?.bad
+      spawnFloat(ev.who, `${info?.sym ?? '★'}${ev.n} ${id ? statusName(id) : ''}`, bad ? 'statbad' : 'stat')
+      pulse(ev.who, bad ? 'fx-pulse-bad' : 'fx-pulse-buff')
+      if (!bad) {
         const p = anchorCenter(ev.who)
-        if (p) burstUp(p.x, p.y + 10, '#a855f7', 7, 2)
+        if (p) burstUp(p.x, p.y + 10, '#ffd166', 8, 2.1)
       }
       break
     }
@@ -416,6 +567,7 @@ function playOne(ev: GameEvent) {
       burstAt(ev.who, '#00e5ff', 24, 3.8)
       ringAt(ev.who, '#ff2d95', true)
       ringAt(ev.who, '#ffffff')
+      flashVignette('rgba(255, 45, 149, 0.20)')
       fireShake(true)
       sfx.boom()
       break
@@ -432,6 +584,7 @@ function playOne(ev: GameEvent) {
         }
       }
       spawnFloat(ev.who, label, 'name')
+      if (ev.id) codeBurstAt(ev.who, [`> ${ev.id}()`])
       pulse(ev.who, `fx-lunge-${sideOf(ev.who) === 'l' ? 'r' : 'l'}`)
       break
     }

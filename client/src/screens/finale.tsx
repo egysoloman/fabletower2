@@ -1,9 +1,28 @@
+import { useEffect } from 'preact/hooks'
 import { newGame, backToMenu } from '../game'
+import { defeatFx, victoryFx } from '../fx'
 import { run } from '../store'
 import { t, tf } from '../i18n'
 
 export function FinaleScreen(props: { win: boolean }) {
   const r = run.value
+  const win = props.win
+
+  useEffect(() => {
+    // Set piece on entry; victory keeps celebrating in waves.
+    if (win) {
+      victoryFx(true)
+      const encore = setInterval(() => victoryFx(true), 2600)
+      const stop = setTimeout(() => clearInterval(encore), 8000)
+      return () => {
+        clearInterval(encore)
+        clearTimeout(stop)
+      }
+    }
+    defeatFx()
+    const echo = setTimeout(() => defeatFx(), 700)
+    return () => clearTimeout(echo)
+  }, [win])
   return (
     <div class="screen finale">
       <div class={`big-title ${props.win ? 'win' : 'lose'}`}>

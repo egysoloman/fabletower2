@@ -30,6 +30,7 @@ import {
   cheatOpen,
   clearSave,
   combat,
+  completedNode,
   combatKind,
   currentEvent,
   eventLines,
@@ -42,7 +43,7 @@ import {
   shop,
   touch,
 } from './store'
-import { anchorCenter, flyCard, processEvents } from './fx'
+import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processEvents } from './fx'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
@@ -182,7 +183,15 @@ export function playCardWithFx(handIdx: number, targetWho?: string, from?: { x: 
   if (dest) {
     flyCard(src, dest, def.type, cardName(card))
     sfx.whoosh()
+    // terminal readout + code-glyph shrapnel when the card "executes"
+    const ext = def.type === 'attack' ? '.sh' : def.type === 'power' ? '.sys' : '.cfg'
+    const d = dest
+    setTimeout(() => {
+      codeBurstPt(d, [`> exec ${card.id}${ext}`, '[ok]'])
+      glyphSplash(d.x, d.y, def.type === 'attack' ? '#00e5ff' : '#7dffa8', 9)
+    }, 230)
   }
+  energyRipple()
   sfx.play()
   combat.value = res.state
   processEvents(res.events, { delay: dest ? 250 : 60 })
@@ -272,6 +281,8 @@ export function continueFromReward() {
       touch()
       return
     }
+  } else {
+    completedNode.value = r.pos
   }
   screen.value = 'map'
   touch()
@@ -395,6 +406,7 @@ export function leaveNode() {
   shop.value = null
   currentEvent.value = null
   eventLines.value = null
+  completedNode.value = run.value?.pos ?? null
   screen.value = 'map'
   saveGame()
 }

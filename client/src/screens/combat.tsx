@@ -9,10 +9,11 @@ import {
 } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow, TopBar } from '../components'
 import { doCombat, playCardWithFx, resolveCombatIfOver } from '../game'
-import { fxPulses, fxRemainingMs, localWho, registerAnchor, useShake } from '../fx'
+import { defeatFx, flyMini, fxPulses, fxRemainingMs, localWho, registerAnchor, useShake, victoryFx } from '../fx'
 import { combat, pileView } from '../store'
 import { byName } from '../components'
 import { t, tf } from '../i18n'
+import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 function intentText(intent: Intent): string {
@@ -55,7 +56,9 @@ function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarge
           ·
         </div>
       )}
-      <div class="glyph">{e.glyph}</div>
+      <div class="glyph">
+        <Sprite id={e.defId} size={boss ? 62 : 52} />
+      </div>
       <div class="ename">{enemyName(e.defId)}</div>
       <HpBar hp={e.hp} maxHp={e.maxHp} />
       <StatusRow statuses={e.statuses} />
@@ -75,12 +78,29 @@ export function CombatScreen() {
   const over = cs?.over ?? null
   useEffect(() => {
     if (over) {
+      // Dramatic close-out, timed to land after the final event beats.
+      const fxTimer = setTimeout(() => (over === 'win' ? victoryFx() : defeatFx()), Math.max(350, fxRemainingMs()))
       // Wait out any still-playing event beats (a long enemy phase can run
       // past a fixed delay) plus a beat for the death animation.
-      const timer = setTimeout(() => resolveCombatIfOver(), Math.max(1000, fxRemainingMs() + 450))
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => resolveCombatIfOver(), Math.max(1300, fxRemainingMs() + 700))
+      return () => {
+        clearTimeout(fxTimer)
+        clearTimeout(timer)
+      }
     }
   }, [over])
+
+  // End-turn flourish: the hand visibly sweeps into the discard pile.
+  const sweepDiscard = () => {
+    const dest = document.querySelector('.pilebtn.right')?.getBoundingClientRect()
+    if (!dest) return
+    const to = { x: dest.left + dest.width / 2, y: dest.top + dest.height / 2 }
+    document.querySelectorAll('.hand .card').forEach((el, i) => {
+      if (i >= 6) return
+      const r = el.getBoundingClientRect()
+      setTimeout(() => flyMini({ x: r.left + r.width / 2, y: r.top + r.height / 2 }, to, '#00e5ff'), i * 36)
+    })
+  }
 
   if (!cs) return null
   const playable = new Set(playableCards(cs))
@@ -138,11 +158,17 @@ export function CombatScreen() {
 
       <div class="arena">
         <div class={`player-zone ${fxPulses.value['p'] ?? ''}`} ref={(el) => registerAnchor('p', el)}>
-          <div class="energy-orb" data-tip={t('energyTip')}>
+          <div
+            class={`energy-orb ${fxPulses.value['orb'] ?? ''}`}
+            data-tip={t('energyTip')}
+            ref={(el) => registerAnchor('orb', el)}
+          >
             {p.energy}/{p.energyMax}
           </div>
           <BlockChip block={p.block} />
-          <div class="glyph">👤</div>
+          <div class="glyph">
+            <Sprite id="runner" size={58} />
+          </div>
           <div class="pname">{p.name}</div>
           <HpBar hp={p.hp} maxHp={p.maxHp} mine />
           <StatusRow statuses={p.statuses} />
@@ -193,7 +219,15 @@ export function CombatScreen() {
         >
           {tf('discardBtn', { n: p.discard.length })}
         </div>
-        <button class="btn pink endturn" disabled={!!cs.over} onClick={() => (setSelected(null), doCombat({ t: 'end' }))}>
+        <button
+          class="btn pink endturn"
+          disabled={!!cs.over}
+          onClick={() => {
+            setSelected(null)
+            sweepDiscard()
+            doCombat({ t: 'end' })
+          }}
+        >
           {t('endTurn')}
         </button>
       </div>

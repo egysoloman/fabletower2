@@ -3,6 +3,7 @@ import { newGame } from '../game'
 import { hasSave, loadGame, screen } from '../store'
 import { muted, sfx, toggleMute } from '../sfx'
 import { lang, t, toggleLang } from '../i18n'
+import { SoundIcon } from '../sprites'
 
 export function MenuScreen() {
   const [seedText, setSeedText] = useState('')
@@ -60,7 +61,7 @@ export function MenuScreen() {
             {lang.value === 'zh' ? 'EN' : '中文'}
           </button>
           <button class="btn ghost" onClick={toggleMute}>
-            {muted.value ? '🔇' : '🔊'}
+            <SoundIcon muted={muted.value} />
           </button>
         </div>
       </div>

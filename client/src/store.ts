@@ -46,6 +46,8 @@ export const picker = signal<PickerRequest | null>(null)
 export const pileView = signal<{ title: string; cards: CardInst[] } | null>(null)
 /** Solo-mode cheat console visibility (never persisted). */
 export const cheatOpen = signal(false)
+/** Node id to celebrate (particle burst) next time the map shows. */
+export const completedNode = signal<string | null>(null)
 
 /** Re-emit a signal whose inner object was mutated in place. */
 export function touch() {

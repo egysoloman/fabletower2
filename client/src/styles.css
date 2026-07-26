@@ -113,9 +113,11 @@ h1, h2, h3, .head { font-family: var(--font-head); letter-spacing: 0.08em; }
 }
 .btn:hover:not(:disabled) {
   background: rgba(0, 229, 255, 0.16);
-  box-shadow: 0 0 18px rgba(0, 229, 255, 0.5), inset 0 0 16px rgba(0, 229, 255, 0.12);
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.55), inset 0 0 16px rgba(0, 229, 255, 0.12);
   text-shadow: 0 0 8px var(--cyan);
+  transform: translateY(-1px) scale(1.035);
 }
+.btn:active:not(:disabled) { transform: translateY(1px) scale(0.97); transition-duration: 0.05s; }
 .btn:disabled { opacity: 0.35; cursor: default; }
 .btn.pink {
   color: var(--pink);
@@ -192,6 +194,7 @@ h1, h2, h3, .head { font-family: var(--font-head); letter-spacing: 0.08em; }
 /* tooltips */
 [data-tip] { position: relative; }
 [data-tip]:hover::after {
+  animation: tipIn 0.16s ease-out;
   content: attr(data-tip);
   position: absolute;
   bottom: calc(100% + 8px);
@@ -283,6 +286,37 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   animation: nodepulse 1.6s infinite;
 }
 .map-node.open text { fill: var(--cyan); }
+.map-node.open,
+.map-node.done,
+.map-node.current {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform 0.15s ease;
+}
+.map-node.open:hover {
+  transform: scale(1.22);
+}
+.map-node.open:hover circle {
+  filter: drop-shadow(0 0 14px var(--cyan));
+  animation: none;
+  stroke-opacity: 1;
+}
+/* edges draw themselves in, row by row, when the map appears */
+.map-edge {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+  animation: edgeDraw 0.45s var(--row-delay, 0ms) ease-out backwards;
+}
+@keyframes edgeDraw {
+  from { stroke-dashoffset: 1; }
+  to { stroke-dashoffset: 0; }
+}
+.travel-dot {
+  fill: var(--cyan);
+  filter: drop-shadow(0 0 8px var(--cyan)) drop-shadow(0 0 18px var(--cyan));
+  transition: transform 0.45s cubic-bezier(0.4, 0, 0.4, 1);
+  pointer-events: none;
+}
 .map-node.current circle {
   stroke: var(--pink);
   fill: rgba(255, 45, 149, 0.18);
@@ -350,7 +384,7 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 }
 .fx-pulse-block { animation: pulseBlock 0.55s ease-out; }
 @keyframes pulseBlock {
-  30% { filter: drop-shadow(0 0 20px #00e5ff) brightness(1.35); }
+  30% { filter: drop-shadow(0 0 20px #ff2d95) brightness(1.35); }
   100% { filter: none; }
 }
 .fx-pulse-buff { animation: pulseBuff 0.6s ease-out; }
@@ -413,6 +447,50 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .fx-flight.skill { --fc: var(--cyan); }
 .fx-flight.power { --fc: var(--purple); }
 .fx-flight.gone { opacity: 0.12; }
+.fx-flight.mini {
+  width: 38px;
+  height: 54px;
+  border-width: 1.5px;
+  box-shadow: 0 0 16px var(--fc, var(--cyan));
+  transition: transform 0.32s cubic-bezier(0.35, 0.05, 0.3, 1), opacity 0.32s ease-in;
+}
+
+/* fullscreen vignette flash (big hits, deaths, victory/defeat) */
+.vignette-flash {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 88;
+  background: radial-gradient(ellipse at center, transparent 42%, var(--vc, rgba(255, 59, 91, 0.3)) 100%);
+  animation: vignettePop 0.72s ease-out forwards;
+}
+@keyframes vignettePop {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes idleBob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-7px); }
+}
+
+/* screen transitions: fade + settle with a brief color wash */
+.screenwrap {
+  height: 100%;
+  animation: screenIn 0.34s ease-out;
+}
+@keyframes screenIn {
+  from { opacity: 0; transform: scale(0.988); filter: saturate(1.9) brightness(1.25); }
+  to { opacity: 1; transform: scale(1); filter: none; }
+}
+
+.finale .big-title { animation: titlePunch 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+@keyframes titlePunch {
+  from { transform: scale(2.4); opacity: 0; filter: blur(6px); }
+  60% { transform: scale(0.96); opacity: 1; filter: none; }
+  to { transform: scale(1); }
+}
 
 .arena {
   flex: 1;
@@ -447,7 +525,8 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   box-shadow: 0 0 26px rgba(255, 45, 149, 0.65);
 }
 .enemy.dead { opacity: 0; transform: scale(0.6) rotate(6deg); transition: all 0.5s; pointer-events: none; }
-.enemy .glyph { font-size: 54px; filter: drop-shadow(0 0 12px rgba(255, 45, 149, 0.8)); }
+.enemy .glyph { color: #ff7fc0; animation: idleBob 3.4s ease-in-out infinite alternate; }
+.enemy.boss .glyph { color: var(--pink); }
 .enemy .ename { font-family: var(--font-head); font-size: 12px; letter-spacing: 0.1em; color: #ffb8d9; }
 .enemy.boss .ename { color: var(--pink); text-shadow: 0 0 10px var(--pink); }
 
@@ -473,8 +552,26 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   transform-origin: left;
   background: linear-gradient(90deg, #ff3b5b, #ff2d95);
   box-shadow: 0 0 10px rgba(255, 45, 149, 0.8);
-  transition: transform 0.35s ease;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
   border-radius: 5px;
+  overflow: hidden;
+}
+/* flowing light sweep so fills read as liquid, not jumps */
+.hpbar .fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.35) 50%, transparent 80%);
+  background-size: 220% 100%;
+  animation: barFlow 2.6s linear infinite;
+}
+@keyframes barFlow {
+  from { background-position: 200% 0; }
+  to { background-position: -100% 0; }
+}
+@keyframes tipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 .hpbar.mine .fill { background: linear-gradient(90deg, #00b46f, #3dffa2); box-shadow: 0 0 10px rgba(61, 255, 162, 0.7); }
 .hpbar .num {
@@ -515,7 +612,11 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 
 /* player cluster */
 .player-zone { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; }
-.player-zone .glyph { font-size: 60px; filter: drop-shadow(0 0 14px rgba(0, 229, 255, 0.9)); }
+.player-zone .glyph { color: var(--cyan); animation: idleBob 3s ease-in-out infinite alternate; }
+
+/* hand-drawn line-art sprites glow in their owner's color */
+.sprite { filter: drop-shadow(0 0 7px currentColor); display: block; }
+.stat .sprite { display: inline-block; vertical-align: middle; filter: none; }
 .player-zone .pname { font-family: var(--font-head); font-size: 12px; color: var(--cyan); letter-spacing: 0.14em; }
 
 .energy-orb {
@@ -623,6 +724,20 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   transform: rotate(var(--rot)) translateY(var(--lift));
   transition: transform 0.16s ease, margin 0.16s ease;
   touch-action: none;
+  /* drawn cards slide in from the deck side with a rotation settle */
+  animation: dealIn 0.34s var(--deal, 0ms) cubic-bezier(0.22, 1.2, 0.4, 1) backwards;
+}
+@keyframes dealIn {
+  from {
+    transform: rotate(calc(var(--rot) - 20deg)) translateY(calc(var(--lift) + 130px)) translateX(-70px);
+    opacity: 0;
+    filter: brightness(2);
+  }
+  to {
+    transform: rotate(var(--rot)) translateY(var(--lift)) translateX(0);
+    opacity: 1;
+    filter: none;
+  }
 }
 .cardslot .card { cursor: grab; }
 /* hover-raise only on real hover devices — on touch, :hover sticks after a
@@ -817,10 +932,37 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   white-space: nowrap;
 }
 .float.dmg { color: var(--red); }
-.float.blk { color: var(--cyan); font-size: 20px; }
+.float.blk { color: var(--pink); font-size: 20px; }
 .float.heal { color: var(--green); }
-.float.stat { color: var(--purple); font-size: 17px; }
+.float.stat { color: var(--gold); font-size: 17px; }
+.float.statbad { color: var(--purple); font-size: 17px; }
 .float.name { color: var(--gold); font-size: 15px; letter-spacing: 0.2em; }
+.float.code {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 400;
+  color: #7dffa8;
+  text-shadow: 0 0 7px rgba(61, 255, 162, 0.9);
+  letter-spacing: 0.04em;
+  transform: translate(0, -50%);
+  animation-name: codeline;
+}
+@keyframes codeline {
+  0% { opacity: 0; transform: translate(-6px, -50%); }
+  10% { opacity: 1; transform: translate(0, -50%); }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translate(4px, -50%); }
+}
+.float.flare {
+  font-size: 52px;
+  color: var(--pink);
+  animation: flarePop 0.5s forwards ease-out;
+}
+@keyframes flarePop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); }
+  25% { opacity: 0.95; transform: translate(-50%, -50%) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.7); }
+}
 @keyframes floatup {
   0% { opacity: 0; margin-top: 10px; transform: translate(-50%, -50%) scale(0.5); }
   14% { opacity: 1; transform: translate(-50%, -50%) scale(1.28); }
@@ -861,7 +1003,25 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .panel .sub { color: var(--dim); font-size: 13px; text-align: center; max-width: 520px; line-height: 1.5; }
 
 .cardrow { display: flex; gap: 18px; flex-wrap: wrap; justify-content: center; }
-.cardrow .card:hover { transform: translateY(-10px) scale(1.07); z-index: 5; }
+.cardrow .card:hover {
+  transform: translateY(-12px) scale(1.09);
+  z-index: 5;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--cc) 75%, transparent);
+}
+/* reward cards flip-reveal out of a central glow, staggered per card */
+.cardrow .card.reveal {
+  animation: cardReveal 0.55s var(--reveal, 0ms) cubic-bezier(0.22, 1.1, 0.36, 1) backwards;
+}
+@keyframes cardReveal {
+  0% { transform: perspective(700px) rotateY(88deg) scale(0.7); opacity: 0; filter: brightness(3); }
+  55% { transform: perspective(700px) rotateY(-10deg) scale(1.04); opacity: 1; }
+  100% { transform: perspective(700px) rotateY(0) scale(1); filter: none; }
+}
+.shopitem { animation: shopIn 0.45s var(--reveal, 0ms) cubic-bezier(0.22, 1.2, 0.4, 1) backwards; }
+@keyframes shopIn {
+  from { transform: translateY(34px) scale(0.92); opacity: 0; filter: brightness(2.2); }
+  to { transform: none; opacity: 1; filter: none; }
+}
 .cardrow .pricetag { text-align: center; margin-top: 7px; color: var(--gold); font-size: 13px; }
 .cardrow .sold { opacity: 0.25; pointer-events: none; }
 .shopitem { display: flex; flex-direction: column; align-items: center; }
@@ -910,7 +1070,7 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .bigchoice .t { font-family: var(--font-head); letter-spacing: 0.12em; font-size: 15px; color: #fff; }
 .bigchoice .d { font-size: 12.5px; color: var(--dim); line-height: 1.45; }
 
-.event-glyph { font-size: 60px; filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.9)); }
+.event-glyph { color: var(--purple); filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.9)); }
 .result-lines { display: flex; flex-direction: column; gap: 4px; align-items: center; color: var(--green); font-size: 15px; }
 
 /* gameover / victory */
