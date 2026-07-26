@@ -6,8 +6,10 @@
  * relays the server-validated duel.
  */
 import { signal } from '@preact/signals'
-import type { GameEvent, PvpAction, PvpView, RunState } from '@neonspire/engine'
+import { EMOTES, type CharId, type GameEvent, type PvpAction, type PvpView, type RunState } from '@neonspire/engine'
 import { processEvents } from './fx'
+import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
+import { modsKey } from './mods'
 import { screen } from './store'
 import { sfx } from './sfx'
 
@@ -30,6 +32,11 @@ export interface OppProgress {
 
 export const climbPhase = signal<ClimbPhase>('idle')
 export const climbOpp = signal<string>('')
+/** Both duellists' characters, [p0, p1], from the server. */
+export const climbChars = signal<CharId[]>(['runner', 'runner'])
+/** Rival emote toast while outside the duel (solo map / waiting room). */
+export const climbEmote = signal<{ name: string; sym: string; text: string } | null>(null)
+let climbEmoteTimer = 0
 export const climbOppProgress = signal<OppProgress | null>(null)
 export const climbOppReady = signal(false)
 export const climbView = signal<PvpView | null>(null)
@@ -43,15 +50,15 @@ let onMatched: ((seed: number) => void) | null = null
 
 export const climbActive = () => climbPhase.value !== 'idle' && climbPhase.value !== 'error'
 
-export function climbQueue(url: string, name: string, matched: (seed: number) => void) {
+export function climbQueue(name: string, char: CharId, matched: (seed: number) => void) {
   climbLeave()
   onMatched = matched
   climbNotice.value = ''
   climbPhase.value = 'connecting'
   try {
-    const sock = new WebSocket(url)
+    const sock = new WebSocket(mpWsUrl())
     ws = sock
-    sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name, mode: 'climb' }))
+    sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name, mode: 'climb', char, modsKey: modsKey() }))
     sock.onerror = () => {
       climbNotice.value = 'server unreachable'
       climbPhase.value = 'error'
@@ -93,11 +100,27 @@ export function climbQueue(url: string, name: string, matched: (seed: number) =>
           break
         case 'duelstart':
           climbView.value = data.view
+          if (Array.isArray(data.chars)) climbChars.value = data.chars
           climbPending.value = false
           climbPhase.value = 'duel'
           screen.value = 'climb'
           sfx.win()
           break
+        case 'emote': {
+          if (climbPhase.value === 'duel') {
+            showIncomingEmote(data, (i) => 'p' + i)
+          } else {
+            const def = data.id ? EMOTES[data.id] : undefined
+            const text = def ? emoteText(def) : String(data.text ?? '')
+            if (text) {
+              climbEmote.value = { name: String(data.name ?? ''), sym: def?.sym ?? '❝', text }
+              clearTimeout(climbEmoteTimer)
+              climbEmoteTimer = window.setTimeout(() => (climbEmote.value = null), 3200)
+              sfx.click()
+            }
+          }
+          break
+        }
         case 'st':
           climbView.value = data.view
           climbPending.value = false
@@ -157,6 +180,10 @@ export function climbSendAction(action: PvpAction) {
   if (!ws || climbPhase.value !== 'duel') return
   climbPending.value = true
   ws.send(JSON.stringify({ t: 'action', action }))
+}
+
+export function climbSendEmote(m: { id?: string; text?: string; target?: number }) {
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'emote', ...m }))
 }
 
 function closeSocket() {

@@ -3,37 +3,102 @@
   "name": "Neon Sample Pack",
   "author": "NEONSPIRE",
   "version": "1.0.0",
-  "description": "A tiny example mod: one card, one relic, one potion, one event. Copy this file to build your own.",
+  "description": "A tiny example mod: one card, one relic, one potion, one event, two emotes. Copy this file to build your own.",
   "cards": [
     {
-      "id": "modblade", "name": "Mod Blade", "type": "attack", "rarity": "common",
-      "cost": 1, "target": "enemy",
-      "effects": [{ "k": "dmg", "n": 8 }],
-      "upEffects": [{ "k": "dmg", "n": 12 }],
+      "id": "modblade",
+      "name": "Mod Blade",
+      "type": "attack",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "effects": [
+        {
+          "k": "dmg",
+          "n": 8
+        }
+      ],
+      "upEffects": [
+        {
+          "k": "dmg",
+          "n": 12
+        }
+      ],
       "flavor": "forged in JSON"
     }
   ],
   "relics": [
     {
-      "id": "moddedcharm", "name": "Modded Charm", "rarity": "common", "sym": "◆",
+      "id": "moddedcharm",
+      "name": "Modded Charm",
+      "rarity": "common",
+      "sym": "◆",
       "desc": "Start each combat with 3 Block. (From: Neon Sample Pack)",
-      "hooks": { "combatStartBlock": 3 }
+      "hooks": {
+        "combatStartBlock": 3
+      }
     }
   ],
   "potions": [
     {
-      "id": "modjuice", "name": "Mod Juice", "rarity": "common", "sym": "◆",
-      "target": "none", "effects": [{ "k": "block", "n": 6 }, { "k": "draw", "n": 1 }]
+      "id": "modjuice",
+      "name": "Mod Juice",
+      "rarity": "common",
+      "sym": "◆",
+      "target": "none",
+      "effects": [
+        {
+          "k": "block",
+          "n": 6
+        },
+        {
+          "k": "draw",
+          "n": 1
+        }
+      ]
     }
   ],
   "events": [
     {
-      "id": "modshrine", "name": "Community Shrine", "glyph": "◆",
+      "id": "modshrine",
+      "name": "Community Shrine",
+      "glyph": "◆",
       "text": "A shrine built by other runners, held together by pull requests and hope.",
       "choices": [
-        { "label": "DONATE", "detail": "Lose 10¤, heal 8 HP.", "outcomes": [{ "k": "gold", "n": -10 }, { "k": "heal", "n": 8 }] },
-        { "label": "PASS BY", "detail": "Nothing happens.", "outcomes": [] }
+        {
+          "label": "DONATE",
+          "detail": "Lose 10¤, heal 8 HP.",
+          "outcomes": [
+            {
+              "k": "gold",
+              "n": -10
+            },
+            {
+              "k": "heal",
+              "n": 8
+            }
+          ]
+        },
+        {
+          "label": "PASS BY",
+          "detail": "Nothing happens.",
+          "outcomes": []
+        }
       ]
+    }
+  ],
+  "emotes": [
+    {
+      "id": "overclock",
+      "sym": "⚡",
+      "text": "OVERCLOCKED",
+      "zh": "超频了"
+    },
+    {
+      "id": "debug",
+      "sym": "{;}",
+      "text": "debugging you",
+      "zh": "正在调试你"
     }
   ]
 }

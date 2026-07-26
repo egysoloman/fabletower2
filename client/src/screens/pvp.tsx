@@ -4,8 +4,12 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, cardName, predictPvpPlay, pvpChecksum, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
+import { CARDS, cardName, predictPvpPlay, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow } from '../components'
+import { charColor } from './charselect'
+import { EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
+import { mpName, mpWsUrl } from '../mp'
+import { apiBase } from '../account'
 import {
   anchorCenter,
   defeatFx,
@@ -26,24 +30,11 @@ import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
 
-function defaultWsUrl(): string {
-  const loc = window.location
-  if (loc.protocol.startsWith('http')) {
-    const dev = loc.port === '5173' || loc.port === '4173'
-    if (dev) return `ws://${loc.hostname}:8787`
-    return `${loc.protocol === 'https:' ? 'wss:' : 'ws:'}//${loc.host}`
-  }
-  return 'ws://localhost:8787'
-}
-
 /** Lobby badge: fetches the server's current mode for display. */
 function ModeBadgeFetch() {
   const [m, setM] = useState<string | null>(null)
   useEffect(() => {
-    let base = ''
-    const loc = window.location
-    if (loc.port === '5173' || loc.port === '4173') base = `http://${loc.hostname}:8787`
-    fetch(base + '/api/mpmode').then((r) => r.json()).then((d) => setM(d.mode)).catch(() => {})
+    fetch(apiBase() + '/api/mpmode').then((r) => r.json()).then((d) => setM(d.mode)).catch(() => {})
   }, [])
   if (!m) return null
   return (
@@ -54,8 +45,8 @@ function ModeBadgeFetch() {
 }
 
 export function PvpScreen() {
-  const [url, setUrl] = useState(defaultWsUrl())
-  const [name, setName] = useState('RUNNER')
+  const [char, setChar] = useState<CharId>('runner')
+  const [chars, setChars] = useState<CharId[]>(['runner', 'runner'])
   const [phase, setPhase] = useState<Phase>('setup')
   const [view, setView] = useState<PvpView | null>(null)
   const [notice, setNotice] = useState('')
@@ -75,6 +66,8 @@ export function PvpScreen() {
   const [myTag, setMyTag] = useState('')
   const [pileOpen, setPileOpen] = useState(false)
   const shakeCls = useShake()
+  /** Latest side names for the ws handler (closures would go stale). */
+  const namesRef = useRef<string[]>([])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -85,7 +78,7 @@ export function PvpScreen() {
   /** Open a socket wired with the shared message handler. */
   const openSocket = (onOpen: (sock: WebSocket) => void): WebSocket | null => {
     try {
-      const sock = new WebSocket(url)
+      const sock = new WebSocket(mpWsUrl())
       ws.current = sock
       sock.onopen = () => onOpen(sock)
       sock.onerror = () => {
@@ -119,13 +112,17 @@ export function PvpScreen() {
         }
         switch (data.t) {
           case 'hello':
-            setMyTag(`${name}#${data.vid}`)
+            setMyTag(`${mpName()}#${data.vid}`)
             break
           case 'queued':
             setPhase('queued')
             break
+          case 'emote':
+            showIncomingEmote(data, (i) => 'p' + i, (i) => namesRef.current[i] ?? '')
+            break
           case 'match':
             if (data.mode) setMode(data.mode)
+            if (Array.isArray(data.chars)) setChars(data.chars)
             if (data.token) token.current = data.token
             retryDeadline.current = 0
             setConn('online')
@@ -189,7 +186,7 @@ export function PvpScreen() {
 
   const connect = () => {
     setPhase('connecting')
-    openSocket((sock) => sock.send(JSON.stringify({ t: 'queue', name })))
+    openSocket((sock) => sock.send(JSON.stringify({ t: 'queue', name: mpName(), char, ...queueIdentity() })))
   }
 
   useEffect(
@@ -263,8 +260,18 @@ export function PvpScreen() {
         <div class="pvp-status">
           {phase === 'setup' && (
             <>
-              <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder={t('handlePlaceholder')} />
-              <input class="neon" style={{ width: '300px' }} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} placeholder="ws://server:8787" />
+              <div class="charrow">
+                {(['runner', 'vector', 'ghost', 'array'] as CharId[]).map((c) => (
+                  <div key={c} class={`charcard ${c} ${char === c ? 'picked' : ''}`} onClick={() => (sfx.click(), setChar(c))}>
+                    <Sprite id={c} size={34} />
+                    <div>
+                      <div class="cname-h">{t(('char' + c[0].toUpperCase() + c.slice(1)) as Parameters<typeof t>[0])}</div>
+                      <div class="cdesc-h">{t(('char' + c[0].toUpperCase() + c.slice(1) + 'Desc') as Parameters<typeof t>[0])}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <MpConnect />
               <button class="btn big pink" onClick={connect}>
                 {t('findOpponent')}
               </button>
@@ -297,6 +304,7 @@ export function PvpScreen() {
   if (!view) return null
   const me = view.sides[view.you]
   const them = view.sides[1 - view.you]
+  namesRef.current = [view.sides[0].name, view.sides[1].name]
   const myTurn = view.active === view.you && !view.over
   const hand = me.hand ?? []
   const iWon = view.over ? view.over.winner === view.you : forfeitWin
@@ -378,8 +386,8 @@ export function PvpScreen() {
             {me.energy}/{me.energyMax}
           </div>
           <BlockChip block={me.block} />
-          <div class="glyph">
-            <Sprite id="runner" size={58} />
+          <div class="glyph" style={{ color: charColor(chars[view.you] ?? 'runner') }}>
+            <Sprite id={chars[view.you] ?? 'runner'} size={58} />
           </div>
           <div class="pname">{tf('youSuffix', { name: me.name })}</div>
           <HpBar hp={me.hp} maxHp={me.maxHp} mine />
@@ -396,8 +404,8 @@ export function PvpScreen() {
             ))}
           </div>
           <BlockChip block={them.block} />
-          <div class="glyph" style={{ color: '#ff7fc0' }}>
-            <Sprite id="netrunner" size={54} />
+          <div class="glyph" style={{ color: charColor(chars[1 - view.you] ?? 'runner') }}>
+            <Sprite id={chars[1 - view.you] ?? 'runner'} size={54} />
           </div>
           <div class="ename" style={{ fontFamily: 'var(--font-head)', fontSize: '12px', color: '#ffb8d9' }}>
             {them.name}
@@ -415,6 +423,11 @@ export function PvpScreen() {
           {toast}
         </div>
       )}
+
+      <EmotePanel
+        send={(m) => ws.current?.send(JSON.stringify({ t: 'emote', ...m }))}
+        targets={[{ idx: 1 - view.you, name: them.name }]}
+      />
 
       {pileOpen && (
         <div class="overlay" onClick={() => setPileOpen(false)}>

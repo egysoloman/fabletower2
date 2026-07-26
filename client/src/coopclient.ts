@@ -4,8 +4,10 @@
  * rewards — the client only renders and sends intents.
  */
 import { signal } from '@preact/signals'
-import type { CharId, GameEvent } from '@neonspire/engine'
+import { EMOTES, type CharId, type GameEvent } from '@neonspire/engine'
 import { processEvents, screenWipe } from './fx'
+import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
+import { modsKey } from './mods'
 import { screen } from './store'
 import { sfx } from './sfx'
 
@@ -56,14 +58,15 @@ let ws: WebSocket | null = null
 let token: string | null = null
 let retryUntil = 0
 
-export function coopQueue(url: string, name: string, char: CharId, size: number) {
+export function coopQueue(name: string, char: CharId, size: number) {
   coopLeave()
   coopNotice.value = ''
   coopPhase.value = 'connecting'
+  const url = mpWsUrl()
   try {
     const sock = new WebSocket(url)
     ws = sock
-    sock.onopen = () => sock.send(JSON.stringify({ t: 'coopqueue', name, char, size }))
+    sock.onopen = () => sock.send(JSON.stringify({ t: 'coopqueue', name, char, size, modsKey: modsKey() }))
     sock.onerror = () => {
       coopNotice.value = 'server unreachable'
       coopPhase.value = 'error'
@@ -174,6 +177,20 @@ export function coopQueue(url: string, name: string, char: CharId, size: number)
           coopFlash(`${data.name}: ${data.k.toUpperCase()}`)
           sfx.click()
           break
+        case 'emote': {
+          if (coopPhase.value === 'combat') {
+            showIncomingEmote(data, (i) => 'c' + i, (i) => coopMap.value?.party?.[i]?.name ?? '')
+          } else {
+            const def = data.id ? EMOTES[data.id] : undefined
+            const text = def ? emoteText(def) : String(data.text ?? '')
+            const to = data.target != null ? ` ▸ ${coopMap.value?.party?.[data.target]?.name ?? ''}` : ''
+            if (text) {
+              coopFlash(`${def?.sym ?? '❝'} ${data.name}${to}: ${text}`)
+              sfx.click()
+            }
+          }
+          break
+        }
         case 'coopvictory':
           coopPhase.value = 'victory'
           import('./meta').then((m) => m.award('coopwin'))

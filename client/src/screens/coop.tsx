@@ -35,28 +35,27 @@ import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand } from './hand'
 import { charColor } from './charselect'
-
-function defaultWsUrl(): string {
-  const loc = window.location
-  if (loc.protocol.startsWith('http')) {
-    const dev = loc.port === '5173' || loc.port === '4173'
-    if (dev) return `ws://${loc.hostname}:8787`
-    return `${loc.protocol === 'https:' ? 'wss:' : 'ws:'}//${loc.host}`
-  }
-  return 'ws://localhost:8787'
-}
+import { EmotePanel, MpConnect } from './mpsetup'
+import { mpName } from '../mp'
 
 const NODE_LABEL: Record<string, string> = {
   combat: '⚔', elite: '☠', boss: '◆', rest: '✚', treasure: '¤', shop: '$', event: '?',
 }
 
 export function CoopScreen() {
-  const [url, setUrl] = useState(defaultWsUrl())
-  const [name, setName] = useState('RUNNER')
   const [char, setChar] = useState<CharId>('runner')
   const [size, setSize] = useState(2)
   const phase = coopPhase.value
   const shakeCls = useShake()
+  /** Party members other than you — emote targets. */
+  const emoteTargets = () => {
+    const m = coopMap.value
+    if (!m?.party) return []
+    return m.party
+      .map((p: any, i: number) => ({ idx: i, name: String(p.name ?? '') }))
+      .filter((tg: { idx: number }) => tg.idx !== m.you)
+  }
+  const sendEmote = (m: { id?: string; text?: string; target?: number }) => coopSend({ t: 'emote', ...m })
 
   // --- Combat ---------------------------------------------------------------
   if (phase === 'combat' && coopView.value) {
@@ -187,13 +186,7 @@ export function CoopScreen() {
             {t('endTurn')}
           </button>
         </div>
-        <div class="commrow" style={{ bottom: 'auto', top: '52px' }}>
-          {(['go', 'wait', 'help', 'gg'] as const).map((k) => (
-            <button key={k} class="btn ghost" onClick={() => coopSend({ t: 'coopcomm', k })}>
-              {t(('comm_' + k) as Parameters<typeof t>[0])}
-            </button>
-          ))}
-        </div>
+        <EmotePanel send={sendEmote} targets={emoteTargets()} />
         {coopToast.value && (
           <div class="turnbanner bare" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
             {coopToast.value}
@@ -232,9 +225,8 @@ export function CoopScreen() {
                 </button>
               ))}
             </div>
-            <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder={t('handlePlaceholder')} />
-            <input class="neon" style={{ width: '300px' }} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} placeholder="ws://server:8787" />
-            <button class="btn big pink" onClick={() => coopQueue(url, name, char, size)}>
+            <MpConnect />
+            <button class="btn big pink" onClick={() => coopQueue(mpName(), char, size)}>
               {t('coopFind')}
             </button>
           </>
@@ -276,14 +268,8 @@ export function CoopScreen() {
             {coopToast.value}
           </div>
         )}
-        {(phase === 'map' || phase === 'combat') && (
-          <div class="commrow">
-            {(['go', 'wait', 'help', 'gg'] as const).map((k) => (
-              <button key={k} class="btn ghost" onClick={() => coopSend({ t: 'coopcomm', k })}>
-                {t(('comm_' + k) as Parameters<typeof t>[0])}
-              </button>
-            ))}
-          </div>
+        {(phase === 'map' || phase === 'shop' || phase === 'event' || phase === 'rest') && (
+          <EmotePanel send={sendEmote} targets={emoteTargets()} />
         )}
         {phase === 'map' && m && (
           <>

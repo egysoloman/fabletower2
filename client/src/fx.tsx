@@ -102,6 +102,40 @@ function spawnFloat(who: string, text: string, cls: string) {
   spawnFloatAt(p.x + jx, p.y + jy, text, cls)
 }
 
+// --- Emote bubbles (multiplayer quick chat) ----------------------------------
+
+interface EmoteBubble {
+  id: number
+  x: number
+  y: number
+  sym: string
+  text: string
+  name: string
+  /** "▸ target" line when the emote was aimed at someone. */
+  to?: string
+}
+
+export const emoteBubbles = signal<EmoteBubble[]>([])
+
+/** Speech bubble above a fighter panel; targeted emotes also ping the target. */
+export function showEmoteAt(who: string, sym: string, text: string, name: string, to?: string) {
+  const p = anchorCenter(who)
+  if (!p) return
+  const id = fxId++
+  emoteBubbles.value = [...emoteBubbles.value, { id, x: p.x, y: p.y - 52, sym, text, name, to }]
+  setTimeout(() => {
+    emoteBubbles.value = emoteBubbles.value.filter((e) => e.id !== id)
+  }, 2600)
+}
+
+export function pingAnchor(who: string, color = '#00e5ff') {
+  const p = anchorCenter(who)
+  if (p) {
+    spawnRing(p.x, p.y, color, true)
+    burst(p.x, p.y, color, 10, 2.6)
+  }
+}
+
 // --- Terminal-style effects ---------------------------------------------------
 
 /** Stacked console lines ("> strike.sh --exec") typed out near a point. */
@@ -560,6 +594,16 @@ export function FxLayer() {
       {floats.value.map((f) => (
         <div key={f.id} class={`float ${f.cls}`} style={{ left: f.x + 'px', top: f.y + 'px' }}>
           {f.text}
+        </div>
+      ))}
+      {emoteBubbles.value.map((e) => (
+        <div key={e.id} class="emotepop" style={{ left: e.x + 'px', top: e.y + 'px' }}>
+          <b>{e.sym}</b>
+          {e.text && <span>{e.text}</span>}
+          <small>
+            {e.name}
+            {e.to ? ` ▸ ${e.to}` : ''}
+          </small>
         </div>
       ))}
       {wipe.value && (

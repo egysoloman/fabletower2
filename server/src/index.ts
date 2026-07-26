@@ -114,6 +114,11 @@ interface Client {
   dcTimer: NodeJS.Timeout | null
   /** Short public visitor id, shown next to names to disambiguate. */
   vid: string
+  /** Chosen fighter, relayed to peers for sprites/colors. */
+  char: CharId
+  /** Enabled-mods fingerprint: only identical keys are matched together. */
+  modsKey: string
+  lastEmote: number
 }
 
 interface ClimbDeckEntry {
@@ -134,7 +139,14 @@ interface Room {
   rematch: [boolean, boolean]
 }
 
-const waiting: Record<Mode, Client | null> = { duel: null, climb: null }
+/** One waiting slot per (mode, modsKey): only same-mods players ever match. */
+const waiting: Record<Mode, Map<string, Client>> = { duel: new Map(), climb: new Map() }
+
+function unqueue(c: Client) {
+  for (const m of Object.values(waiting)) {
+    for (const [k, v] of m) if (v === c) m.delete(k)
+  }
+}
 
 /** token -> seated client, alive for the duration of a match (+grace). */
 const seats = new Map<string, Client>()
@@ -212,8 +224,12 @@ interface CoopRoom {
   ended: boolean
 }
 
-const coopQueues: Record<number, Client[]> = { 2: [], 3: [], 4: [] }
+/** Keyed by `${size}|${modsKey}` — parties only form among same-mods players. */
+const coopQueues = new Map<string, Client[]>()
 const coopRooms = new Map<Client, CoopRoom>()
+
+const coopKey = (size: number, modsKey: string) => `${size}|${modsKey}`
+const coopKeySize = (key: string) => Number(key.split('|')[0]) || 2
 
 const tagOf = (c: Client) => `${c.name}#${c.vid}`
 
@@ -223,12 +239,15 @@ interface PendingParty {
   chars: CharId[]
   ready: boolean[]
   size: number
+  key: string
 }
 const pendingParties = new Map<Client, PendingParty>()
 
-function broadcastLobby(size: number) {
-  const q = coopQueues[size].filter((c) => c.ws.readyState === WebSocket.OPEN)
-  coopQueues[size] = q
+function broadcastLobby(key: string) {
+  const size = coopKeySize(key)
+  const q = (coopQueues.get(key) ?? []).filter((c) => c.ws.readyState === WebSocket.OPEN)
+  if (q.length) coopQueues.set(key, q)
+  else coopQueues.delete(key)
   for (const c of q) send(c.ws, { t: 'lobby', size, members: q.map(tagOf), need: size - q.length })
 }
 
@@ -247,9 +266,11 @@ function dissolveForm(party: PendingParty, gone: Client | null) {
   // Remaining members rejoin the head of the queue and keep waiting.
   for (const c of party.clients) {
     if (c === gone || c.ws.readyState !== WebSocket.OPEN) continue
-    coopQueues[party.size].unshift(c)
+    const q = coopQueues.get(party.key) ?? []
+    q.unshift(c)
+    coopQueues.set(party.key, q)
   }
-  broadcastLobby(party.size)
+  broadcastLobby(party.key)
 }
 
 /** Co-op climbs now use the untouched solo map — every node type included. */
@@ -400,6 +421,43 @@ function cleanName(raw: unknown): string {
   return s || 'RUNNER'
 }
 
+function cleanChar(raw: unknown): CharId {
+  return (['runner', 'vector', 'ghost', 'array'] as CharId[]).includes(raw as CharId) ? (raw as CharId) : 'runner'
+}
+
+function cleanModsKey(raw: unknown): string {
+  const s = String(raw ?? '').replace(/[^\w@.+-]/g, '').slice(0, 120)
+  return s || 'vanilla'
+}
+
+/**
+ * Relay an emote / quick phrase to everyone in the sender's room or party.
+ * The id may come from a mod — matchmaking guarantees both sides run the
+ * same mods, so unknown ids are simply dropped by clients that lack them.
+ */
+function handleEmote(client: Client, msg: any) {
+  const now = Date.now()
+  if (client.lastEmote > now - 1200) return
+  client.lastEmote = now
+  const id = String(msg.id ?? '').replace(/[^a-z0-9_-]/gi, '').slice(0, 24)
+  const text = String(msg.text ?? '').replace(/[\r\n\t]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40)
+  if (!id && !text) return
+  const target = Number.isInteger(msg.target) ? Number(msg.target) : null
+  const coop = coopRooms.get(client)
+  if (coop && !coop.ended) {
+    const who = coop.players.findIndex((p) => p.client === client)
+    const tgt = target !== null && coop.players[target] ? target : null
+    coopBroadcast(coop, () => ({ t: 'emote', who, name: tagOf(client), id, text, target: tgt }))
+    return
+  }
+  const room = client.room
+  if (room) {
+    const who = room.players.indexOf(client)
+    const tgt = target === 0 || target === 1 ? target : null
+    for (const p of room.players) send(p.ws, { t: 'emote', who, name: tagOf(client), id, text, target: tgt })
+  }
+}
+
 /** Climb duels use client-submitted run decks — sanitize hard. */
 function cleanDeck(raw: unknown): ClimbDeckEntry[] | null {
   if (!Array.isArray(raw) || raw.length < 5 || raw.length > 120) return null
@@ -412,6 +470,10 @@ function cleanDeck(raw: unknown): ClimbDeckEntry[] | null {
   return out
 }
 
+function roomChars(room: Room): CharId[] {
+  return room.players.map((p) => p.char)
+}
+
 function startMatch(a: Client, b: Client, mode: Mode) {
   const seed = randomBytes(4).readUInt32LE(0)
   if (mode === 'duel') {
@@ -420,7 +482,7 @@ function startMatch(a: Client, b: Client, mode: Mode) {
     a.room = room
     b.room = room
     room.players.forEach((p, i) => {
-      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1), token: mintToken(p), mode: getMpMode() })
+      send(p.ws, { t: 'match', you: i, view: viewFor(state, i as 0 | 1), token: mintToken(p), mode: getMpMode(), chars: roomChars(room) })
     })
     return
   }
@@ -429,7 +491,7 @@ function startMatch(a: Client, b: Client, mode: Mode) {
   a.room = room
   b.room = room
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name, token: mintToken(p) })
+    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name, oppChar: room.players[1 - i].char, token: mintToken(p) })
   })
 }
 
@@ -449,7 +511,7 @@ function maybeStartClimbDuel(room: Room) {
     { deck: b.deck, hp: b.hp },
   ])
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'duelstart', you: i, view: viewFor(room.state!, i as 0 | 1) })
+    send(p.ws, { t: 'duelstart', you: i, view: viewFor(room.state!, i as 0 | 1), chars: roomChars(room) })
   })
 }
 
@@ -498,6 +560,7 @@ wss.on('connection', (ws) => {
   let client: Client = {
     ws, name: 'RUNNER', room: null, alive: true, token: null, online: true, dcTimer: null,
     vid: randomBytes(2).toString('hex'),
+    char: 'runner', modsKey: 'vanilla', lastEmote: 0,
   }
   ;(ws as any).isAlive = true
   send(ws, { t: 'hello', vid: client.vid })
@@ -515,26 +578,30 @@ wss.on('connection', (ws) => {
       case 'queue': {
         if (client.room) return send(ws, { t: 'err', msg: 'already in a match' })
         client.name = cleanName(msg.name)
+        client.char = cleanChar(msg.char)
+        client.modsKey = cleanModsKey(msg.modsKey)
         const mode: Mode = msg.mode === 'climb' ? 'climb' : 'duel'
-        if (waiting[mode] === client) return
-        if (waiting[mode] && waiting[mode]!.ws.readyState === WebSocket.OPEN) {
-          const opponent = waiting[mode]!
-          waiting[mode] = null
+        const key = client.modsKey
+        if (waiting[mode].get(key) === client) return
+        const opponent = waiting[mode].get(key)
+        if (opponent && opponent.ws.readyState === WebSocket.OPEN) {
+          waiting[mode].delete(key)
           startMatch(opponent, client, mode)
         } else {
-          if (waiting.duel === client) waiting.duel = null
-          if (waiting.climb === client) waiting.climb = null
-          waiting[mode] = client
-          send(ws, { t: 'queued', mode })
+          unqueue(client)
+          waiting[mode].set(key, client)
+          send(ws, { t: 'queued', mode, modsKey: key })
         }
         break
       }
       case 'cancel': {
-        if (waiting.duel === client) waiting.duel = null
-        if (waiting.climb === client) waiting.climb = null
+        unqueue(client)
         send(ws, { t: 'cancelled' })
         break
       }
+      case 'emote':
+        handleEmote(client, msg)
+        break
       case 'action':
         handleAction(client, msg.action, typeof msg.sum === 'number' ? msg.sum : undefined)
         break
@@ -555,9 +622,9 @@ wss.on('connection', (ws) => {
         if (room) {
           const idx = room.players.indexOf(client) as 0 | 1
           if (room.mode === 'duel' || room.state) {
-            send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true, mode: getMpMode() })
+            send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true, mode: getMpMode(), chars: roomChars(room) })
           } else {
-            send(ws, { t: 'climbstart', you: idx, seed: room.seed, opp: room.players[1 - idx].name, token: client.token, rejoin: true })
+            send(ws, { t: 'climbstart', you: idx, seed: room.seed, opp: room.players[1 - idx].name, oppChar: room.players[1 - idx].char, token: client.token, rejoin: true })
           }
         } else if (coop && !coop.ended) {
           const idx = coop.players.findIndex((p) => p.client === client)
@@ -582,7 +649,7 @@ wss.on('connection', (ws) => {
           room.finished = false
           room.rematch = [false, false]
           room.players.forEach((p, i) => {
-            send(p.ws, { t: 'match', you: i, view: viewFor(room.state!, i as 0 | 1), token: p.token, mode: getMpMode() })
+            send(p.ws, { t: 'match', you: i, view: viewFor(room.state!, i as 0 | 1), token: p.token, mode: getMpMode(), chars: roomChars(room) })
           })
         } else {
           send(other.ws, { t: 'rematch-offer' })
@@ -613,24 +680,31 @@ wss.on('connection', (ws) => {
       case 'coopqueue': {
         if (client.room || coopRooms.has(client)) return send(ws, { t: 'err', msg: 'already in a match' })
         client.name = cleanName(msg.name)
+        client.char = cleanChar(msg.char)
+        client.modsKey = cleanModsKey(msg.modsKey)
         const size = Math.max(2, Math.min(4, Math.floor(Number(msg.size) || 2)))
-        const char: CharId = (['runner', 'vector', 'ghost', 'array'] as CharId[]).includes(msg.char) ? msg.char : 'runner'
-        ;(client as any).coopChar = char
-        for (const q of Object.values(coopQueues)) {
+        const key = coopKey(size, client.modsKey)
+        for (const [k, q] of coopQueues) {
           const at = q.indexOf(client)
-          if (at >= 0) q.splice(at, 1)
+          if (at >= 0) {
+            q.splice(at, 1)
+            if (!q.length) coopQueues.delete(k)
+          }
         }
-        coopQueues[size].push(client)
-        send(ws, { t: 'queued', mode: 'coop', size })
-        broadcastLobby(size)
-        const q = coopQueues[size]
+        const q = coopQueues.get(key) ?? []
+        q.push(client)
+        coopQueues.set(key, q)
+        send(ws, { t: 'queued', mode: 'coop', size, modsKey: client.modsKey })
+        broadcastLobby(key)
         if (q.length >= size) {
           const members = q.splice(0, size)
+          if (!q.length) coopQueues.delete(key)
           const party: PendingParty = {
             clients: members,
-            chars: members.map((c) => ((c as any).coopChar ?? 'runner') as CharId),
+            chars: members.map((c) => c.char),
             ready: members.map(() => false),
             size,
+            key,
           }
           for (const c of members) pendingParties.set(c, party)
           broadcastForm(party)
@@ -944,13 +1018,12 @@ wss.on('connection', (ws) => {
 
   ws.on('close', () => {
     if (client.ws !== ws) return // an old socket of a reconnected seat
-    if (waiting.duel === client) waiting.duel = null
-    if (waiting.climb === client) waiting.climb = null
-    for (const [sz, q] of Object.entries(coopQueues)) {
+    unqueue(client)
+    for (const [k, q] of coopQueues) {
       const at = q.indexOf(client)
       if (at >= 0) {
         q.splice(at, 1)
-        broadcastLobby(Number(sz))
+        broadcastLobby(k)
       }
     }
     const pending = pendingParties.get(client)

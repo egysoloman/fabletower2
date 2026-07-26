@@ -29,7 +29,31 @@ function saveSession(v: { name: string; token: string } | null) {
   }
 }
 
+/** Cloud server override (Settings ▸ Account). Blank = the hosting site. */
+export const cloudUrl = signal(loadCloudUrl())
+
+function loadCloudUrl() {
+  try {
+    return localStorage.getItem('ns-cloud-url') ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export function setCloudUrl(v: string) {
+  let clean = v.trim().replace(/\/+$/, '')
+  if (clean && !/^https?:\/\//.test(clean)) clean = 'https://' + clean
+  cloudUrl.value = clean
+  try {
+    if (clean) localStorage.setItem('ns-cloud-url', clean)
+    else localStorage.removeItem('ns-cloud-url')
+  } catch {
+    /* best-effort */
+  }
+}
+
 export function apiBase(): string {
+  if (cloudUrl.value) return cloudUrl.value
   const loc = window.location
   if (loc.port === '5173' || loc.port === '4173') return `http://${loc.hostname}:8787`
   return ''

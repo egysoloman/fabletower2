@@ -61,6 +61,19 @@ export async function loadMods() {
   mods.value = entries
 }
 
+/**
+ * Fingerprint of the enabled mod set. Sent when queueing for multiplayer —
+ * the server only ever matches identical fingerprints, so both sides of a
+ * match are guaranteed to run the same content.
+ */
+export function modsKey(): string {
+  const on = mods.value
+    .filter((m) => m.enabled)
+    .map((m) => `${m.manifest.id}@${m.manifest.version ?? '0'}`)
+    .sort()
+  return on.length ? on.join('+').slice(0, 120) : 'vanilla'
+}
+
 export function setModEnabled(id: string, enabled: boolean) {
   mods.value = mods.value.map((m) => {
     if (m.manifest.id !== id) return m

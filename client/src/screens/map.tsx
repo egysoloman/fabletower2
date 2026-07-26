@@ -3,7 +3,7 @@ import { MAP_COLS, MAP_ROWS, allNodes, availableNodeIds, type MapNode, type Node
 import { TopBar } from '../components'
 import { clickNode } from '../game'
 import { burst, uiRipple } from '../fx'
-import { climbActive, climbOpp, climbOppProgress } from '../climb'
+import { climbActive, climbEmote, climbOpp, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -130,6 +130,11 @@ export function MapScreen() {
                 hp: climbOppProgress.value.hp,
               })
             : tf('rivalClimbing', { name: climbOpp.value })}
+          {climbEmote.value && (
+            <div class="rivalemote">
+              {climbEmote.value.sym} {climbEmote.value.name}: {climbEmote.value.text}
+            </div>
+          )}
         </div>
       )}
       <div class="act-title">{tf('actTitle', { act: r.act })}</div>

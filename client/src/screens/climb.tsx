@@ -18,6 +18,8 @@ import {
   victoryFx,
 } from '../fx'
 import {
+  climbChars,
+  climbEmote,
   climbLeave,
   climbNotice,
   climbOpp,
@@ -27,8 +29,12 @@ import {
   climbPhase,
   climbQueue,
   climbSendAction,
+  climbSendEmote,
   climbView,
 } from '../climb'
+import { charColor } from './charselect'
+import { EmotePanel, MpConnect } from './mpsetup'
+import { mpName } from '../mp'
 import { continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
 import { screen } from '../store'
 import { sfx } from '../sfx'
@@ -36,19 +42,7 @@ import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
-function defaultWsUrl(): string {
-  const loc = window.location
-  if (loc.protocol.startsWith('http')) {
-    const dev = loc.port === '5173' || loc.port === '4173'
-    if (dev) return `ws://${loc.hostname}:8787`
-    return `${loc.protocol === 'https:' ? 'wss:' : 'ws:'}//${loc.host}`
-  }
-  return 'ws://localhost:8787'
-}
-
 export function ClimbScreen() {
-  const [url, setUrl] = useState(defaultWsUrl())
-  const [name, setName] = useState('RUNNER')
   const [char, setChar] = useState<CharId>('runner')
   const phase = climbPhase.value
   const view = climbView.value
@@ -125,8 +119,8 @@ export function ClimbScreen() {
               {me.energy}/{me.energyMax}
             </div>
             <BlockChip block={me.block} />
-            <div class="glyph">
-              <Sprite id={char} size={58} />
+            <div class="glyph" style={{ color: charColor(climbChars.value[view.you] ?? char) }}>
+              <Sprite id={climbChars.value[view.you] ?? char} size={58} />
             </div>
             <div class="pname">{tf('youSuffix', { name: me.name })}</div>
             <HpBar hp={me.hp} maxHp={me.maxHp} mine />
@@ -151,8 +145,8 @@ export function ClimbScreen() {
               ))}
             </div>
             <BlockChip block={them.block} />
-            <div class="glyph" style={{ color: '#ff7fc0' }}>
-              <Sprite id="netrunner" size={54} />
+            <div class="glyph" style={{ color: charColor(climbChars.value[1 - view.you] ?? 'runner') }}>
+              <Sprite id={climbChars.value[1 - view.you] ?? 'runner'} size={54} />
             </div>
             <div class="ename" style={{ fontFamily: 'var(--font-head)', fontSize: '12px', color: '#ffb8d9' }}>
               {them.name}
@@ -173,6 +167,7 @@ export function ClimbScreen() {
             )}
           </div>
         </div>
+        <EmotePanel send={climbSendEmote} targets={[{ idx: 1 - view.you, name: them.name }]} />
         <div class="dock">
           <DraggableHand
             cards={hand}
@@ -214,9 +209,8 @@ export function ClimbScreen() {
                 </div>
               ))}
             </div>
-            <input class="neon" style={{ width: '300px' }} value={name} maxLength={16} onInput={(e) => setName((e.target as HTMLInputElement).value)} placeholder={t('handlePlaceholder')} />
-            <input class="neon" style={{ width: '300px' }} value={url} onInput={(e) => setUrl((e.target as HTMLInputElement).value)} placeholder="ws://server:8787" />
-            <button class="btn big pink" onClick={() => climbQueue(url, name, (seed) => startClimbRun(seed, char))}>
+            <MpConnect />
+            <button class="btn big pink" onClick={() => climbQueue(mpName(), char, (seed) => startClimbRun(seed, char))}>
               {t('findRival')}
             </button>
           </>
@@ -234,6 +228,12 @@ export function ClimbScreen() {
                   ? tf('rivalAt', { name: climbOpp.value, act: opp.act, floor: opp.floor, hp: opp.hp })
                   : tf('rivalClimbing', { name: climbOpp.value })}
             </div>
+            {climbEmote.value && (
+              <div class="rivalemote">
+                {climbEmote.value.sym} {climbEmote.value.name}: {climbEmote.value.text}
+              </div>
+            )}
+            <EmotePanel send={climbSendEmote} />
           </>
         )}
         {phase === 'won' && (

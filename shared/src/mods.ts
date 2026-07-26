@@ -12,6 +12,7 @@ import { ENEMIES } from './enemies'
 import { POTIONS, type PotionDef } from './potions'
 import { EVENTS, type EventDef, type Outcome } from './events'
 import { STARTER_DECKS, STARTER_RELICS } from './run'
+import { EMOTES, type EmoteDef } from './emotes'
 
 export interface ModManifest {
   id: string
@@ -26,6 +27,8 @@ export interface ModManifest {
   events?: unknown[]
   /** Loadout tweaks for EXISTING characters (base must be one of the four). */
   characters?: unknown[]
+  /** Multiplayer emotes / quick phrases: {id, sym, text, zh?}. */
+  emotes?: unknown[]
 }
 
 export interface ModReport {
@@ -47,7 +50,7 @@ const RARITIES: Rarity[] = ['common', 'uncommon', 'rare']
 const CHARS: CharId[] = ['runner', 'vector', 'ghost', 'array']
 
 /** Per-mod ledger of what was registered, for clean unload. */
-const ledger = new Map<string, { cards: string[]; relics: string[]; enemies: string[]; potions: string[]; events: string[]; loadouts: [CharId, string[], string][] }>()
+const ledger = new Map<string, { cards: string[]; relics: string[]; enemies: string[]; potions: string[]; events: string[]; emotes: string[]; loadouts: [CharId, string[], string][] }>()
 
 const num = (v: unknown, lo: number, hi: number) => typeof v === 'number' && Number.isFinite(v) && v >= lo && v <= hi
 
@@ -75,7 +78,7 @@ export function applyMod(m: ModManifest): ModReport {
   const warn = (msg: string) => rep.warnings.push(`[${m.id}] ${msg}`)
   if (!ID_RE.test(m.id ?? '')) return { id: String(m.id), added: [], warnings: ['mod id invalid — mod ignored'] }
   if (ledger.has(m.id)) removeMod(m.id)
-  const led = { cards: [] as string[], relics: [] as string[], enemies: [] as string[], potions: [] as string[], events: [] as string[], loadouts: [] as [CharId, string[], string][] }
+  const led = { cards: [] as string[], relics: [] as string[], enemies: [] as string[], potions: [] as string[], events: [] as string[], emotes: [] as string[], loadouts: [] as [CharId, string[], string][] }
 
   for (const raw of m.cards ?? []) {
     const c = raw as Partial<CardDef>
@@ -151,6 +154,19 @@ export function applyMod(m: ModManifest): ModReport {
     rep.added.push('event:' + id)
   }
 
+  for (const raw of m.emotes ?? []) {
+    const e = raw as Partial<EmoteDef>
+    const id = String(e.id ?? '')
+    if (!ID_RE.test(id) || EMOTES[id]) { warn(`emote "${id}" invalid or collides`); continue }
+    const sym = String(e.sym ?? '').trim()
+    const text = String(e.text ?? '').replace(/[\r\n\t]/g, ' ').trim()
+    const zh = e.zh === undefined ? undefined : String(e.zh).replace(/[\r\n\t]/g, ' ').trim().slice(0, 40)
+    if (!sym || sym.length > 4 || !text || text.length > 40) { warn(`emote "${id}" failed validation`); continue }
+    EMOTES[id] = { id, sym, text, ...(zh ? { zh } : {}) }
+    led.emotes.push(id)
+    rep.added.push('emote:' + id)
+  }
+
   for (const raw of m.characters ?? []) {
     const ch = raw as { base?: string; startingDeck?: unknown; startingRelic?: unknown }
     const base = ch.base as CharId
@@ -184,6 +200,7 @@ export function removeMod(modId: string) {
     const at = EVENTS.findIndex((e) => e.id === id)
     if (at >= 0) EVENTS.splice(at, 1)
   }
+  for (const id of led.emotes) delete EMOTES[id]
   for (const [base, deck, relic] of led.loadouts) {
     STARTER_DECKS[base] = deck
     STARTER_RELICS[base] = relic

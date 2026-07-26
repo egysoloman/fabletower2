@@ -5,7 +5,7 @@ import { CharSelect } from './charselect'
 import { hasSave, loadGame, screen } from '../store'
 import { screenWipe } from '../fx'
 import { installPrompt, setSetting, settings } from '../settings'
-import { account, login, logout, register, syncMsg, syncUp } from '../account'
+import { account, cloudUrl, login, logout, register, setCloudUrl, syncMsg, syncUp } from '../account'
 import { loadMods, mods, setModEnabled } from '../mods'
 import { useState as useAccState } from 'preact/hooks'
 import { muted, sfx, toggleMute } from '../sfx'
@@ -294,6 +294,7 @@ function AccountPanel() {
   const [user, setUser] = useAccState('')
   const [pass, setPass] = useAccState('')
   const [err, setErr] = useAccState('')
+  const [srv, setSrv] = useAccState(cloudUrl.value)
   const a = account.value
   const go = (fn: (u: string, p: string) => Promise<void>) => {
     setErr('')
@@ -302,6 +303,18 @@ function AccountPanel() {
   return (
     <div class="panel popin" style={{ minWidth: '340px' }}>
       <h2>{t('accTitle')}</h2>
+      <div class="sub" style={{ color: 'var(--cyan)' }}>{t('setCloud')}</div>
+      <input
+        class="neon"
+        placeholder={t('setCloudPh')}
+        value={srv}
+        onInput={(e) => setSrv((e.target as HTMLInputElement).value)}
+        onBlur={() => {
+          setCloudUrl(srv)
+          setSrv(cloudUrl.value)
+        }}
+      />
+      <div class="sub mp-hint">{t('setCloudHint')}</div>
       {a ? (
         <>
           <div class="sub">{tf('accHello', { name: a.name })}</div>
