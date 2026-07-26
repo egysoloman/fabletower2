@@ -4,6 +4,7 @@ import { CARDS, obtainableRelics, relicDesc, relicName, RELICS } from '@neonspir
 import { CardById } from '../components'
 import {
   cheatAddCard,
+  cheatAddPotion,
   cheatAddRelic,
   cheatDraw,
   cheatEnergy,
@@ -94,6 +95,7 @@ export function CheatMenu() {
           <button class="btn purple" onClick={() => (sfx.click(), setTab('cards'))}>{t('cheatAddCard')}</button>
           <button class="btn purple" onClick={() => (sfx.click(), setTab('relics'))}>{t('cheatAddRelic')}</button>
           <button class="btn purple" onClick={cheatRemoveCard}>{t('cheatRemove')}</button>
+          <button class="btn" onClick={cheatAddPotion}>{t('cheatPotion')}</button>
         </div>
         {inCombat && (
           <>

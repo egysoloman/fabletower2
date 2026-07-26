@@ -35,6 +35,14 @@ export interface RelicDef {
     goldBonusPct?: number
     /** Extra healing at rest sites. */
     restBonus?: number
+    /** Corrupt you apply lands this much harder. */
+    corruptBonus?: number
+    /** Gain block whenever you play a 0-cost card. */
+    zeroCostBlock?: number
+    /** Gain Strength whenever your draw pile is shuffled. */
+    onShuffleStr?: number
+    /** Power cards cost this much less. */
+    powerDiscount?: number
   }
 }
 
@@ -124,6 +132,31 @@ reg(R({
   id: 'solarcell', name: 'Solar Cell', rarity: 'common', sym: '☀',
   desc: 'Rest sites restore 15 additional HP.',
   hooks: { restBonus: 15 },
+}))
+reg(R({
+  id: 'plaguerouter', name: 'Plague Router', rarity: 'rare', sym: '⌬',
+  desc: 'Corrupt you apply to enemies is increased by 1.',
+  hooks: { corruptBonus: 1 },
+}))
+reg(R({
+  id: 'staticfield', name: 'Static Field', rarity: 'common', sym: '≋',
+  desc: 'Whenever you play a 0-cost card, gain 2 Block.',
+  hooks: { zeroCostBlock: 2 },
+}))
+reg(R({
+  id: 'chassis', name: 'Titanium Chassis', rarity: 'common', sym: '▣',
+  desc: 'Start each combat with 1 Plating (gain 1 Block at end of turn).',
+  hooks: { combatStatuses: { plating: 1 } },
+}))
+reg(R({
+  id: 'momentumdrive', name: 'Momentum Drive', rarity: 'rare', sym: '↻',
+  desc: 'Whenever your draw pile is shuffled, gain 1 Strength.',
+  hooks: { onShuffleStr: 1 },
+}))
+reg(R({
+  id: 'hypervisor', name: 'Hypervisor', rarity: 'boss', sym: '⌘',
+  desc: 'Power cards cost 1 less.',
+  hooks: { powerDiscount: 1 },
 }))
 
 export function relicName(id: string): string {

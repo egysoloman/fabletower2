@@ -400,9 +400,139 @@ describe('full runs (random bot)', () => {
   })
 })
 
+describe('archetype mechanics', () => {
+  /** Replace the opening hand with exactly these cards and max energy. */
+  function rig(cs: CombatState, ids: string[]) {
+    let uid = 5000
+    cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+    cs.player.energy = 99
+    return cs
+  }
+
+  it('barricade keeps block across turns', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['firmware', 'defend'])
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    s.player.block = 50 // big enough to survive any act-1 hit
+    const after = combatReduce(s, { t: 'end' }).state
+    if (!after.over) expect(after.player.block).toBeGreaterThan(20) // not reset at turn start
+  })
+
+  it('chronic stops enemy corrupt from decaying', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['chronicinj', 'malware'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    s = combatReduce(s, { t: 'play', hand: 0 }).state
+    expect(s.enemies[0].statuses.corrupt).toBe(4)
+    const after = combatReduce(s, { t: 'end' }).state
+    if (!after.over && !after.enemies[0].dead) {
+      expect(after.enemies[0].statuses.corrupt).toBe(4) // ticked but not decayed
+    }
+  })
+
+  it('kernel panic retaliates when cards grant block', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['kernelpanic', 'defend'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    const hpBefore = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state
+    expect(s.enemies[0].hp).toBe(hpBefore - 3)
+  })
+
+  it('hyperthread draws on 0-cost plays', () => {
+    const cs = rig(fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike', 'strike', 'strike'], ['golem']), ['hyperthread', 'zeroday'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    const handBefore = s.player.hand.length
+    s = combatReduce(s, { t: 'play', hand: 0 }).state
+    expect(s.player.hand.length).toBe(handBefore) // played 1, drew 1
+  })
+
+  it('payload burst scales with corrupt; fork virus doubles it', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['malware', 'forkvirus', 'payload'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // 4 corrupt
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // doubled to 8
+    expect(s.enemies[0].statuses.corrupt).toBe(8)
+    const hpBefore = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // 2×8 = 16 dmg
+    expect(hpBefore - s.enemies[0].hp).toBe(16)
+  })
+
+  it('double buffer doubles block; burst compile combos', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['defend', 'doublebuffer', 'pipeline', 'nopslide', 'burstcompile'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    s = combatReduce(s, { t: 'play', hand: 0 }).state
+    expect(s.player.block).toBe(10)
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // pipeline (3rd card)
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // nopslide (4th card)
+    const hpBefore = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // burstcompile, 5th card: combo
+    expect(hpBefore - s.enemies[0].hp).toBe(10) // 4 + 6 combo bonus
+  })
+
+  it('hypervisor makes powers cost 1 less', () => {
+    const cs = fixedCombat(['neoncore', 'neoncore', 'neoncore', 'neoncore', 'neoncore'], ['golem'], 42, ['hypervisor'])
+    const s = combatReduce(cs, { t: 'play', hand: 0 }).state
+    expect(s.player.energy).toBe(3) // 1-cost power played for free
+  })
+})
+
+describe('potions', () => {
+  it('applies effects through the shared interpreter', async () => {
+    const { applyPotion } = await import('../src/combat')
+    const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'])
+    cs.player.hp = 50
+    const healed = applyPotion(cs, 'repairkit')
+    expect(healed.error).toBeUndefined()
+    expect(healed.state.player.hp).toBe(60)
+    const vuln = applyPotion(cs, 'neurodart', 0)
+    expect(vuln.state.enemies[0].statuses.vuln).toBe(3)
+    expect(applyPotion(cs, 'nope').error).toBeTruthy()
+  })
+
+  it('drops respect belt capacity', async () => {
+    const { rollPotionDrop, MAX_POTIONS } = await import('../src/run')
+    const run = newRun(3)
+    run.potions = ['repairkit', 'surgecell', 'shieldcell']
+    for (let i = 0; i < 20; i++) expect(rollPotionDrop(run)).toBeNull()
+    expect(run.potions.length).toBe(MAX_POTIONS)
+  })
+})
+
+describe('ascension', () => {
+  it('scales enemy hp and damage', async () => {
+    const { startCombat } = await import('../src/combat')
+    const mk = (asc: number) =>
+      startCombat({
+        deck: ['strike', 'strike', 'strike', 'strike', 'strike'].map((id, i) => inst(id, i + 1)),
+        hp: 75, maxHp: 75, relics: [], enemyIds: ['golem'], encounterId: 'golem', seed: 9, uidStart: 100, asc,
+      })
+    const base = mk(0)
+    const hard = mk(5)
+    expect(hard.enemies[0].maxHp).toBeGreaterThan(base.enemies[0].maxHp)
+    const baseIntent = base.enemies[0].intent
+    const hardIntent = hard.enemies[0].intent
+    if (baseIntent?.dmg && hardIntent?.dmg && baseIntent.moveId === hardIntent.moveId) {
+      expect(hardIntent.dmg).toBeGreaterThanOrEqual(baseIntent.dmg)
+    }
+    expect(newRun(1, 5).maxHp).toBeLessThan(newRun(1, 0).maxHp)
+  })
+
+  it('boss relic choices are distinct and unowned', async () => {
+    const { bossRelicChoices } = await import('../src/run')
+    const run = newRun(7)
+    const choices = bossRelicChoices(run)
+    expect(choices.length).toBe(3)
+    expect(new Set(choices).size).toBe(3)
+    for (const id of choices) expect(run.relics.includes(id)).toBe(false)
+  })
+})
+
 describe('localization (zh)', () => {
   it('has a complete Chinese dictionary for every piece of content', async () => {
-    const { CARD_ZH, ENEMY_ZH, EVENT_ZH, RELIC_ZH } = await import('../src/locale-zh')
+    const { CARD_ZH, ENEMY_ZH, EVENT_ZH, RELIC_ZH, POTION_ZH } = await import('../src/locale-zh')
+    const { POTIONS } = await import('../src/potions')
+    const { BOOT_EVENT } = await import('../src/events')
+    for (const id of Object.keys(POTIONS)) {
+      expect(POTION_ZH[id]?.name, `potion ${id} missing zh name`).toBeTruthy()
+    }
+    expect(EVENT_ZH[BOOT_EVENT.id]?.choices.length, 'boot event zh mismatch').toBe(BOOT_EVENT.choices.length)
     for (const id of Object.keys(CARDS)) {
       expect(CARD_ZH[id]?.name, `card ${id} missing zh name`).toBeTruthy()
     }

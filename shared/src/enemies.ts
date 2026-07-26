@@ -295,12 +295,17 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   return weightedPick(rng, legal, score)
 }
 
-export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }): Intent {
+/** Ascension damage scaling for enemy attacks (+4% per level, rounded). */
+export function ascAtk(n: number, asc: number): number {
+  return asc > 0 ? Math.round(n * (1 + 0.04 * asc)) : n
+}
+
+export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0): Intent {
   const kind = moveIntentKind(m)
   const atk = m.effects.find((x) => x.k === 'atk')
   const intent: Intent = { moveId: m.id, name: m.name, kind }
   if (atk && atk.k === 'atk') {
-    intent.dmg = modifiedDamage(atk.n, e, player)
+    intent.dmg = modifiedDamage(ascAtk(atk.n, asc), e, player)
     if (atk.times && atk.times > 1) intent.times = atk.times
   }
   return intent

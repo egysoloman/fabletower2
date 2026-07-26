@@ -79,7 +79,7 @@ export function pvpReduce(prev: PvpState, playerIdx: 0 | 1, action: PvpAction): 
     ps.turn++
     const next = ps.sides[ps.active]
     const whoNext = 'p' + ps.active
-    if (tickTurnStart(next, whoNext, evs)) {
+    if (tickTurnStart(next, whoNext, evs, !!me.statuses.chronic)) {
       checkDeaths(ps, evs)
     } else {
       // Going second is a tempo loss; the classic +1 energy makes up for it.

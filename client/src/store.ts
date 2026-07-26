@@ -20,8 +20,11 @@ export interface RewardBundle {
   cardTaken: boolean
   relic: string | null
   relicTaken: boolean
-  bossRelic: string | null
-  bossRelicTaken: boolean
+  /** Boss reward: pick ONE of these relics. */
+  bossChoices: string[]
+  bossChoiceTaken: boolean
+  potion: string | null
+  potionTaken: boolean
   afterBoss: boolean
 }
 
@@ -107,6 +110,16 @@ export function loadGame(): boolean {
     if (!raw) return false
     const s = JSON.parse(raw)
     if (!s?.run) return false
+    // Back-compat with saves from before potions/ascension/boss-choice.
+    s.run.potions ??= []
+    s.run.asc ??= 0
+    if (s.reward) {
+      s.reward.bossChoices ??= s.reward.bossRelic ? [s.reward.bossRelic] : []
+      s.reward.bossChoiceTaken ??= !!s.reward.bossRelicTaken
+      s.reward.potion ??= null
+      s.reward.potionTaken ??= false
+    }
+    if (s.shop) s.shop.potions ??= []
     run.value = s.run
     combat.value = s.combat ?? null
     combatKind.value = s.combatKind ?? 'normal'

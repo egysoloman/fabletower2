@@ -7,10 +7,11 @@ import {
   type EnemyC,
   type Intent,
 } from '@neonspire/engine'
-import { BlockChip, CardView, HpBar, StatusRow, TopBar } from '../components'
-import { doCombat, playCardWithFx, resolveCombatIfOver } from '../game'
+import { BlockChip, CardView, HpBar, PotionBelt, StatusRow, TopBar } from '../components'
+import { POTIONS } from '@neonspire/engine'
+import { doCombat, playCardWithFx, resolveCombatIfOver, usePotion } from '../game'
 import { defeatFx, flyMini, fxPulses, fxRemainingMs, localWho, registerAnchor, useShake, victoryFx } from '../fx'
-import { combat, pileView } from '../store'
+import { combat, pileView, run } from '../store'
 import { byName } from '../components'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
@@ -69,6 +70,7 @@ function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarge
 export function CombatScreen() {
   const cs = combat.value
   const [selected, setSelected] = useState<number | null>(null)
+  const [potionSel, setPotionSel] = useState<number | null>(null)
   const shakeCls = useShake()
 
   useEffect(() => {
@@ -124,10 +126,34 @@ export function CombatScreen() {
   }
 
   const clickEnemy = (idx: number) => {
+    if (potionSel !== null) {
+      const belt = potionSel
+      setPotionSel(null)
+      usePotion(belt, 'e' + idx)
+      return
+    }
     if (selected === null) return
     const hand = selected
     setSelected(null)
     playCardWithFx(hand, 'e' + idx)
+  }
+
+  const clickPotion = (i: number) => {
+    if (cs.over) return
+    const id = run.value?.potions[i]
+    const def = id ? POTIONS[id] : null
+    if (!def) return
+    if (potionSel === i) {
+      setPotionSel(null)
+      return
+    }
+    if (def.target === 'enemy' && aliveWhos.length > 1) {
+      setSelected(null)
+      setPotionSel(i)
+    } else {
+      setPotionSel(null)
+      usePotion(i)
+    }
   }
 
   const dm = dragMode.value
@@ -135,7 +161,7 @@ export function CombatScreen() {
   const highlightOf = (i: number, e: EnemyC): Highlight => {
     if (e.dead) return 'none'
     if (dm === 'target') return dh === 'e' + i ? 'snap' : 'candidate'
-    return selected !== null ? 'candidate' : 'none'
+    return selected !== null || potionSel !== null ? 'candidate' : 'none'
   }
 
   return (
@@ -144,6 +170,7 @@ export function CombatScreen() {
       onContextMenu={(e) => {
         e.preventDefault()
         setSelected(null)
+        setPotionSel(null)
       }}
     >
       <TopBar />
@@ -181,11 +208,13 @@ export function CombatScreen() {
         </div>
       </div>
 
-      {selected !== null && (
+      {(selected !== null || potionSel !== null) && (
         <div class="turnbanner" style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9 }}>
           {t('selectTarget')}
         </div>
       )}
+
+      <PotionBelt cls="incombat" onUse={clickPotion} selected={potionSel} />
 
       <div class="dock">
         <div

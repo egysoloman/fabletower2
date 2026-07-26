@@ -17,6 +17,10 @@ export type StatusId =
   | 'drawGain' // +N cards drawn each turn
   | 'ritual' // gain N strength at end of own turn
   | 'regen' // restore N HP at start of own turn
+  | 'barricade' // block no longer expires at start of own turn
+  | 'kernel' // when a card gives you block, deal N to a random foe
+  | 'hyper' // when you play a 0-cost card, draw N
+  | 'chronic' // corrupt you apply to foes no longer wears off
 
 export type Statuses = Partial<Record<StatusId, number>>
 
@@ -43,6 +47,10 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   drawGain: { name: 'Uplink', sym: '≡', bad: false, desc: 'Draws {n} extra cards each turn.', powerText: 'Draw {n} additional card(s) at the start of each turn.' },
   ritual: { name: 'Ritual', sym: '↺', bad: false, desc: 'Gains {n} Strength at end of turn.', powerText: 'At the end of your turn, gain {n} Strength.' },
   regen: { name: 'Regen', sym: '✚', bad: false, desc: 'Restores {n} HP at the start of its turn.', powerText: 'At the start of your turn, restore {n} HP.' },
+  barricade: { name: 'Barricade', sym: '▓', bad: false, desc: 'Block no longer expires.', powerText: 'Your Block no longer expires at the start of your turn.' },
+  kernel: { name: 'Kernel', sym: '☲', bad: false, desc: 'When a card grants Block, deals {n} damage to a random enemy.', powerText: 'Whenever a card grants you Block, deal {n} damage to a random enemy.' },
+  hyper: { name: 'Hyperthread', sym: '⋙', bad: false, desc: 'Draws {n} card(s) when a 0-cost card is played.', powerText: 'Whenever you play a 0-cost card, draw {n} card(s).' },
+  chronic: { name: 'Chronic', sym: '∞', bad: false, desc: 'Corrupt on enemies no longer wears off.', powerText: 'Corrupt on enemies no longer wears off.' },
 }
 
 export const DEBUFFS: StatusId[] = ['weak', 'vuln', 'corrupt']
@@ -59,8 +67,12 @@ export type Effect =
   | { k: 'dmgAll'; n: number; times?: number }
   | { k: 'dmgVulnBonus'; n: number; bonus: number }
   | { k: 'dmgPerPower'; base: number; per: number }
+  | { k: 'dmgPerCorrupt'; mult: number }
+  | { k: 'dmgIfCombo'; n: number; bonus: number; threshold: number }
   | { k: 'blockAsDmg' }
   | { k: 'block'; n: number }
+  | { k: 'doubleBlock' }
+  | { k: 'doubleCorrupt' }
   | { k: 'draw'; n: number }
   | { k: 'energy'; n: number }
   | { k: 'heal'; n: number }
@@ -115,6 +127,8 @@ export interface DeckSide extends Fighter {
   exhausted: CardInst[]
   powersPlayed: number
   cardsPlayed: number
+  /** Cards played since this side's turn began (combo payoffs). */
+  cardsThisTurn: number
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +212,8 @@ export interface CombatState {
   relics: string[]
   uid: number
   encounterId: string
+  /** Ascension level the combat was started at (0 = base difficulty). */
+  asc: number
 }
 
 export type CombatAction = { t: 'play'; hand: number; target?: number } | { t: 'end' }
@@ -258,6 +274,7 @@ export interface ActMap {
 export interface ShopStock {
   cards: { id: string; price: number; sold: boolean }[]
   relics: { id: string; price: number; sold: boolean }[]
+  potions: { id: string; price: number; sold: boolean }[]
   removePrice: number
 }
 
@@ -282,4 +299,8 @@ export interface RunState {
   removesBought: number
   /** Event ids already visited this run (no repeats until pool exhausts). */
   seenEvents: string[]
+  /** Potion belt (max 3). */
+  potions: string[]
+  /** Ascension level of this run (0-5). */
+  asc: number
 }

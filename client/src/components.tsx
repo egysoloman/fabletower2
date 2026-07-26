@@ -2,9 +2,12 @@
 import type { JSX } from 'preact'
 import {
   CARDS,
+  POTIONS,
   RELICS,
   STATUS_INFO,
   cardCost,
+  potionDesc,
+  potionName,
   cardFlavor,
   cardName,
   describeCard,
@@ -16,7 +19,7 @@ import {
   type Statuses,
   type StatusId,
 } from '@neonspire/engine'
-import { cheatOpen, picker, pileView, run } from './store'
+import { cheatOpen, picker, pileView, run, screen } from './store'
 import { muted, sfx, toggleMute } from './sfx'
 import { burst, fxPulses, registerAnchor } from './fx'
 import { lang, t, tf, toggleLang } from './i18n'
@@ -111,6 +114,31 @@ export function RelicBar(props: { relics: string[] }) {
   )
 }
 
+/** Potion chips. Interactive in combat (onUse), read-only elsewhere. */
+export function PotionBelt(props: { onUse?: (idx: number) => void; selected?: number | null; cls?: string }) {
+  void lang.value
+  const r = run.value
+  if (!r || r.potions.length === 0) return null
+  return (
+    <div class={`potionbelt ${props.cls ?? ''}`}>
+      {r.potions.map((id, i) => {
+        const def = POTIONS[id]
+        if (!def) return null
+        return (
+          <div
+            key={i}
+            class={`potion ${def.rarity} ${props.onUse ? 'usable' : ''} ${props.selected === i ? 'selected' : ''}`}
+            data-tip={`${potionName(id)}\n${potionDesc(id)}`}
+            onClick={() => props.onUse?.(i)}
+          >
+            {def.sym}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /** Standard header for all run screens. */
 export function TopBar(props: { showAbandon?: boolean }) {
   const r = run.value
@@ -123,8 +151,12 @@ export function TopBar(props: { showAbandon?: boolean }) {
       <span class="stat gold-txt" data-tip={t('creditsTip')}>
         ¤ <b>{r.gold}</b>
       </span>
-      <span class="stat floor-txt">{tf('actFloor', { act: r.act, floor: r.floor })}</span>
+      <span class="stat floor-txt">
+        {tf('actFloor', { act: r.act, floor: r.floor })}
+        {r.asc > 0 ? ` · A${r.asc}` : ''}
+      </span>
       <RelicBar relics={r.relics} />
+      {screen.value !== 'combat' && <PotionBelt cls="inbar" />}
       <span class="spacer" />
       <span
         class={`stat linkish ${fxPulses.value['deck'] ?? ''}`}

@@ -57,4 +57,6 @@ export const ES = {
   glitchInfects: () => (isZh() ? '一张「故障」感染了你的牌组' : 'A Glitch infects your deck'),
   upgradedCard: (name: string) => (isZh() ? `升级了「${name}+」` : `Upgraded ${name}+`),
   nothingToUpgrade: () => (isZh() ? '没有可升级的牌' : 'Nothing left to upgrade'),
+  gotPotion: (name: string) => (isZh() ? `获得了「${name}」` : `Gained ${name}`),
+  potionsFull: () => (isZh() ? '药剂栏已满' : 'Potion belt is full'),
 }

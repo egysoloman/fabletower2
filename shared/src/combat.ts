@@ -9,9 +9,11 @@ import type {
   StepResult,
 } from './types'
 import { CARDS, cardCost } from './cards'
-import { ENEMIES, chooseMove, intentFor } from './enemies'
+import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
+import { POTIONS } from './potions'
 import { RELICS } from './relics'
 import {
+  applyEffects,
   applyStatus,
   attack,
   discardHand,
@@ -35,6 +37,9 @@ export interface StartCombatOpts {
   encounterId: string
   seed: number
   uidStart: number
+  /** Ascension level (0-5): scales enemy HP/damage, elites/bosses get str. */
+  asc?: number
+  kind?: 'normal' | 'elite' | 'boss'
 }
 
 export function startCombat(o: StartCombatOpts): CombatState {
@@ -54,13 +59,15 @@ export function startCombat(o: StartCombatOpts): CombatState {
     if (blk) player.block += blk
   }
 
+  const asc = o.asc ?? 0
   const enemies: EnemyC[] = o.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    const hp = randInt(rng, def.hp[0], def.hp[1])
+    const hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc))
     const statuses = { ...(def.traits ?? {}) }
     for (const [k, v] of Object.entries(enemyStart)) {
       statuses[k as keyof typeof statuses] = (statuses[k as keyof typeof statuses] ?? 0) + v
     }
+    if (asc >= 4 && (def.boss || o.kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
     return {
       defId: id,
       name: def.name,
@@ -86,6 +93,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
     relics: [...o.relics],
     uid: o.uidStart,
     encounterId: o.encounterId,
+    asc,
   }
 
   rollIntents(cs)
@@ -98,7 +106,7 @@ function rollIntents(cs: CombatState) {
   for (const e of cs.enemies) {
     if (e.dead) continue
     const move = chooseMove(e, cs, cs.rng)
-    e.intent = intentFor(move, e, cs.player)
+    e.intent = intentFor(move, e, cs.player, cs.asc)
   }
 }
 
@@ -135,7 +143,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
       case 'atk': {
         for (let t = 0; t < (eff.times ?? 1); t++) {
           if (cs.player.hp <= 0) break
-          attack(e, cs.player, eff.n, who, 'p', evs)
+          attack(e, cs.player, ascAtk(eff.n, cs.asc), who, 'p', evs)
         }
         break
       }
@@ -194,7 +202,7 @@ export function combatReduce(prev: CombatState, action: CombatAction): StepResul
     for (let i = 0; i < cs.enemies.length; i++) {
       const e = cs.enemies[i]
       if (e.dead) continue
-      if (tickTurnStart(e, 'e' + i, evs)) {
+      if (tickTurnStart(e, 'e' + i, evs, !!cs.player.statuses.chronic)) {
         markDeaths(cs, evs)
         continue
       }
@@ -215,6 +223,26 @@ export function combatReduce(prev: CombatState, action: CombatAction): StepResul
     }
   }
 
+  return { state: cs, events: evs }
+}
+
+/** Drink a potion: same interpreter as cards, no energy cost, no turn used. */
+export function applyPotion(prev: CombatState, potionId: string, target?: number): StepResult<CombatState> {
+  const def = POTIONS[potionId]
+  if (!def) return { state: prev, events: [], error: 'unknown potion' }
+  if (prev.over) return { state: prev, events: [], error: 'combat is over' }
+  const cs: CombatState = structuredClone(prev)
+  const evs: GameEvent[] = []
+  let t = target
+  if (def.target === 'enemy') {
+    const alive = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+    if (t === undefined && alive.length === 1) t = alive[0]
+    if (t === undefined || !cs.enemies[t] || cs.enemies[t].dead) {
+      return { state: prev, events: [], error: 'invalid target' }
+    }
+  }
+  applyEffects(cs, cs.player, 'p', foesOf(cs), t ?? 0, def.effects, evs)
+  markDeaths(cs, evs)
   return { state: cs, events: evs }
 }
 

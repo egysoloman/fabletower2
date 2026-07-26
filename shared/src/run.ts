@@ -1,6 +1,7 @@
 /** Run/meta layer: deck-building, map traversal, rewards, shops, events. */
 import type { CardInst, CombatState, NodeType, RunState, ShopStock } from './types'
 import { CARDS, cardBaseName, cardsByRarity, obtainableCards } from './cards'
+import { POTIONS, potionName } from './potions'
 import { RELICS, obtainableRelics, relicName } from './relics'
 import { ES } from './i18n'
 import { ENCOUNTERS } from './enemies'
@@ -16,10 +17,13 @@ export const STARTER_DECK: string[] = [
   'spike',
 ]
 
-export function newRun(seed: number): RunState {
+export const MAX_ASC = 5
+
+export function newRun(seed: number, asc = 0): RunState {
   const rng = rngFromSeed(seed)
   let uid = 1
   const deck = STARTER_DECK.map((id): CardInst => ({ uid: uid++, id, up: false }))
+  const maxHp = asc >= 5 ? 65 : 75
   return {
     seed,
     rng,
@@ -27,8 +31,8 @@ export function newRun(seed: number): RunState {
     map: genActMap(1, rng),
     pos: null,
     path: [],
-    hp: 75,
-    maxHp: 75,
+    hp: maxHp,
+    maxHp,
     gold: 99,
     deck,
     relics: ['cortexlink'],
@@ -37,6 +41,8 @@ export function newRun(seed: number): RunState {
     lastEncounter: '',
     removesBought: 0,
     seenEvents: [],
+    potions: [],
+    asc,
   }
 }
 
@@ -76,6 +82,8 @@ export function combatFor(run: RunState, kind: 'normal' | 'elite' | 'boss'): Com
     encounterId: enemyIds.join(','),
     seed: deriveSeed(run.rng),
     uidStart: run.uid,
+    asc: run.asc,
+    kind,
   })
 }
 
@@ -99,12 +107,13 @@ export function withGoldBonus(run: RunState, base: number): number {
 }
 
 export function goldReward(run: RunState, kind: 'normal' | 'elite' | 'boss'): number {
-  const base =
+  let base =
     kind === 'boss'
       ? randInt(run.rng, 65, 85)
       : kind === 'elite'
         ? randInt(run.rng, 32, 45)
         : randInt(run.rng, 13, 22) + run.act * 4
+  if (run.asc >= 3) base = Math.floor(base * 0.85)
   return withGoldBonus(run, base)
 }
 
@@ -136,6 +145,39 @@ export function bossRelicId(run: RunState): string | null {
   const pool = obtainableRelics(run.relics, true).filter((r) => r.rarity === 'boss')
   if (pool.length === 0) return null
   return pick(run.rng, pool).id
+}
+
+/** Up to 3 relics offered after a boss: boss-rarity first, rare fills in. */
+export function bossRelicChoices(run: RunState): string[] {
+  const pool = obtainableRelics(run.relics, true)
+  const bosses = pool.filter((r) => r.rarity === 'boss')
+  const rares = pool.filter((r) => r.rarity === 'rare')
+  const out: string[] = []
+  for (const group of [bosses, rares]) {
+    const bag = [...group]
+    while (out.length < 3 && bag.length > 0) {
+      out.push(bag.splice(Math.floor(rand(run.rng) * bag.length), 1)[0].id)
+    }
+  }
+  return out
+}
+
+// --- Potions -----------------------------------------------------------------
+
+export const MAX_POTIONS = 3
+
+export function randomPotionId(run: RunState): string {
+  const pool = Object.values(POTIONS)
+  const rares = pool.filter((p) => p.rarity === 'rare')
+  const commons = pool.filter((p) => p.rarity === 'common')
+  return rand(run.rng) < 0.22 ? pick(run.rng, rares).id : pick(run.rng, commons).id
+}
+
+/** ~35% of combat victories drop a potion (if there's belt space). */
+export function rollPotionDrop(run: RunState): string | null {
+  if (rand(run.rng) >= 0.35) return null
+  if (run.potions.length >= MAX_POTIONS) return null
+  return randomPotionId(run)
 }
 
 export function addCardToDeck(run: RunState, id: string, up = false): CardInst {
@@ -179,7 +221,17 @@ export function genShop(run: RunState): ShopStock {
     const def = relicPool.splice(Math.floor(rand(run.rng) * relicPool.length), 1)[0]
     relics.push({ id: def.id, price: def.rarity === 'rare' ? randInt(run.rng, 220, 250) : randInt(run.rng, 140, 165), sold: false })
   }
-  return { cards, relics, removePrice: 75 + 25 * run.removesBought }
+  const potions: ShopStock['potions'] = []
+  for (let i = 0; i < 2; i++) {
+    const id = randomPotionId(run)
+    if (potions.some((p) => p.id === id)) continue
+    potions.push({
+      id,
+      price: POTIONS[id].rarity === 'rare' ? randInt(run.rng, 70, 90) : randInt(run.rng, 42, 58),
+      sold: false,
+    })
+  }
+  return { cards, relics, potions, removePrice: 75 + 25 * run.removesBought }
 }
 
 // --- Rest / deck manipulation ----------------------------------------------
@@ -187,7 +239,7 @@ export function genShop(run: RunState): ShopStock {
 export function restHealAmount(run: RunState): number {
   let bonus = 0
   for (const r of run.relics) bonus += RELICS[r]?.hooks.restBonus ?? 0
-  return Math.floor(run.maxHp * 0.3) + bonus
+  return Math.floor(run.maxHp * (run.asc >= 3 ? 0.25 : 0.3)) + bonus
 }
 
 export function upgradeCard(run: RunState, uid: number): boolean {
@@ -256,10 +308,20 @@ export function applyOutcomes(run: RunState, outcomes: Outcome[]): { lines: stri
         }
         break
       }
-      case 'cardRandomRare': {
-        const def = pick(run.rng, obtainableCards().filter((c) => c.rarity === 'rare'))
+      case 'cardRandom': {
+        const def = pick(run.rng, obtainableCards().filter((c) => c.rarity === o.rarity))
         addCardToDeck(run, def.id)
         lines.push(ES.addedCard(cardBaseName(def.id)))
+        break
+      }
+      case 'potion': {
+        if (run.potions.length < MAX_POTIONS) {
+          const id = randomPotionId(run)
+          run.potions.push(id)
+          lines.push(ES.gotPotion(potionName(id)))
+        } else {
+          lines.push(ES.potionsFull())
+        }
         break
       }
       case 'cardGlitch':

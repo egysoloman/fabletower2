@@ -105,6 +105,8 @@ export function drawCards(side: DeckSide, n: number, env: PlayEnv, who: string, 
         side.energy += bonus
         evs.push({ e: 'status', who, id: 'energyGain', n: bonus })
       }
+      const str = relicHook(env, 'onShuffleStr')
+      if (str) applyStatus(side, 'str', str, who, evs)
     }
     side.hand.push(side.draw.pop()!)
   }
@@ -131,13 +133,16 @@ export function discardHand(side: DeckSide) {
  * Start-of-turn upkeep for any fighter: block expires, Corrupt ticks.
  * Returns true if the fighter died to Corrupt.
  */
-export function tickTurnStart(f: Fighter, who: string, evs: GameEvent[]): boolean {
-  f.block = 0
+export function tickTurnStart(f: Fighter, who: string, evs: GameEvent[], foeChronic = false): boolean {
+  if (!f.statuses.barricade) f.block = 0
   const corrupt = f.statuses.corrupt ?? 0
   if (corrupt > 0) {
     loseHp(f, corrupt, who, evs)
-    if (corrupt - 1 <= 0) delete f.statuses.corrupt
-    else f.statuses.corrupt = corrupt - 1
+    // Chronic (on the opposing side) stops Corrupt from wearing off.
+    if (!foeChronic) {
+      if (corrupt - 1 <= 0) delete f.statuses.corrupt
+      else f.statuses.corrupt = corrupt - 1
+    }
   }
   if (f.hp <= 0) return true
   const regen = f.statuses.regen ?? 0
@@ -193,6 +198,7 @@ export function refillSide(
   evs: GameEvent[],
   opts: { firstTurn?: boolean; bonusEnergy?: number; bonusDraw?: number } = {},
 ) {
+  side.cardsThisTurn = 0
   side.energy =
     side.energyMax +
     (side.statuses.energyGain ?? 0) +
@@ -206,6 +212,25 @@ export function refillSide(
     (opts.firstTurn ? relicHook(env, 'firstTurnDraw') : 0) +
     (opts.bonusDraw ?? 0)
   drawCards(side, n, env, who, evs)
+}
+
+/** Block granted by a card effect: applies Kernel retaliation on top. */
+function cardBlock(
+  side: DeckSide,
+  n: number,
+  whoSelf: string,
+  foes: { f: Fighter; who: string }[],
+  env: PlayEnv,
+  evs: GameEvent[],
+) {
+  if (n <= 0) return
+  gainBlock(side, n, whoSelf, evs)
+  const kernel = side.statuses.kernel ?? 0
+  const alive = foes.filter((x) => x.f.hp > 0)
+  if (kernel > 0 && alive.length > 0) {
+    const target = alive[randInt(env.rng, 0, alive.length - 1)]
+    plainDamage(target.f, kernel, target.who, evs)
+  }
 }
 
 function resolveEffect(
@@ -250,9 +275,35 @@ function resolveEffect(
       if (target && target.f.hp > 0) attack(side, target.f, side.block, whoSelf, target.who, evs)
       break
     }
-    case 'block':
-      gainBlock(side, eff.n, whoSelf, evs)
+    case 'dmgPerCorrupt': {
+      if (target && target.f.hp > 0) {
+        const base = eff.mult * (target.f.statuses.corrupt ?? 0)
+        if (base > 0) attack(side, target.f, base, whoSelf, target.who, evs)
+      }
       break
+    }
+    case 'dmgIfCombo': {
+      if (target && target.f.hp > 0) {
+        // cardsThisTurn was incremented for THIS card before effects resolve,
+        // so "played 3+ cards this turn" means a count of at least threshold+1.
+        const combo = side.cardsThisTurn > eff.threshold
+        attack(side, target.f, combo ? eff.n + eff.bonus : eff.n, whoSelf, target.who, evs)
+      }
+      break
+    }
+    case 'block':
+      cardBlock(side, eff.n, whoSelf, foes, env, evs)
+      break
+    case 'doubleBlock':
+      cardBlock(side, side.block, whoSelf, foes, env, evs)
+      break
+    case 'doubleCorrupt': {
+      if (target && target.f.hp > 0) {
+        const cur = target.f.statuses.corrupt ?? 0
+        if (cur > 0) applyStatus(target.f, 'corrupt', cur, target.who, evs)
+      }
+      break
+    }
     case 'draw':
       drawCards(side, eff.n, env, whoSelf, evs)
       break
@@ -271,11 +322,13 @@ function resolveEffect(
       break
     }
     case 'status': {
-      if (eff.to === 'self') applyStatus(side, eff.id, eff.n, whoSelf, evs)
+      // Plague Router: your Corrupt applications land harder.
+      const n = eff.id === 'corrupt' && eff.to !== 'self' ? eff.n + relicHook(env, 'corruptBonus') : eff.n
+      if (eff.to === 'self') applyStatus(side, eff.id, n, whoSelf, evs)
       else if (eff.to === 'target') {
-        if (target && target.f.hp > 0) applyStatus(target.f, eff.id, eff.n, target.who, evs)
+        if (target && target.f.hp > 0) applyStatus(target.f, eff.id, n, target.who, evs)
       } else {
-        for (const foe of aliveFoes()) applyStatus(foe.f, eff.id, eff.n, foe.who, evs)
+        for (const foe of aliveFoes()) applyStatus(foe.f, eff.id, n, foe.who, evs)
       }
       break
     }
@@ -288,6 +341,19 @@ function resolveEffect(
       break
     }
   }
+}
+
+/** Run a bare effect list (potions, scripted rewards) through the interpreter. */
+export function applyEffects(
+  env: PlayEnv,
+  side: DeckSide,
+  whoSelf: string,
+  foes: { f: Fighter; who: string }[],
+  targetIdx: number,
+  effects: Effect[],
+  evs: GameEvent[],
+) {
+  for (const eff of effects) resolveEffect(eff, env, side, whoSelf, foes, targetIdx, evs)
 }
 
 /**
@@ -309,7 +375,11 @@ export function playCardFromHand(
   if (!def) return 'unknown card'
   if (def.unplayable) return 'card is unplayable'
   const free = !!env.firstCardFree
-  const cost = free ? 0 : cardCost(card)
+  const baseCost = Math.max(
+    0,
+    cardCost(card) - (def.type === 'power' ? relicHook(env, 'powerDiscount') : 0),
+  )
+  const cost = free ? 0 : baseCost
   if (side.energy < cost) return 'not enough energy'
 
   let target = targetIdx
@@ -322,13 +392,22 @@ export function playCardFromHand(
   if (free) env.firstCardFree = false
   side.energy -= cost
   side.hand.splice(handIdx, 1)
+  side.cardsPlayed++
+  side.cardsThisTurn++
   evs.push({ e: 'move', who: whoSelf, id: card.id, name: def.name })
 
   for (const eff of cardEffects(card)) {
     resolveEffect(eff, env, side, whoSelf, foes, target ?? 0, evs)
   }
 
-  side.cardsPlayed++
+  // Tempo payoffs for genuinely-0-cost cards (their printed cost, not Quantum
+  // Chip freebies): Hyperthread draws, Static Field shields.
+  if (cardCost(card) === 0) {
+    const hyper = side.statuses.hyper ?? 0
+    if (hyper > 0) drawCards(side, hyper, env, whoSelf, evs)
+    const shield = relicHook(env, 'zeroCostBlock')
+    if (shield > 0) cardBlock(side, shield, whoSelf, foes, env, evs)
+  }
   if (def.type === 'power') {
     side.powersPlayed++
     const bonus = relicHook(env, 'onPowerBlock')
@@ -358,5 +437,6 @@ export function makeSide(name: string, hp: number, maxHp: number, deck: CardInst
     exhausted: [],
     powersPlayed: 0,
     cardsPlayed: 0,
+    cardsThisTurn: 0,
   }
 }

@@ -5,7 +5,8 @@ import {
   advanceAct,
   applyCombatResult,
   applyOutcomes,
-  bossRelicId,
+  applyPotion,
+  bossRelicChoices,
   combatFor,
   combatReduce,
   genShop,
@@ -13,13 +14,19 @@ import {
   moveTo,
   newRun,
   pickEvent,
+  randomPotionId,
   randomRelicId,
   removeCard,
   restHealAmount,
   rollCardRewards,
+  rollPotionDrop,
   upgradeCard,
   withGoldBonus,
+  BOOT_EVENT,
   CARDS,
+  MAX_ASC,
+  MAX_POTIONS,
+  POTIONS,
   cardName,
   drawCards,
   firstAliveEnemy,
@@ -47,15 +54,58 @@ import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, processE
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
-export function newGame(seed?: number) {
+// --- Ascension unlock + run history (device-local meta-progression) ---------
+
+export function ascUnlocked(): number {
+  try {
+    return Math.min(MAX_ASC, Number(localStorage.getItem('ns-ascmax') ?? 0) || 0)
+  } catch {
+    return 0
+  }
+}
+
+export interface RunRecord {
+  d: number
+  seed: number
+  asc: number
+  act: number
+  floor: number
+  win: boolean
+}
+
+export function runHistory(): RunRecord[] {
+  try {
+    return JSON.parse(localStorage.getItem('ns-history') ?? '[]')
+  } catch {
+    return []
+  }
+}
+
+function recordRun(win: boolean) {
+  const r = run.value
+  if (!r) return
+  try {
+    const list = runHistory()
+    list.unshift({ d: Date.now(), seed: r.seed, asc: r.asc, act: r.act, floor: r.floor, win })
+    localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
+    if (win && r.asc >= ascUnlocked() && ascUnlocked() < MAX_ASC) {
+      localStorage.setItem('ns-ascmax', String(r.asc + 1))
+    }
+  } catch {
+    /* stats are best-effort */
+  }
+}
+
+export function newGame(seed?: number, asc = 0) {
   const s = seed ?? ((Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0)
-  run.value = newRun(s)
+  run.value = newRun(s, asc)
   combat.value = null
   reward.value = null
   shop.value = null
-  currentEvent.value = null
   eventLines.value = null
-  screen.value = 'map'
+  // Neow-style boot bonus before the climb starts.
+  currentEvent.value = BOOT_EVENT
+  screen.value = 'event'
   saveGame()
 }
 
@@ -109,8 +159,10 @@ export function clickNode(id: string) {
         cardTaken: false,
         relic: randomRelicId(r),
         relicTaken: false,
-        bossRelic: null,
-        bossRelicTaken: false,
+        bossChoices: [],
+        bossChoiceTaken: false,
+        potion: null,
+        potionTaken: false,
         afterBoss: false,
       }
       screen.value = 'reward'
@@ -214,6 +266,7 @@ function finishCombat(cs: CombatState) {
   applyCombatResult(r, cs)
   combat.value = null
   if (cs.over === 'lose') {
+    recordRun(false)
     sfx.lose()
     clearSave()
     screen.value = 'gameover'
@@ -231,8 +284,10 @@ function finishCombat(cs: CombatState) {
     cardTaken: false,
     relic: kind === 'elite' ? randomRelicId(r) : null,
     relicTaken: false,
-    bossRelic: afterBoss ? bossRelicId(r) : null,
-    bossRelicTaken: false,
+    bossChoices: afterBoss ? bossRelicChoices(r) : [],
+    bossChoiceTaken: false,
+    potion: rollPotionDrop(r),
+    potionTaken: false,
     afterBoss,
   }
   screen.value = 'reward'
@@ -252,18 +307,60 @@ export function takeCardReward(id: string) {
   saveGame()
 }
 
-export function takeRelicReward(which: 'relic' | 'bossRelic') {
+export function takeRelicReward() {
   const b = reward.value
   const r = run.value
-  if (!b || !r) return
-  const id = which === 'relic' ? b.relic : b.bossRelic
-  const taken = which === 'relic' ? b.relicTaken : b.bossRelicTaken
-  if (!id || taken) return
-  addRelic(r, id)
-  if (which === 'relic') b.relicTaken = true
-  else b.bossRelicTaken = true
+  if (!b || !r || !b.relic || b.relicTaken) return
+  addRelic(r, b.relic)
+  b.relicTaken = true
   reward.value = { ...b }
   sfx.buy()
+  touch()
+  saveGame()
+}
+
+/** Boss rewards offer a choice — taking one forfeits the others. */
+export function takeBossRelic(id: string) {
+  const b = reward.value
+  const r = run.value
+  if (!b || !r || b.bossChoiceTaken || !b.bossChoices.includes(id)) return
+  addRelic(r, id)
+  b.bossChoiceTaken = true
+  reward.value = { ...b }
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function takePotionReward() {
+  const b = reward.value
+  const r = run.value
+  if (!b || !r || !b.potion || b.potionTaken || r.potions.length >= MAX_POTIONS) return
+  r.potions.push(b.potion)
+  b.potionTaken = true
+  reward.value = { ...b }
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+/** Drink a potion mid-combat (the only place potions can be used). */
+export function usePotion(beltIdx: number, targetWho?: string) {
+  const r = run.value
+  const cs = combat.value
+  if (!r || !cs || cs.over) return
+  const id = r.potions[beltIdx]
+  if (!id) return
+  const target = targetWho ? Number(targetWho.slice(1)) : undefined
+  const res = applyPotion(cs, id, target)
+  if (res.error) {
+    sfx.click()
+    return
+  }
+  r.potions.splice(beltIdx, 1)
+  combat.value = res.state
+  processEvents(res.events, { delay: 120 })
+  sfx.heal()
   touch()
   saveGame()
 }
@@ -275,6 +372,7 @@ export function continueFromReward() {
   reward.value = null
   if (b.afterBoss) {
     if (advanceAct(r) === 'victory') {
+      recordRun(true)
       clearSave()
       screen.value = 'victory'
       sfx.win()
@@ -315,6 +413,21 @@ export function shopBuyRelic(i: number) {
   r.gold -= item.price
   item.sold = true
   addRelic(r, item.id)
+  shop.value = { ...s }
+  sfx.buy()
+  touch()
+  saveGame()
+}
+
+export function shopBuyPotion(i: number) {
+  const s = shop.value
+  const r = run.value
+  if (!s || !r) return
+  const item = s.potions[i]
+  if (!item || item.sold || r.gold < item.price || r.potions.length >= MAX_POTIONS) return
+  r.gold -= item.price
+  item.sold = true
+  r.potions.push(item.id)
   shop.value = { ...s }
   sfx.buy()
   touch()
@@ -533,6 +646,15 @@ export function cheatRemoveCard() {
       saveGame()
     },
   }
+}
+
+export function cheatAddPotion() {
+  const r = run.value
+  if (!r || r.potions.length >= MAX_POTIONS) return
+  r.potions.push(randomPotionId(r))
+  sfx.buy()
+  touch()
+  saveGame()
 }
 
 export function cheatKillAll() {

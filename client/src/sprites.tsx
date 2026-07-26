@@ -214,6 +214,53 @@ const ART: Record<string, JSX.Element> = {
     </>
   ),
 
+  'ev-terminal': (
+    <>
+      <rect x="10" y="12" width="44" height="30" rx="3" />
+      <path d="M16 20 L24 26 L16 32" />
+      <path d="M28 32 H40" stroke-width="1.8" />
+      <path d="M26 48 H38 M22 54 H42" />
+      <path d="M32 42 V48" stroke-width="1.6" />
+    </>
+  ),
+  'ev-broker': (
+    <>
+      <circle cx="32" cy="15" r="7" />
+      <path d="M18 46 C18 30 46 30 46 46" />
+      <rect x="22" y="42" width="20" height="14" rx="2" />
+      <path d="M32 42 V48" stroke-width="1.6" />
+      {dot(32, 50)}
+    </>
+  ),
+  'ev-quarantine': (
+    <>
+      <path d="M32 8 L56 52 H8 Z" />
+      <path d="M32 24 V38" stroke-width="3" />
+      {dot(32, 45, 2.6)}
+    </>
+  ),
+  'ev-backup': (
+    <>
+      <ellipse cx="32" cy="14" rx="18" ry="6" />
+      <path d="M14 14 V46 A18 6 0 0 0 50 46 V14" />
+      <path d="M14 30 A18 6 0 0 0 50 30" stroke-width="1.8" />
+      {dot(42, 22)} {dot(42, 38)}
+    </>
+  ),
+  'ev-dispenser': (
+    <>
+      <rect x="14" y="10" width="36" height="44" rx="3" />
+      <path d="M32 20 V32 M26 26 H38" stroke-width="3.2" />
+      <rect x="24" y="42" width="16" height="7" rx="1.5" />
+    </>
+  ),
+  'ev-boot': (
+    <>
+      <path d="M32 8 V28" stroke-width="3" />
+      <path d="M20 16 A17 17 0 1 0 44 16" />
+      {dot(32, 52, 2.2)}
+    </>
+  ),
   glitch: (
     <>
       <rect x="16" y="16" width="32" height="32" rx="3" />

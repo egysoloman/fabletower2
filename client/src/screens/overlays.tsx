@@ -1,10 +1,13 @@
 /** Post-combat rewards, shop, rest site, and map events. */
 import {
+  POTIONS,
   RELICS,
   eventChoiceDetail,
   eventChoiceLabel,
   eventName,
   eventText,
+  potionDesc,
+  potionName,
   relicDesc,
   relicName,
   restHealAmount,
@@ -32,9 +35,12 @@ import {
   restHeal,
   restUpgrade,
   shopBuyCard,
+  shopBuyPotion,
   shopBuyRelic,
   shopRemoveService,
+  takeBossRelic,
   takeCardReward,
+  takePotionReward,
   takeRelicReward,
 } from '../game'
 import { currentEvent, eventLines, restUsed, reward, run, shop } from '../store'
@@ -67,11 +73,30 @@ export function RewardScreen() {
           <div class="sub" style={{ color: 'var(--gold)' }}>
             {tf('recovered', { n: b.gold })}
           </div>
-          {b.relic && !b.relicTaken && (
-            <RelicOffer id={b.relic} note={t('takeNote')} onClick={() => takeRelicReward('relic')} />
+          {b.relic && !b.relicTaken && <RelicOffer id={b.relic} note={t('takeNote')} onClick={() => takeRelicReward()} />}
+          {b.bossChoices.length > 0 && !b.bossChoiceTaken && (
+            <>
+              <div class="sub">{t('bossCachePick')}</div>
+              {b.bossChoices.map((id) => (
+                <RelicOffer key={id} id={id} note={t('bossCache')} onClick={() => takeBossRelic(id)} />
+              ))}
+            </>
           )}
-          {b.bossRelic && !b.bossRelicTaken && (
-            <RelicOffer id={b.bossRelic} note={t('bossCache')} onClick={() => takeRelicReward('bossRelic')} />
+          {b.potion && !b.potionTaken && (
+            <div
+              class="potion-offer"
+              onClick={(e) => {
+                const p = evCenter(e)
+                burst(p.x, p.y, '#3dffa2', 12, 2.8)
+                takePotionReward()
+              }}
+            >
+              <span class={`potion ${POTIONS[b.potion]?.rarity ?? 'common'}`}>{POTIONS[b.potion]?.sym}</span>
+              <span>
+                <span class="rname">{potionName(b.potion)}</span>
+                <span class="rdesc" style={{ display: 'block' }}>{potionDesc(b.potion)}</span>
+              </span>
+            </div>
           )}
           {b.cards && !b.cardTaken && (
             <>
@@ -159,6 +184,33 @@ export function ShopScreen() {
               </div>
             ))}
           </div>
+          {s.potions.length > 0 && (
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {s.potions.map((item, i) => (
+                <div
+                  key={i}
+                  class={`potion-offer ${item.sold ? 'sold' : ''}`}
+                  onClick={(e) => {
+                    if (item.sold || r.gold < item.price) return
+                    const p = evCenter(e)
+                    burst(p.x, p.y, '#3dffa2', 12, 2.8)
+                    shopBuyPotion(i)
+                  }}
+                >
+                  <span class={`potion ${POTIONS[item.id]?.rarity ?? 'common'}`}>{POTIONS[item.id]?.sym}</span>
+                  <span>
+                    <span class="rname">
+                      {potionName(item.id)}{' '}
+                      <span style={{ color: r.gold < item.price ? 'var(--red)' : 'var(--dim)' }}>
+                        · {item.sold ? t('sold') : `${item.price}¤`}
+                      </span>
+                    </span>
+                    <span class="rdesc" style={{ display: 'block' }}>{potionDesc(item.id)}</span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '14px' }}>
             <button class="btn purple" disabled={r.gold < s.removePrice} onClick={shopRemoveService}>
               {tf('purgeBtn', { n: s.removePrice })}

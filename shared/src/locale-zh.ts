@@ -48,6 +48,33 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
   viralload: { name: '病毒载荷' },
   compilerloop: { name: '编译循环', flavor: 'while(true) grow()' },
   glitch: { name: '故障', flavor: '�����' },
+  broadcast: { name: '广播恶意软件' },
+  payload: { name: '载荷引爆', flavor: '引爆感染' },
+  forkvirus: { name: '分叉病毒', flavor: '接触即复制' },
+  chronicinj: { name: '慢性注入器', flavor: '不会有补丁了' },
+  hullpatch: { name: '船体补片' },
+  doublebuffer: { name: '双重缓冲' },
+  firmware: { name: '固件锁', flavor: '写保护' },
+  kernelpanic: { name: '内核恐慌', flavor: '墙会反击' },
+  pipeline: { name: '流水线' },
+  nopslide: { name: 'NOP 滑梯', flavor: '0x90 0x90 0x90' },
+  quickpatch: { name: '快速补丁' },
+  burstcompile: { name: '爆发编译' },
+  hyperthread: { name: '超线程', flavor: '同样的硅，更多的通道' },
+  overwrite: { name: '覆写' },
+  daemonize: { name: '守护进程化', flavor: '在后台运行' },
+  glitchstorm: { name: '故障风暴', flavor: '连带腐化' },
+}
+
+export const POTION_ZH: Record<string, { name: string }> = {
+  repairkit: { name: '修复套件' },
+  surgecell: { name: '涌流电池' },
+  shieldcell: { name: '护盾电池' },
+  drawcache: { name: '抽取缓存' },
+  neurodart: { name: '神经飞镖' },
+  acidflask: { name: '酸蚀瓶' },
+  overloadcell: { name: '过载电池' },
+  strserum: { name: '力量血清' },
 }
 
 export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText?: string }> = {
@@ -63,6 +90,10 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   drawGain: { name: '上行链路', desc: '每回合额外抽 {n} 张牌。', powerText: '每回合开始时，额外抽 {n} 张牌。' },
   ritual: { name: '仪式', desc: '回合结束时获得 {n} 点力量。', powerText: '你的回合结束时，获得 {n} 点力量。' },
   regen: { name: '再生', desc: '回合开始时回复 {n} 点生命。', powerText: '你的回合开始时，回复 {n} 点生命。' },
+  barricade: { name: '壁垒', desc: '格挡不再消失。', powerText: '你的格挡不再在回合开始时消失。' },
+  kernel: { name: '内核', desc: '卡牌提供格挡时，对随机敌人造成 {n} 点伤害。', powerText: '每当卡牌为你提供格挡，对一名随机敌人造成 {n} 点伤害。' },
+  hyper: { name: '超线程', desc: '打出 0 费牌时抽 {n} 张牌。', powerText: '每当你打出一张 0 费牌，抽 {n} 张牌。' },
+  chronic: { name: '慢性', desc: '敌人身上的侵蚀不再消退。', powerText: '敌人身上的侵蚀不再消退。' },
 }
 
 export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
@@ -82,6 +113,11 @@ export const RELIC_ZH: Record<string, { name: string; desc: string }> = {
   cpuheatsink: { name: 'CPU 散热器', desc: '每回合开始时额外获得 1 点能量。' },
   ramstick: { name: '备用内存', desc: '每回合开始时额外抽 1 张牌。' },
   solarcell: { name: '太阳能电池', desc: '安全屋额外回复 15 点生命。' },
+  plaguerouter: { name: '瘟疫路由', desc: '你对敌人施加的侵蚀 +1。' },
+  staticfield: { name: '静电场', desc: '每当你打出一张 0 费牌，获得 2 点格挡。' },
+  chassis: { name: '钛合金机身', desc: '每场战斗开始时获得 1 层镀层（回合结束获得 1 点格挡）。' },
+  momentumdrive: { name: '动量驱动', desc: '每当你的抽牌堆被洗牌，获得 1 点力量。' },
+  hypervisor: { name: '虚拟机监视器', desc: '能力牌费用 -1。' },
 }
 
 export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, string> }> = {
@@ -143,6 +179,56 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
     choices: [
       { label: '轻装上阵', detail: '从你的牌组中移除一张牌。' },
       { label: '变得强大', detail: '生命上限提高 6。' },
+    ],
+  },
+  terminal: {
+    name: '超频终端',
+    text: '一台仍处于登录状态的开发终端，风扇在极限嘶吼。构建流水线完全敞开——只要你受得了这温度。',
+    choices: [
+      { label: '劫持构建', detail: '升级 2 张随机卡牌。受到 10 点伤害。' },
+      { label: '退后一步', detail: '什么都不会发生。' },
+    ],
+  },
+  broker: {
+    name: '数据掮客',
+    text: '"什么都能卖，"掮客敲着一板灰市清单说，"包括你随身携带的代码。"',
+    choices: [
+      { label: '卖掉一张牌', detail: '从牌组中移除一张牌，获得 45¤。' },
+      { label: '拒绝', detail: '什么都不会发生。' },
+    ],
+  },
+  quarantine: {
+    name: '隔离金库',
+    text: '一座盖满危险标识的密封金库。里面的东西被锁起来是有原因的——而且它仍在运行。',
+    choices: [
+      { label: '破开封印', detail: '将一张随机稀有牌加入牌组。附带一张「故障」。' },
+      { label: '保持密封', detail: '什么都不会发生。' },
+    ],
+  },
+  backup: {
+    name: '备份节点',
+    text: '一面裂墙后嗡鸣着一个完好的备份节点，储满干净的状态。足以还原——或者永久扩容。',
+    choices: [
+      { label: '还原', detail: '回复 25 点生命。' },
+      { label: '扩容', detail: '生命上限提高 5。' },
+    ],
+  },
+  dispenser: {
+    name: '医疗分发机',
+    text: '一台野战医疗分发机，库存尚在。锁已经坏了，保质期则相当乐观。',
+    choices: [
+      { label: '搜刮托盘', detail: '获得一瓶随机药剂并回复 5 点生命。' },
+      { label: '离开', detail: '什么都不会发生。' },
+    ],
+  },
+  boot: {
+    name: '启动序列',
+    text: '尖塔的外层防火墙解析了你的签名，迟疑了一瞬。攀登开始前，允许对你的配置进行一次免费写入。',
+    choices: [
+      { label: '强化', detail: '生命上限提高 8。' },
+      { label: '变现', detail: '获得 75¤。' },
+      { label: '拾荒', detail: '获得一个随机遗物。' },
+      { label: '碎片整理', detail: '从牌组中移除一张牌。' },
     ],
   },
 }

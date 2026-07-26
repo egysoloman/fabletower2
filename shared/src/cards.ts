@@ -277,6 +277,109 @@ reg(c({
   flavor: 'while(true) grow()',
 }))
 
+// --- Corrupt archetype ------------------------------------------------------
+
+reg(c({
+  id: 'broadcast', name: 'Broadcast Malware', type: 'skill', rarity: 'common', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'all', id: 'corrupt', n: 3 }],
+  upEffects: [{ k: 'status', to: 'all', id: 'corrupt', n: 4 }],
+}))
+reg(c({
+  id: 'payload', name: 'Payload Burst', type: 'attack', rarity: 'uncommon', cost: 1, target: 'enemy',
+  effects: [{ k: 'dmgPerCorrupt', mult: 2 }], upEffects: [{ k: 'dmgPerCorrupt', mult: 3 }],
+  flavor: 'detonate the infection',
+}))
+reg(c({
+  id: 'forkvirus', name: 'Fork Virus', type: 'skill', rarity: 'uncommon', cost: 1, upCost: 0, target: 'enemy',
+  effects: [{ k: 'doubleCorrupt' }], upEffects: [{ k: 'doubleCorrupt' }],
+  flavor: 'replicates on contact',
+}))
+reg(c({
+  id: 'chronicinj', name: 'Chronic Injector', type: 'power', rarity: 'rare', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'chronic', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'chronic', n: 1 }],
+  flavor: 'no patch is coming',
+}))
+
+// --- Fortress archetype -----------------------------------------------------
+
+reg(c({
+  id: 'hullpatch', name: 'Hull Patch', type: 'skill', rarity: 'common', cost: 1, target: 'none',
+  effects: [{ k: 'block', n: 6 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'block', n: 9 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'doublebuffer', name: 'Double Buffer', type: 'skill', rarity: 'uncommon', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'doubleBlock' }], upEffects: [{ k: 'doubleBlock' }],
+}))
+reg(c({
+  id: 'firmware', name: 'Firmware Lock', type: 'power', rarity: 'rare', cost: 2, upCost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'barricade', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'barricade', n: 1 }],
+  flavor: 'write-protected',
+}))
+reg(c({
+  id: 'kernelpanic', name: 'Kernel Panic', type: 'power', rarity: 'rare', cost: 2, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'kernel', n: 3 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'kernel', n: 5 }],
+  flavor: 'the wall fights back',
+}))
+
+// --- Tempo (0-cost) archetype -----------------------------------------------
+
+reg(c({
+  id: 'pipeline', name: 'Pipeline', type: 'skill', rarity: 'common', cost: 0, target: 'none',
+  effects: [{ k: 'block', n: 3 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'block', n: 5 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'nopslide', name: 'NOP Slide', type: 'attack', rarity: 'common', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmg', n: 2, times: 2 }], upEffects: [{ k: 'dmg', n: 3, times: 2 }],
+  flavor: '0x90 0x90 0x90',
+}))
+reg(c({
+  id: 'quickpatch', name: 'Quick Patch', type: 'skill', rarity: 'uncommon', cost: 0, target: 'none',
+  effects: [{ k: 'heal', n: 3 }], upEffects: [{ k: 'heal', n: 5 }],
+  exhaust: true, upExhaust: true,
+}))
+reg(c({
+  id: 'burstcompile', name: 'Burst Compile', type: 'attack', rarity: 'uncommon', cost: 0, target: 'enemy',
+  effects: [{ k: 'dmgIfCombo', n: 4, bonus: 6, threshold: 3 }],
+  upEffects: [{ k: 'dmgIfCombo', n: 6, bonus: 8, threshold: 3 }],
+}))
+reg(c({
+  id: 'hyperthread', name: 'Hyperthread', type: 'power', rarity: 'rare', cost: 1, target: 'none',
+  effects: [{ k: 'status', to: 'self', id: 'hyper', n: 1 }],
+  upEffects: [{ k: 'status', to: 'self', id: 'hyper', n: 2 }],
+  flavor: 'more lanes, same silicon',
+}))
+
+// --- Extra spice ------------------------------------------------------------
+
+reg(c({
+  id: 'overwrite', name: 'Overwrite', type: 'attack', rarity: 'rare', cost: 2, target: 'enemy',
+  effects: [{ k: 'dmg', n: 12 }, { k: 'draw', n: 1 }],
+  upEffects: [{ k: 'dmg', n: 16 }, { k: 'draw', n: 1 }],
+}))
+reg(c({
+  id: 'daemonize', name: 'Daemonize', type: 'power', rarity: 'uncommon', cost: 2, target: 'none',
+  effects: [
+    { k: 'status', to: 'self', id: 'turret', n: 4 },
+    { k: 'status', to: 'self', id: 'plating', n: 2 },
+  ],
+  upEffects: [
+    { k: 'status', to: 'self', id: 'turret', n: 6 },
+    { k: 'status', to: 'self', id: 'plating', n: 3 },
+  ],
+  flavor: 'runs in the background',
+}))
+reg(c({
+  id: 'glitchstorm', name: 'Glitch Storm', type: 'attack', rarity: 'rare', cost: 1, target: 'none',
+  effects: [{ k: 'dmgAll', n: 4 }, { k: 'addCard', id: 'glitch', where: 'discard', n: 1 }],
+  upEffects: [{ k: 'dmgAll', n: 7 }, { k: 'addCard', id: 'glitch', where: 'discard', n: 1 }],
+  flavor: 'collateral corruption',
+}))
+
 // --- Status/junk cards ------------------------------------------------------
 
 reg(c({
@@ -335,10 +438,18 @@ function effTextEn(e: Effect): string {
       return `Deal ${e.n} damage. Deals ${e.bonus} more to Vulnerable enemies.`
     case 'dmgPerPower':
       return `Deal ${e.base} damage, plus ${e.per} for each Power you've played this combat.`
+    case 'dmgPerCorrupt':
+      return `Deal damage equal to ${e.mult}× the target's Corrupt.`
+    case 'dmgIfCombo':
+      return `Deal ${e.n} damage. If you've played ${e.threshold}+ other cards this turn, deal ${e.n + e.bonus} instead.`
     case 'blockAsDmg':
       return 'Deal damage equal to your Block.'
     case 'block':
       return `Gain ${e.n} Block.`
+    case 'doubleBlock':
+      return 'Double your Block.'
+    case 'doubleCorrupt':
+      return "Double the target's Corrupt."
     case 'draw':
       return `Draw ${e.n} card${e.n > 1 ? 's' : ''}.`
     case 'energy':
@@ -375,10 +486,18 @@ function effTextZh(e: Effect): string {
       return `造成 ${e.n} 点伤害。对易伤敌人额外造成 ${e.bonus} 点。`
     case 'dmgPerPower':
       return `造成 ${e.base} 点伤害，本场战斗中每打出过一张能力牌，额外 +${e.per}。`
+    case 'dmgPerCorrupt':
+      return `造成等同于目标侵蚀 ${e.mult} 倍的伤害。`
+    case 'dmgIfCombo':
+      return `造成 ${e.n} 点伤害。若本回合已打出 ${e.threshold}+ 张其他牌，则改为造成 ${e.n + e.bonus} 点。`
     case 'blockAsDmg':
       return '造成等同于你格挡值的伤害。'
     case 'block':
       return `获得 ${e.n} 点格挡。`
+    case 'doubleBlock':
+      return '使你的格挡翻倍。'
+    case 'doubleCorrupt':
+      return '使目标的侵蚀翻倍。'
     case 'draw':
       return `抽 ${e.n} 张牌。`
     case 'energy':
@@ -408,6 +527,11 @@ function effTextZh(e: Effect): string {
 
 function effText(e: Effect): string {
   return isZh() ? effTextZh(e) : effTextEn(e)
+}
+
+/** Localized rules text for a bare effect list (potions, previews). */
+export function describeEffects(effects: Effect[]): string {
+  return effects.map(effText).join(' ')
 }
 
 /** Generate rules text for a card (matches interpreter behaviour exactly). */
