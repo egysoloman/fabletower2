@@ -11,6 +11,7 @@ import { modsKey } from './mods'
 import { discoverEvent } from './meta'
 import { screen } from './store'
 import { sfx } from './sfx'
+import { t } from './i18n'
 
 export type CoopPhase =
   | 'idle'
@@ -41,6 +42,10 @@ export const coopLobby = signal<{ members: string[]; need: number } | null>(null
 /** Formation stage: full party gathered, waiting on READY from everyone. */
 export const coopForm = signal<{ tag: string; char: string; ready: boolean }[] | null>(null)
 export const coopConn = signal<'online' | 'reconnecting'>('online')
+/** Server security/performance mode, mirrored from combat messages. */
+export const coopMode = signal<'strict' | 'hybrid'>('hybrid')
+/** True while our own hybrid-predicted action awaits the server echo. */
+export const coopPredicted = { current: false }
 export const coopShop = signal<any>(null)
 export const coopEvent = signal<any>(null)
 export const coopRestDeck = signal<any[]>([])
@@ -204,7 +209,8 @@ function handleMsg(msg: MessageEvent, url: string) {
         case 'coopcombat':
           if (coopPhase.value !== 'combat') screenWipe('◈', 'var(--green)')
         // fall through
-        case 'coopst':
+        case 'coopst': {
+          if (data.mode) coopMode.value = data.mode
           coopYou.value = data.you
           coopView.value = data.view
           if (data.belt) coopBelt.value = data.belt
@@ -213,8 +219,16 @@ function handleMsg(msg: MessageEvent, url: string) {
           if (data.played && data.played.who !== data.you) {
             coopFlash(`◈ ally ▸ ${data.played.card.id}${data.played.card.up ? '+' : ''}`)
           }
-          if (data.events) processEvents(data.events as GameEvent[], { delay: 200, step: 120 })
+          if (data.corrected) coopFlash(t('desyncFixed'))
+          // Hybrid: our own action already animated from the local prediction —
+          // the authoritative view snaps in silently unless it was corrected.
+          const mine = data.by !== undefined && data.by === data.you
+          if (data.events && !(mine && coopPredicted.current && !data.corrected)) {
+            processEvents(data.events as GameEvent[], { delay: 200, step: 120 })
+          }
+          if (mine) coopPredicted.current = false
           break
+        }
         case 'coopreward':
           coopReward.value = data
           coopPhase.value = 'reward'

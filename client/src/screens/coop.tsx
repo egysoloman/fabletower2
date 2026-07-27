@@ -3,10 +3,10 @@
  * combat against shared enemies, per-player rewards and rest choices.
  * Everything is server-authoritative; this file only renders and asks.
  */
-import { useState } from 'preact/hooks'
-import { CARDS, EVENTS, POTIONS, cardCost, cardName, eventChoiceDetail, eventChoiceLabel, eventName, eventText, relicName, type CharId } from '@neonspire/engine'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, relicName, type CharId } from '@neonspire/engine'
 import { BlockChip, CardById, CardView, HpBar, StatusRow } from '../components'
-import { anchorCenter, burst, flyCard, fxPulses, registerAnchor, useShake } from '../fx'
+import { anchorCenter, burst, flyCard, fxPulses, processEvents, registerAnchor, useShake } from '../fx'
 import {
   coopExit,
   coopHost,
@@ -26,6 +26,8 @@ import {
   coopForm,
   coopLobby,
   coopReady,
+  coopMode,
+  coopPredicted,
   coopRestDeck,
   coopResumeSaved,
   coopSavedSeat,
@@ -38,11 +40,8 @@ import { Sprite } from '../sprites'
 import { DraggableHand } from './hand'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
+import { MapView, mapGeometry } from './mapview'
 import { mpName } from '../mp'
-
-const NODE_LABEL: Record<string, string> = {
-  combat: '⚔', elite: '☠', boss: '◆', rest: '✚', treasure: '¤', shop: '$', event: '?',
-}
 
 export function CoopScreen() {
   const [char, setChar] = useState<CharId>(lastChar())
@@ -59,6 +58,34 @@ export function CoopScreen() {
       .filter((tg: { idx: number }) => tg.idx !== m.you)
   }
   const sendEmote = (m: { id?: string; text?: string; target?: number }) => coopSend({ t: 'emote', ...m })
+
+  // Party-orbit overlay: track the current node's on-screen position.
+  const coopSvg = useRef<SVGSVGElement | null>(null)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const [orbitPos, setOrbitPos] = useState<{ x: number; y: number } | null>(null)
+  const mapPos = coopMap.value?.pos ?? null
+  useEffect(() => {
+    if (phase !== 'map' || !mapPos) {
+      setOrbitPos(null)
+      return
+    }
+    const raf = requestAnimationFrame(() => {
+      const svg = coopSvg.current
+      const wrap = wrapRef.current
+      const mm = coopMap.value
+      if (!svg || !wrap || !mm) return
+      const node = mm.map.rows.flat().find((n: any) => n.id === mm.pos)
+      if (!node) return
+      const g = mapGeometry(mm.map)
+      const sr = svg.getBoundingClientRect()
+      const wr = wrap.getBoundingClientRect()
+      setOrbitPos({
+        x: sr.left - wr.left + (g.cx(node) / g.W) * sr.width,
+        y: sr.top - wr.top + (g.cy(node) / g.H) * sr.height,
+      })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [phase, mapPos])
 
   // --- Combat ---------------------------------------------------------------
   if (phase === 'combat' && coopView.value) {
@@ -85,8 +112,23 @@ export function CoopScreen() {
         sfx.whoosh()
       }
       sfx.play()
+      const action = { t: 'play', hand: idx, target, ally: def.target === 'ally' ? you : undefined }
+      // Hybrid: play the outcome instantly from a local prediction; the
+      // authoritative reply snaps in behind it. Strict: wait for the server.
+      if (coopMode.value === 'hybrid') {
+        const sum = coopChecksum(v)
+        const pred = predictCoopPlay(v, you, idx, target)
+        if (pred) {
+          coopPredicted.current = true
+          coopView.value = pred.view
+          processEvents(pred.events, { delay: 200 })
+        }
+        coopPending.value = true
+        coopSend({ t: 'coopaction', action, sum })
+        return
+      }
       coopPending.value = true
-      coopSend({ t: 'coopaction', action: { t: 'play', hand: idx, target, ally: def.target === 'ally' ? you : undefined } })
+      coopSend({ t: 'coopaction', action })
     }
     const enemyTargets = v.enemies.map((e: any, i: number) => (e.dead ? null : 'e' + i)).filter(Boolean) as string[]
 
@@ -94,6 +136,12 @@ export function CoopScreen() {
       <div class={`combat screen ${shakeCls}`}>
         <div class="topbar">
           <span class="stat" style={{ color: 'var(--green)' }}>{t('coopParty')}</span>
+          <span
+            class={`modebadge ${coopMode.value}`}
+            data-tip={coopMode.value === 'strict' ? t('modeStrictTip') : t('modeHybridTip')}
+          >
+            {coopMode.value.toUpperCase()}
+          </span>
           <span class="spacer" />
           <span
             class={`turn-indicator ${myTurn ? 'you' : 'them'}`}
@@ -290,55 +338,43 @@ export function CoopScreen() {
             <div class="sub" style={{ color: 'var(--gold)' }}>
               {tf('actFloor', { act: m.act, floor: m.floor })} · {coopHost.value ? t('coopYouLead') : t('coopHostLeads')}
             </div>
-            <div class="orbitwrap" data-tip={t('partyHere')}>
-              {m.party.map((p: any, i: number) => (
-                <div
-                  key={i}
-                  class="orbit-token"
-                  style={{ '--oc': p.color, animationDelay: `${(-8 * i) / m.party.length}s` }}
-                  data-tip={p.name}
-                >
-                  <span style={{ color: p.color }}>
-                    <Sprite id={p.char} size={26} />
-                  </span>
-                </div>
-              ))}
-              <div class="orbit-core" style={{ '--cc': charColor(m.party[0]?.char ?? 'runner') } as never} />
-              {m.party.map((p: any, i: number) =>
-                i === 0 ? null : (
-                  <div
-                    key={'ring' + i}
-                    class="orbit-ring"
-                    style={{ '--cc': charColor(p.char ?? 'runner'), '--rd': `${(i - 1) * 0.8}s` } as never}
-                  />
-                ),
-              )}
-            </div>
-            <div class="coopnodes">
-              {(m.pos === null
-                ? m.map.rows[0].map((n: any) => n.id)
-                : (m.map.rows.flat().find((n: any) => n.id === m.pos)?.next ?? [])
-              ).map((id: string) => {
-                const node = m.map.rows.flat().find((n: any) => n.id === id)
-                const voters = coopVotes.value.filter((v) => v.id === id)
-                return (
-                  <button
-                    key={id}
-                    class="btn coopnode"
-                    onClick={() => coopSend(coopHost.value ? { t: 'cooppick', id } : { t: 'coopvote', id })}
-                  >
-                    {NODE_LABEL[node?.type ?? 'combat']} {t(('node_' + (node?.type ?? 'combat')) as Parameters<typeof t>[0])}
-                    {voters.length > 0 && (
-                      <span class="voterow">
-                        {voters.map((v) => (
-                          <span key={v.i} class="votedot" style={{ background: v.color }} data-tip={v.name} />
-                        ))}
-                        {coopHost.value && <small class="votecount">{tf('votesN', { n: voters.length })}</small>}
+            <div class="map-wrap coopmapwrap" ref={wrapRef}>
+              <MapView
+                map={m.map}
+                pos={m.pos}
+                path={m.path ?? []}
+                open={
+                  new Set<string>(
+                    m.pos === null
+                      ? m.map.rows[0].map((n: any) => n.id)
+                      : (m.map.rows.flat().find((n: any) => n.id === m.pos)?.next ?? []),
+                  )
+                }
+                onNode={(n) => coopSend(coopHost.value ? { t: 'cooppick', id: n.id } : { t: 'coopvote', id: n.id })}
+                pc={charColor((m.party?.[0]?.char ?? 'runner') as never)}
+                ringColors={(m.party ?? []).slice(1).map((p: any) => charColor((p.char ?? 'runner') as never))}
+                votes={(() => {
+                  const out: Record<string, string[]> = {}
+                  for (const v of coopVotes.value) if (v.id) (out[v.id] ??= []).push(v.color)
+                  return out
+                })()}
+                svgRef={(el) => (coopSvg.current = el)}
+              />
+              {orbitPos && (
+                <div class="orbitwrap onmap" style={{ left: orbitPos.x + 'px', top: orbitPos.y + 'px' }}>
+                  {m.party.map((p: any, i: number) => (
+                    <div
+                      key={i}
+                      class="orbit-token"
+                      style={{ '--oc': p.color, animationDelay: `${(-8 * i) / m.party.length}s` }}
+                    >
+                      <span style={{ color: p.color }}>
+                        <Sprite id={p.char} size={22} />
                       </span>
-                    )}
-                  </button>
-                )
-              })}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             {!coopHost.value && <div class="sub" style={{ fontSize: '11px' }}>{t('voteHint')}</div>}
             <div class="coopparty-list">

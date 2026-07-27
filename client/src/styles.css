@@ -1639,6 +1639,18 @@ body.emote-dragging .opp-zone {
 
 /* portrait / narrow screens: selection pages reflow into a tight column */
 @media (orientation: portrait), (max-width: 700px) {
+  /* the energy orb sat 74px LEFT of the player zone and fell off-screen —
+   * dock it on the zone's top edge instead */
+  .energy-orb {
+    left: 50%;
+    top: -28px;
+    transform: translateX(-50%);
+    width: 46px;
+    height: 46px;
+    font-size: 15px;
+  }
+  .turnbanner { font-size: 22px; letter-spacing: 0.18em; padding: 10px 22px; max-width: 96vw; white-space: normal; }
+  .arena { gap: 10px; }
   .charrow { gap: 8px; }
   .charcard { width: min(92vw, 340px); padding: 9px 12px; }
   .charcard .cdesc-h { font-size: 10.5px; }
@@ -1808,6 +1820,16 @@ details .gridcards { margin-top: 10px; max-height: 40vh; overflow-y: auto; }
   from { transform: translate(-50%, -50%) rotate(0deg) translateX(42px) rotate(0deg); }
   to { transform: translate(-50%, -50%) rotate(360deg) translateX(42px) rotate(-360deg); }
 }
+/* party tokens orbiting the CURRENT NODE of the real co-op map */
+.coopmapwrap { position: relative; }
+.orbitwrap.onmap { position: absolute; width: 0; height: 0; margin: 0; pointer-events: none; cursor: default; }
+.orbitwrap.onmap .orbit-token { animation-name: orbitTight; }
+@keyframes orbitTight {
+  from { transform: translate(-50%, -50%) rotate(0deg) translateX(26px) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg) translateX(26px) rotate(-360deg); }
+}
+/* advisory vote markers drawn on map nodes */
+.votedot-svg { stroke: rgba(4, 2, 14, 0.8); stroke-width: 1; filter: drop-shadow(0 0 3px currentColor); }
 /* voting */
 .coopnode { position: relative; }
 .voterow { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; }

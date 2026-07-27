@@ -1,71 +1,27 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { MAP_COLS, MAP_ROWS, allNodes, availableNodeIds, type MapNode, type NodeType } from '@neonspire/engine'
+import { allNodes, availableNodeIds, type MapNode } from '@neonspire/engine'
 import { TopBar } from '../components'
 import { clickNode } from '../game'
 import { burst, uiRipple } from '../fx'
 import { climbActive, climbEmote, climbOpp, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
 import { sfx } from '../sfx'
-import { t, tf } from '../i18n'
+import { tf } from '../i18n'
 import { charColor } from './charselect'
-
-const ICONS: Record<NodeType, string> = {
-  combat: '⚔',
-  elite: '☠',
-  rest: '♨',
-  shop: '¤',
-  treasure: '◆',
-  event: '?',
-  boss: '◉',
-}
-
-function nodeName(type: NodeType): string {
-  switch (type) {
-    case 'combat': return t('nodeCombat')
-    case 'elite': return t('nodeElite')
-    case 'rest': return t('nodeRest')
-    case 'shop': return t('nodeShop')
-    case 'treasure': return t('nodeTreasure')
-    case 'event': return t('nodeEvent')
-    case 'boss': return t('nodeBoss')
-  }
-}
-
-/** Deterministic per-node x jitter so the map looks hand-drawn. */
-function jitter(id: string): number {
-  let h = 0
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0
-  return ((h >>> 3) % 15) - 7
-}
-
-interface Travel {
-  fx: number
-  fy: number
-  tx: number
-  ty: number
-  go: boolean
-}
+import { MapView, mapGeometry, type MapTravel } from './mapview'
 
 export function MapScreen() {
   const r = run.value
-  const [travel, setTravel] = useState<Travel | null>(null)
-  const svgRef = useRef<SVGSVGElement>(null)
+  const [travel, setTravel] = useState<MapTravel | null>(null)
+  const svgRef = useRef<SVGSVGElement | null>(null)
 
-  const W = 640
-  const rowH = 76
-  const pad = 42
-  // Height follows the act's actual floor count (Act 4 is a short gauntlet).
-  const actRows = r ? r.map.rows.length : MAP_ROWS
-  const H = pad * 2 + (actRows - 1) * rowH
-  const colW = (W - pad * 2) / (MAP_COLS - 1)
-  const cx = (n: MapNode) => pad + n.col * colW + (n.type === 'boss' ? 0 : jitter(n.id))
-  const cy = (n: MapNode) => H - pad - n.row * rowH
+  const geom = r ? mapGeometry(r.map) : null
 
   /** SVG user units → screen pixels (for particle effects). */
   const toScreen = (x: number, y: number) => {
     const rect = svgRef.current?.getBoundingClientRect()
-    if (!rect) return null
-    return { x: rect.left + (x / W) * rect.width, y: rect.top + (y / H) * rect.height }
+    if (!rect || !geom) return null
+    return { x: rect.left + (x / geom.W) * rect.width, y: rect.top + (y / geom.H) * rect.height }
   }
 
   const nodes = r ? allNodes(r.map) : []
@@ -74,12 +30,12 @@ export function MapScreen() {
   // Celebrate the node just completed: gold burst + ripple on its marker.
   useEffect(() => {
     const id = completedNode.value
-    if (!id || !r) return
+    if (!id || !r || !geom) return
     completedNode.value = null
     const n = byId.get(id)
     if (!n) return
     const timer = setTimeout(() => {
-      const p = toScreen(cx(n), cy(n))
+      const p = toScreen(geom.cx(n), geom.cy(n))
       if (p) {
         burst(p.x, p.y, '#ffd166', 20, 3.6)
         uiRipple(p.x, p.y, '#ffd166')
@@ -88,11 +44,9 @@ export function MapScreen() {
     return () => clearTimeout(timer)
   }, [])
 
-  if (!r) return null
+  if (!r || !geom) return null
   const open = new Set(availableNodeIds(r))
-  const done = new Set(r.path)
   const pc = charColor(r.char)
-  const cur = r.pos ? byId.get(r.pos) : null
 
   // Slide a glowing marker along the path, then actually enter the node.
   const startTravel = (n: MapNode) => {
@@ -103,7 +57,7 @@ export function MapScreen() {
       clickNode(n.id)
       return
     }
-    const tr: Travel = { fx: cx(from), fy: cy(from), tx: cx(n), ty: cy(n), go: false }
+    const tr: MapTravel = { fx: geom.cx(from), fy: geom.cy(from), tx: geom.cx(n), ty: geom.cy(n), go: false }
     setTravel(tr)
     requestAnimationFrame(() => requestAnimationFrame(() => setTravel((v) => (v ? { ...v, go: true } : v))))
     let step = 0
@@ -139,71 +93,16 @@ export function MapScreen() {
       )}
       <div class="act-title">{tf('actTitle', { act: r.act })}</div>
       <div class="map-wrap">
-        <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={svgRef} style={{ '--pc': pc } as never}>
-          {nodes.flatMap((n) =>
-            n.next.map((id) => {
-              const m = byId.get(id)
-              if (!m) return null
-              const lit = (n.id === r.pos && open.has(id)) || (done.has(n.id) && done.has(id))
-              const walked = done.has(n.id) && done.has(id)
-              const d = `M ${cx(n)} ${cy(n)} C ${cx(n)} ${cy(n) - rowH / 2}, ${cx(m)} ${cy(m) + rowH / 2}, ${cx(m)} ${cy(m)}`
-              return (
-                <g key={n.id + id}>
-                  <path
-                    class={`map-edge ${lit ? 'lit' : ''}`}
-                    pathLength={1}
-                    style={{ '--row-delay': `${n.row * 70}ms` } as never}
-                    d={d}
-                  />
-                  {walked && (
-                    <path
-                      class="map-pulse"
-                      pathLength={1}
-                      style={{ '--pd': `${(n.row * 0.408).toFixed(2)}s` } as never}
-                      d={d}
-                    />
-                  )}
-                </g>
-              )
-            }),
-          )}
-          {nodes.map((n) => {
-            const cls = [
-              'map-node',
-              n.type === 'boss' ? 'boss' : '',
-              n.id === r.pos ? 'current' : done.has(n.id) ? 'done' : open.has(n.id) ? 'open' : '',
-            ].join(' ')
-            const rad = n.type === 'boss' ? 26 : 16
-            return (
-              <g key={n.id} class={cls} onClick={() => open.has(n.id) && startTravel(n)}>
-                <title>{nodeName(n.type)}</title>
-                <circle cx={cx(n)} cy={cy(n)} r={rad} />
-                <text x={cx(n)} y={cy(n)} style={n.type === 'boss' ? 'font-size:22px' : ''}>
-                  {ICONS[n.type]}
-                </text>
-              </g>
-            )
-          })}
-          {cur && !travel && [0, 1].map((k) => (
-            <circle
-              key={'ring' + k}
-              class="cur-ring"
-              cx={cx(cur)}
-              cy={cy(cur)}
-              r={cur.type === 'boss' ? 26 : 16}
-              style={{ '--rd': `${k * 1.2}s` } as never}
-            />
-          ))}
-          {travel && (
-            <circle
-              class="travel-dot"
-              r={7}
-              cx={0}
-              cy={0}
-              style={{ transform: `translate(${travel.go ? travel.tx : travel.fx}px, ${travel.go ? travel.ty : travel.fy}px)` }}
-            />
-          )}
-        </svg>
+        <MapView
+          map={r.map}
+          pos={r.pos}
+          path={r.path}
+          open={open}
+          onNode={startTravel}
+          pc={pc}
+          travel={travel}
+          svgRef={(el) => (svgRef.current = el)}
+        />
       </div>
     </div>
   )

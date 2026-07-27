@@ -21,6 +21,7 @@ import {
   gainBlock,
   healHp,
   makeSide,
+  modifiedDamage,
   playCardFromHand,
   refillSide,
   tickTurnEnd,
@@ -338,6 +339,122 @@ function startPlayerTurn(cs: CoopState, idx: number, evs: GameEvent[]) {
   coopMarkDeaths(cs, evs)
   // A player's first-ever turn still counts as "first turn" for relic hooks.
   if (!died && !cs.over) refillSide(side, cs, who, evs, { firstTurn: cs.turn === 1 })
+}
+
+// --- Strict/hybrid support ---------------------------------------------------
+
+/**
+ * Divergence checksum over the shared combat fields (co-op twin of
+ * pvpChecksum). The client sends it with each action in hybrid mode; the
+ * server compares against the authoritative pre-action state and flags a
+ * correction on mismatch.
+ */
+export function coopChecksum(v: {
+  turn: number
+  active: number
+  players: { hp: number; block: number; energy: number }[]
+  enemies: { hp: number; block: number; dead?: boolean }[]
+}): number {
+  let h = 2166136261
+  const mix = (n: number) => {
+    h ^= n + 0x9e3779b9
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  mix(v.turn)
+  mix(v.active)
+  for (const p of v.players) {
+    mix(p.hp)
+    mix(p.block)
+    mix(p.energy)
+  }
+  for (const e of v.enemies) {
+    mix(e.hp)
+    mix(e.block)
+    mix(e.dead ? 1 : 0)
+  }
+  return h >>> 0
+}
+
+/**
+ * Optimistic local prediction for hybrid co-op: applies the deterministic
+ * parts of playing your own card to the shared view (cost, damage vs the
+ * chosen enemy, own block/heal/statuses). RNG effects, ally-targeted cards
+ * and enemy deaths are left to the authoritative reply.
+ */
+export function predictCoopPlay(
+  view: Omit<CoopState, 'rng'>,
+  you: number,
+  handIdx: number,
+  target?: number,
+): { view: Omit<CoopState, 'rng'>; events: GameEvent[] } | null {
+  if (view.over || view.active !== you || view.downed[you]) return null
+  const me = view.players[you]
+  const card = me?.hand[handIdx]
+  if (!card) return null
+  const def = CARDS[card.id]
+  if (!def || def.unplayable || def.target === 'ally') return null
+  const cost = card.up && def.upCost !== undefined ? def.upCost : def.cost
+  if (me.energy < cost) return null
+  const alive = view.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+  let t = target
+  if (def.target === 'enemy') {
+    if (t === undefined && alive.length === 1) t = alive[0]
+    if (t === undefined || !view.enemies[t] || view.enemies[t].dead) return null
+  }
+  const v = structuredClone(view)
+  const m = v.players[you]
+  const whoMe = 'c' + you
+  const evs: GameEvent[] = []
+  m.energy -= cost
+  m.hand.splice(handIdx, 1)
+  const effects = card.up ? def.upEffects : def.effects
+  for (const eff of effects) {
+    switch (eff.k) {
+      case 'dmg': {
+        const foe = v.enemies[t!]
+        for (let i = 0; i < (eff.times ?? 1); i++) {
+          const dmg = modifiedDamage(eff.n, m as never, foe as never)
+          const absorbed = Math.min(foe.block, dmg)
+          foe.block -= absorbed
+          const through = dmg - absorbed
+          if (absorbed > 0 && through <= 0) evs.push({ e: 'blocked', who: 'e' + t, n: absorbed })
+          if (through > 0) {
+            // never predict a kill — the server owns deaths and rewards
+            foe.hp = Math.max(1, foe.hp - through)
+            evs.push({ e: 'hit', who: 'e' + t, n: through })
+          }
+        }
+        break
+      }
+      case 'block':
+        m.block += eff.n
+        evs.push({ e: 'block', who: whoMe, n: eff.n })
+        break
+      case 'selfDmg':
+        m.hp = Math.max(1, m.hp - eff.n)
+        evs.push({ e: 'hit', who: whoMe, n: eff.n })
+        break
+      case 'heal':
+        m.hp = Math.min(m.maxHp, m.hp + eff.n)
+        evs.push({ e: 'heal', who: whoMe, n: eff.n })
+        break
+      case 'status': {
+        if (eff.to === 'self') {
+          m.statuses = { ...m.statuses, [eff.id]: (m.statuses[eff.id] ?? 0) + eff.n }
+          evs.push({ e: 'status', who: whoMe, id: eff.id, n: eff.n })
+        } else if (t !== undefined && v.enemies[t]) {
+          const foe = v.enemies[t]
+          foe.statuses = { ...foe.statuses, [eff.id]: (foe.statuses[eff.id] ?? 0) + eff.n }
+          evs.push({ e: 'status', who: 'e' + t, id: eff.id, n: eff.n })
+        }
+        break
+      }
+      default:
+        // RNG or hidden-info effect — the authoritative reply fills it in
+        break
+    }
+  }
+  return { view: v, events: evs }
 }
 
 /** Everyone sees everything in co-op; the view is the state minus the RNG guts. */

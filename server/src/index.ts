@@ -20,6 +20,7 @@ import {
   CARDS,
   ENCOUNTERS,
   pvpChecksum,
+  coopChecksum,
   EVENTS,
   POTIONS,
   coopUsePotion,
@@ -207,6 +208,8 @@ interface CoopRoom {
   act: number
   floor: number
   pos: string | null
+  /** Visited node ids this act — drives the traversed-path map display. */
+  path: string[]
   map: ActMap
   combat: CoopState | null
   kind: 'normal' | 'elite' | 'boss'
@@ -292,6 +295,7 @@ function coopMapMsg(room: CoopRoom, idx: number) {
     act: room.act,
     floor: room.floor,
     pos: room.pos,
+    path: room.path,
     map: room.map,
     party: room.players.map((p) => ({
       name: tagOf(p.client), char: p.char, color: p.color, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
@@ -317,7 +321,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     replied: false,
   }))
   const room: CoopRoom = {
-    players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null,
+    players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null, path: [],
     map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, event: null,
     votes: {}, lastEncounter: '', ended: false,
   }
@@ -351,7 +355,7 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
     seed: randInt(room.rng, 1, 0x7fffffff),
     uidStart: room.uid,
   })
-  coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!), belt: room.players[i].potions }))
+  coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!), belt: room.players[i].potions, mode: getMpMode() }))
 }
 
 function coopFinishFight(room: CoopRoom) {
@@ -399,6 +403,7 @@ function coopMaybeAdvance(room: CoopRoom) {
     room.act++
     room.map = coopMap(room.act, room.rng)
     room.pos = null
+    room.path = []
     room.players.forEach((p) => {
       p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.25))
     })
@@ -761,6 +766,7 @@ wss.on('connection', (ws) => {
         const node = nodeById(room.map, id)
         if (!node) break
         room.pos = id
+        room.path.push(id)
         room.floor++
         if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
           coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
@@ -818,6 +824,8 @@ wss.on('connection', (ws) => {
         const a = msg.action as CoopAction
         const valid = a && typeof a === 'object' && ((a.t === 'play' && Number.isInteger(a.hand)) || a.t === 'end')
         if (!valid) return send(ws, { t: 'err', msg: 'malformed action' })
+        // Hybrid divergence check, same contract as PvP duels.
+        const corrected = typeof msg.sum === 'number' && msg.sum !== coopChecksum(room.combat)
         const played =
           a.t === 'play' && room.combat.players[idx]?.hand[a.hand]
             ? { who: idx, card: room.combat.players[idx].hand[a.hand] }
@@ -825,7 +833,10 @@ wss.on('connection', (ws) => {
         const res = coopReduce(room.combat, idx, a)
         if (res.error) return send(ws, { t: 'err', msg: res.error })
         room.combat = res.state
-        coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, played }))
+        coopBroadcast(room, (i) => ({
+          t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, played,
+          mode: getMpMode(), by: idx, ...(corrected && i === idx ? { corrected: true } : {}),
+        }))
         if (room.combat.over === 'win') coopFinishFight(room)
         else if (room.combat.over === 'lose') {
           coopBroadcast(room, () => ({ t: 'coopdefeat' }))
