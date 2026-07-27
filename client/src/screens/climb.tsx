@@ -32,7 +32,7 @@ import {
   climbSendEmote,
   climbView,
 } from '../climb'
-import { charColor } from './charselect'
+import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
 import { continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
@@ -43,7 +43,7 @@ import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 export function ClimbScreen() {
-  const [char, setChar] = useState<CharId>('runner')
+  const [char, setChar] = useState<CharId>(lastChar())
   const [picking, setPicking] = useState(false)
   const phase = climbPhase.value
   const view = climbView.value

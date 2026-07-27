@@ -34,7 +34,7 @@ import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand } from './hand'
-import { charColor } from './charselect'
+import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
 
@@ -43,7 +43,7 @@ const NODE_LABEL: Record<string, string> = {
 }
 
 export function CoopScreen() {
-  const [char, setChar] = useState<CharId>('runner')
+  const [char, setChar] = useState<CharId>(lastChar())
   const [picking, setPicking] = useState(false)
   const [size, setSize] = useState(2)
   const phase = coopPhase.value

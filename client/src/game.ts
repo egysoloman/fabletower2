@@ -56,7 +56,7 @@ import {
 } from './store'
 import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, playRemovalCine, processEvents, screenWipe } from './fx'
 import { climbActive, climbBossKill, climbDied, climbLeave, climbReport } from './climb'
-import { checkCombat, checkRun, discoverEnemies, discoverRun, recordDaily, dailyRank } from './meta'
+import { checkCombat, checkRun, discoverEnemies, discoverEvent, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
 
@@ -139,6 +139,7 @@ export function newGame(seed?: number, asc = 0, char: import('@neonspire/engine'
   eventLines.value = null
   // Neow-style boot bonus before the climb starts.
   currentEvent.value = BOOT_EVENT
+  discoverEvent(BOOT_EVENT.id)
   screen.value = 'event'
   saveGame()
 }
@@ -208,11 +209,14 @@ export function clickNode(id: string) {
       screen.value = 'reward'
       break
     }
-    case 'event':
-      currentEvent.value = pickEvent(r)
+    case 'event': {
+      const ev = pickEvent(r)
+      currentEvent.value = ev
+      discoverEvent(ev.id)
       eventLines.value = null
       screen.value = 'event'
       break
+    }
   }
   touch()
   saveGame()

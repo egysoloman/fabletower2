@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, cardName, predictPvpPlay, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow } from '../components'
-import { charColor } from './charselect'
+import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
 import { mpName, mpWsUrl } from '../mp'
 import { apiBase } from '../account'
@@ -45,7 +45,7 @@ function ModeBadgeFetch() {
 }
 
 export function PvpScreen() {
-  const [char, setChar] = useState<CharId>('runner')
+  const [char, setChar] = useState<CharId>(lastChar())
   const [picking, setPicking] = useState(false)
   const [chars, setChars] = useState<CharId[]>(['runner', 'runner'])
   const [phase, setPhase] = useState<Phase>('setup')

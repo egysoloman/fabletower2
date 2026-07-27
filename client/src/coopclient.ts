@@ -8,6 +8,7 @@ import { EMOTES, type CharId, type GameEvent } from '@neonspire/engine'
 import { processEvents, screenWipe } from './fx'
 import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
 import { modsKey } from './mods'
+import { discoverEvent } from './meta'
 import { screen } from './store'
 import { sfx } from './sfx'
 
@@ -168,6 +169,7 @@ export function coopQueue(name: string, char: CharId, size: number) {
           break
         case 'coopevent':
           coopEvent.value = data
+          discoverEvent(String(data.id))
           coopPhase.value = 'event'
           break
         case 'coopeventpicked':

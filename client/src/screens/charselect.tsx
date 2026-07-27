@@ -54,6 +54,24 @@ function setPaletteIdx(char: CharId, idx: number) {
   }
 }
 
+/** Last confirmed character — shared default across solo and every mp mode. */
+export function lastChar(): CharId {
+  try {
+    const c = localStorage.getItem('ns-lastchar') as CharId
+    return CHAR_META[c] ? c : 'runner'
+  } catch {
+    return 'runner'
+  }
+}
+
+export function setLastChar(c: CharId) {
+  try {
+    localStorage.setItem('ns-lastchar', c)
+  } catch {
+    /* best-effort */
+  }
+}
+
 /** The character's current display color (their selected unlocked palette). */
 export function charColor(char: CharId): string {
   const meta = CHAR_META[char]

@@ -104,7 +104,7 @@ function mergeBlob(blob: string) {
 
 function mergeCodex(a: any, b: any) {
   const out: any = {}
-  for (const sect of ['cards', 'relics', 'enemies']) out[sect] = { ...(b?.[sect] ?? {}), ...(a?.[sect] ?? {}) }
+  for (const sect of ['cards', 'relics', 'enemies', 'potions', 'events']) out[sect] = { ...(b?.[sect] ?? {}), ...(a?.[sect] ?? {}) }
   return out
 }
 

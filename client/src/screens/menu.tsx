@@ -1,7 +1,8 @@
 import { useState } from 'preact/hooks'
 import type { CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
-import { CharSelect } from './charselect'
+import { lastChar } from './charselect'
+import { CharPickButton, CharSelectPage } from './mpsetup'
 import { hasSave, loadGame, screen } from '../store'
 import { screenWipe } from '../fx'
 import { installPrompt, setSetting, settings } from '../settings'
@@ -101,7 +102,8 @@ export function MenuScreen() {
 export function NewRunScreen() {
   const [seedText, setSeedText] = useState('')
   const [asc, setAsc] = useState(0)
-  const [char, setChar] = useState<CharId>('runner')
+  const [char, setChar] = useState<CharId>(lastChar())
+  const [picking, setPicking] = useState(false)
   const maxAsc = ascUnlocked()
 
   const start = () => {
@@ -116,13 +118,17 @@ export function NewRunScreen() {
     newGame(hashSeed('daily-' + today), 0, char)
   }
 
+  if (picking) {
+    return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
+  }
+
   return (
     <div class="screen menu">
       <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
         JACK<span>IN</span>
       </div>
 
-      <CharSelect value={char} onChange={setChar} onStart={start} />
+      <CharPickButton char={char} onOpen={() => setPicking(true)} />
 
       <div class="menu-buttons">
         <button class="btn big pink" onClick={start}>

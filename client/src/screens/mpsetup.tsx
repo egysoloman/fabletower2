@@ -10,7 +10,7 @@ import { mods, modsKey } from '../mods'
 import { t, tf } from '../i18n'
 import { sfx } from '../sfx'
 import { Sprite } from '../sprites'
-import { CharSelect, charColor } from './charselect'
+import { CharSelect, charColor, setLastChar } from './charselect'
 
 /**
  * Dedicated character-selection page for multiplayer modes: the same full
@@ -23,7 +23,14 @@ export function CharSelectPage(props: { value: CharId; onChange: (c: CharId) => 
       <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
         SELECT<span>UNIT</span>
       </div>
-      <CharSelect value={props.value} onChange={props.onChange} onStart={props.onDone} />
+      <CharSelect
+        value={props.value}
+        onChange={(c) => {
+          setLastChar(c)
+          props.onChange(c)
+        }}
+        onStart={props.onDone}
+      />
       <div class="menu-buttons">
         <button class="btn big pink" onClick={() => (sfx.click(), props.onDone())}>
           {t('charConfirm')}

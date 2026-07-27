@@ -15,14 +15,16 @@ interface Codex {
   cards: Record<string, 1>
   relics: Record<string, 1>
   enemies: Record<string, 1>
+  potions: Record<string, 1>
+  events: Record<string, 1>
 }
 
 function loadCodex(): Codex {
   try {
     const c = JSON.parse(localStorage.getItem('ns-codex') ?? '{}')
-    return { cards: c.cards ?? {}, relics: c.relics ?? {}, enemies: c.enemies ?? {} }
+    return { cards: c.cards ?? {}, relics: c.relics ?? {}, enemies: c.enemies ?? {}, potions: c.potions ?? {}, events: c.events ?? {} }
   } catch {
-    return { cards: {}, relics: {}, enemies: {} }
+    return { cards: {}, relics: {}, enemies: {}, potions: {}, events: {} }
   }
 }
 
@@ -52,11 +54,27 @@ export function discoverRun(run: RunState) {
       dirty = true
     }
   }
+  for (const p of run.potions) {
+    if (!c.potions[p]) {
+      c.potions[p] = 1
+      dirty = true
+    }
+  }
   if (dirty) {
     codex.value = { ...c }
     saveCodex()
     schedulePush()
   }
+}
+
+/** Special events are collectible: encountering one records it. */
+export function discoverEvent(id: string) {
+  const c = codex.value
+  if (c.events[id]) return
+  c.events[id] = 1
+  codex.value = { ...c }
+  saveCodex()
+  schedulePush()
 }
 
 export function discoverEnemies(cs: CombatState) {

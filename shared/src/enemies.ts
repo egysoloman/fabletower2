@@ -1,7 +1,7 @@
 import type { CombatState, EnemyC, EnemyDef, Intent, IntentKind, MoveDef } from './types'
 import { weightedPick, type Rng } from './rng'
 import { modifiedDamage } from './core'
-import { isZh } from './i18n'
+import { isZh, statusName } from './i18n'
 import { ENEMY_ZH } from './locale-zh'
 
 const E = (def: EnemyDef) => def
@@ -548,6 +548,76 @@ export function enemyName(defId: string): string {
 export function moveName(defId: string, moveId: string): string {
   const en = ENEMIES[defId]?.moves.find((m) => m.id === moveId)?.name ?? moveId
   return isZh() ? (ENEMY_ZH[defId]?.moves[moveId] ?? en) : en
+}
+
+/** Generated rules text for one enemy move — the codex "mechanics" line. */
+export function describeMove(mv: MoveDef): string {
+  const parts: string[] = []
+  for (const e of mv.effects) {
+    switch (e.k) {
+      case 'atk':
+        parts.push(
+          isZh()
+            ? `造成 ${e.n}${e.times && e.times > 1 ? `×${e.times}` : ''} 伤害`
+            : `Deal ${e.n}${e.times && e.times > 1 ? `×${e.times}` : ''} damage`,
+        )
+        break
+      case 'block':
+        parts.push(isZh() ? `获得 ${e.n} 格挡` : `Gain ${e.n} Block`)
+        break
+      case 'buff':
+        parts.push(isZh() ? `自身 +${e.n} ${statusName(e.id)}` : `Self +${e.n} ${statusName(e.id)}`)
+        break
+      case 'buffAll':
+        parts.push(isZh() ? `全体敌人 +${e.n} ${statusName(e.id)}` : `All enemies +${e.n} ${statusName(e.id)}`)
+        break
+      case 'debuff':
+        parts.push(isZh() ? `施加 ${e.n} 层${statusName(e.id)}` : `Apply ${e.n} ${statusName(e.id)}`)
+        break
+      case 'heal':
+        parts.push(isZh() ? `回复 ${e.n} 生命` : `Heal ${e.n} HP`)
+        break
+      case 'addCard':
+        parts.push(isZh() ? `将 ${e.n} 张干扰牌塞入你的牌组` : `Shuffle ${e.n} junk card${e.n > 1 ? 's' : ''} into your deck`)
+        break
+      case 'summon':
+        parts.push(
+          isZh()
+            ? `召唤${e.n && e.n > 1 ? ` ${e.n} 个` : ''}「${enemyName(e.id)}」`
+            : `Summon ${e.n && e.n > 1 ? `${e.n}× ` : ''}${enemyName(e.id)}`,
+        )
+        break
+      case 'cleanseSelf':
+        parts.push(isZh() ? '清除自身负面状态' : 'Cleanse own debuffs')
+        break
+    }
+  }
+  const mods: string[] = []
+  if (mv.cooldown) mods.push(isZh() ? `冷却 ${mv.cooldown} 回合` : `${mv.cooldown}-turn cooldown`)
+  if (mv.maxRepeat === 1) mods.push(isZh() ? '不会连续使用' : 'never twice in a row')
+  if (mv.cond?.hpBelow !== undefined) mods.push(isZh() ? `生命低于 ${Math.round(mv.cond.hpBelow * 100)}% 时` : `below ${Math.round(mv.cond.hpBelow * 100)}% HP`)
+  if (mv.cond?.afterTurn !== undefined) mods.push(isZh() ? `第 ${mv.cond.afterTurn} 回合起` : `from turn ${mv.cond.afterTurn}`)
+  if (mv.cond?.once) mods.push(isZh() ? '每场战斗一次' : 'once per combat')
+  const tail = mods.length ? (isZh() ? `（${mods.join('，')}）` : ` (${mods.join(', ')})`) : ''
+  return parts.join(isZh() ? '，' : ', ') + tail
+}
+
+/** Boss / elite / normal classification, derived from defs + encounter tables. */
+export function enemyKind(id: string): 'boss' | 'elite' | 'normal' {
+  if (ENEMIES[id]?.boss) return 'boss'
+  for (const table of Object.values(ENCOUNTERS)) {
+    if (table.elite.some((g) => g.includes(id))) return 'elite'
+  }
+  return 'normal'
+}
+
+/** Acts an enemy shows up in (empty for summon-only spawns). */
+export function enemyActs(id: string): number[] {
+  const acts: number[] = []
+  for (const [act, table] of Object.entries(ENCOUNTERS)) {
+    if ([...table.normal, ...table.elite, ...table.boss].some((g) => g.includes(id))) acts.push(Number(act))
+  }
+  return acts
 }
 
 // --- Encounters -------------------------------------------------------------
