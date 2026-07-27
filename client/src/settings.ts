@@ -6,9 +6,11 @@ export interface Settings {
   sfx: number // 0..1
   quality: 'high' | 'medium' | 'low'
   shake: boolean
+  /** Lock browser zoom (pinch / double-tap) — handy on touch screens. */
+  zoomLock: boolean
 }
 
-const DEFAULTS: Settings = { master: 1, sfx: 1, quality: 'high', shake: true }
+const DEFAULTS: Settings = { master: 1, sfx: 1, quality: 'high', shake: true, zoomLock: true }
 
 function load(): Settings {
   try {
@@ -27,6 +29,23 @@ export function setSetting<K extends keyof Settings>(k: K, v: Settings[K]) {
   } catch {
     /* best-effort */
   }
+  if (k === 'zoomLock') applyZoomLock()
+}
+
+/**
+ * Apply the zoom-lock setting: rewrite the viewport meta (mobile browsers)
+ * and set touch-action so pinch/double-tap zoom stops reaching the page.
+ */
+export function applyZoomLock() {
+  const lock = settings.value.zoomLock
+  const meta = document.querySelector('meta[name="viewport"]')
+  if (meta) {
+    meta.setAttribute(
+      'content',
+      lock ? 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no' : 'width=device-width, initial-scale=1.0',
+    )
+  }
+  document.documentElement.style.touchAction = lock ? 'pan-x pan-y' : ''
 }
 
 /** Particle budget multiplier for the fx layer. */

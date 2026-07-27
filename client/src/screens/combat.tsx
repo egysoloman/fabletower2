@@ -21,6 +21,7 @@ import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 import { charColor } from './charselect'
+import { isTouch } from '../touch'
 
 function intentText(intent: Intent): string {
   switch (intent.kind) {
@@ -240,8 +241,15 @@ export function CombatScreen() {
       </div>
 
       {(selected !== null || potionSel !== null) && (
-        <div class="turnbanner bare" style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9 }}>
-          {t('selectTarget')}
+        <div
+          class="turnbanner bare"
+          style={{ top: '62%', fontSize: '15px', animation: 'none', opacity: 0.9, pointerEvents: 'auto', cursor: 'pointer' }}
+          onClick={() => {
+            setSelected(null)
+            setPotionSel(null)
+          }}
+        >
+          {isTouch() ? t('selectTargetTouch') : t('selectTarget')}
         </div>
       )}
 

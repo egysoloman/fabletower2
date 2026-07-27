@@ -193,9 +193,10 @@ h1, h2, h3, .head { font-family: var(--font-head); letter-spacing: 0.08em; }
   position: relative;
 }
 
-/* tooltips */
+/* tooltips — :hover on mouse, .tip-on via tap on touch devices */
 [data-tip] { position: relative; }
-[data-tip]:hover::after {
+[data-tip]:hover::after,
+[data-tip].tip-on::after {
   animation: tipIn 0.16s ease-out;
   content: attr(data-tip);
   position: absolute;
@@ -1472,14 +1473,18 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 
 /* Tooltips anchored near the top edge open downward instead of off-screen. */
 .topbar [data-tip]:hover::after,
+.topbar [data-tip].tip-on::after,
 .rivalhud[data-tip]:hover::after,
-.tip-below[data-tip]:hover::after {
+.rivalhud[data-tip].tip-on::after,
+.tip-below[data-tip]:hover::after,
+.tip-below[data-tip].tip-on::after {
   bottom: auto;
   top: calc(100% + 8px);
 }
 /* While a topbar tooltip is open, lift the bar above overlay panels (z 60)
  * so the tip isn't painted behind reward/event/shop screens. */
-.topbar:has([data-tip]:hover) { z-index: 210; }
+.topbar:has([data-tip]:hover),
+.topbar:has([data-tip].tip-on) { z-index: 210; }
 
 /* compact current-character button that opens the SELECT UNIT page */
 .charpickbtn {
@@ -1604,6 +1609,29 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   .potion { width: 40px; height: 40px; }
   .pal { width: 28px; height: 28px; }
   .conndot { width: 14px; height: 14px; }
+}
+
+/* hover-free devices: hover-revealed controls stay visible, taps feel instant */
+@media (hover: none) {
+  .potionwrap .potdrop { display: grid; }
+  .btn, .linkish, .cxitem, .map-node, .emotebtn, .charcard, .bigchoice, .potion, .pal { touch-action: manipulation; }
+}
+
+/* portrait / narrow screens: selection pages reflow into a tight column */
+@media (orientation: portrait), (max-width: 700px) {
+  .charrow { gap: 8px; }
+  .charcard { width: min(92vw, 340px); padding: 9px 12px; }
+  .charcard .cdesc-h { font-size: 10.5px; }
+  .charsel .charrow { flex-direction: column; align-items: center; }
+  .charsel .randbtn { position: static; }
+  .chardetail { flex-direction: column; gap: 10px; max-width: min(92vw, 340px); }
+  .cd-right { gap: 6px; }
+  .menu-buttons { width: min(92vw, 340px); }
+  .menu .logo { font-size: clamp(30px, 10vw, 44px); }
+  .mpconnect input.neon { width: min(88vw, 300px) !important; }
+  .emotegrid { grid-template-columns: repeat(4, 1fr); }
+  .cx-pair { gap: 10px; }
+  .cxdetail { max-width: 94vw; }
 }
 
 .commrow { display: flex; gap: 8px; position: absolute; right: 14px; bottom: 14px; z-index: 46; }

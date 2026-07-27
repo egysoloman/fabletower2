@@ -128,13 +128,10 @@ export function NewRunScreen() {
         JACK<span>IN</span>
       </div>
 
+      {/* configuration first (character, ascension, seed), then the actions */}
       <CharPickButton char={char} onOpen={() => setPicking(true)} />
 
       <div class="menu-buttons">
-        <button class="btn big pink" onClick={start}>
-          {t('startRun')}
-          {asc > 0 ? `  ·  A${asc}` : ''}
-        </button>
         {maxAsc > 0 && (
           <div class="ascrow">
             <button class="btn ghost" onClick={() => setAsc(Math.max(0, asc - 1))} disabled={asc === 0}>
@@ -160,6 +157,10 @@ export function NewRunScreen() {
             {t('dailyRun')}
           </button>
         </div>
+        <button class="btn big pink" onClick={start}>
+          {t('startRun')}
+          {asc > 0 ? `  ·  A${asc}` : ''}
+        </button>
         <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
           {t('back')}
         </button>
@@ -229,6 +230,12 @@ export function SettingsScreen() {
           <span>{t('setShake')}</span>
           <button class="btn ghost" onClick={() => (setSetting('shake', !st.shake), sfx.click())}>
             {st.shake ? t('on') : t('off')}
+          </button>
+        </label>
+        <label class="setrow">
+          <span>{t('setZoom')}</span>
+          <button class="btn ghost" onClick={() => (setSetting('zoomLock', !st.zoomLock), sfx.click())}>
+            {st.zoomLock ? t('on') : t('off')}
           </button>
         </label>
         <label class="setrow">

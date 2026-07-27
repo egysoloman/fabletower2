@@ -10,6 +10,12 @@ import('./mods').then((m) => void m.loadMods())
 import('./account').then((m) => void m.checkGate())
 render(<App />, document.getElementById('app')!)
 
+// --- Touch: tap-to-open tooltips + zoom lock ---------------------------------
+import { installTouchTips } from './touch'
+import { applyZoomLock } from './settings'
+installTouchTips()
+applyZoomLock()
+
 // --- PWA: service worker + install prompt + offline indicator ---------------
 import { installPrompt, netOnline } from './settings'
 
