@@ -2,9 +2,10 @@
  * Shared multiplayer widgets: the CLOUD/LAN connection block used by every
  * battle-entry screen, and the emote / quick-phrase panel used inside them.
  */
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { emoteList, type CharId } from '@neonspire/engine'
 import { account } from '../account'
+import { anchorBox } from '../fx'
 import { cloudLabel, emoteText, guestName, lanUrl, mpTarget, setGuestName, setLanUrl, setMpTarget } from '../mp'
 import { mods, modsKey } from '../mods'
 import { t, tf } from '../i18n'
@@ -122,21 +123,60 @@ export function queueIdentity() {
 }
 
 /**
- * Compact emote / quick-phrase sender. Emotes fire directly or at a chosen
- * target; the input row sends free-typed phrases. Mods extend the emote grid
- * through their `emotes` section.
+ * Compact emote / quick-phrase sender. Emotes fire directly, at a chosen
+ * target, or — when dropZones are supplied — by dragging one onto an
+ * ally/enemy head. The input row sends free-typed phrases. Mods extend the
+ * emote grid through their `emotes` section.
  */
 export function EmotePanel(props: {
-  send: (m: { id?: string; text?: string; target?: number }) => void
+  send: (m: { id?: string; text?: string; target?: number; etarget?: number }) => void
   targets?: { idx: number; name: string }[]
+  /** Drop targets for drag-to-head emotes: fighter anchors + payload patch. */
+  dropZones?: { anchor: string; payload: Record<string, number> }[]
 }) {
   const [open, setOpen] = useState(false)
   const [custom, setCustom] = useState('')
   const [target, setTarget] = useState<number | null>(null)
-  const fire = (m: { id?: string; text?: string }) => {
-    props.send({ ...m, ...(target !== null ? { target } : {}) })
+  const [drag, setDrag] = useState<{ id: string; sym: string; x: number; y: number; moved: boolean } | null>(null)
+  const fire = (m: { id?: string; text?: string; target?: number; etarget?: number }) => {
+    props.send({ ...(target !== null && m.target === undefined && m.etarget === undefined ? { target } : {}), ...m })
     sfx.click()
     setOpen(false)
+  }
+  // outline the drop candidates while an emote is being dragged
+  useEffect(() => {
+    document.body.classList.toggle('emote-dragging', !!drag?.moved)
+    return () => document.body.classList.remove('emote-dragging')
+  }, [!!drag?.moved])
+  const draggable = (props.dropZones?.length ?? 0) > 0
+  const onDown = (e: { id: string; sym: string }) => (ev: PointerEvent) => {
+    if (!draggable) return
+    ;(ev.currentTarget as HTMLElement).setPointerCapture(ev.pointerId)
+    setDrag({ id: e.id, sym: e.sym, x: ev.clientX, y: ev.clientY, moved: false })
+  }
+  const onMove = (ev: PointerEvent) => {
+    setDrag((d) => {
+      if (!d) return d
+      const moved = d.moved || Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 10
+      return { ...d, x: ev.clientX, y: ev.clientY, moved }
+    })
+  }
+  const onUp = (ev: PointerEvent) => {
+    setDrag((d) => {
+      if (!d) return null
+      if (!d.moved) {
+        fire({ id: d.id })
+        return null
+      }
+      for (const z of props.dropZones ?? []) {
+        const box = anchorBox(z.anchor)
+        if (box && ev.clientX >= box.left && ev.clientX <= box.right && ev.clientY >= box.top && ev.clientY <= box.bottom) {
+          fire({ id: d.id, ...z.payload })
+          break
+        }
+      }
+      return null
+    })
   }
   return (
     <div class="emotewrap">
@@ -154,14 +194,27 @@ export function EmotePanel(props: {
               ))}
             </div>
           )}
+          {draggable && <div class="sub" style={{ fontSize: '10px' }}>{t('emoteDragHint')}</div>}
           <div class="emotegrid">
             {emoteList().map((e) => (
-              <button key={e.id} class="emotebtn" onClick={() => fire({ id: e.id })}>
+              <button
+                key={e.id}
+                class="emotebtn"
+                onClick={draggable ? undefined : () => fire({ id: e.id })}
+                onPointerDown={draggable ? (onDown(e) as never) : undefined}
+                onPointerMove={draggable ? (onMove as never) : undefined}
+                onPointerUp={draggable ? (onUp as never) : undefined}
+              >
                 <b>{e.sym}</b>
                 <small>{emoteText(e)}</small>
               </button>
             ))}
           </div>
+          {drag?.moved && (
+            <div class="emote-ghost" style={{ left: drag.x + 'px', top: drag.y + 'px' }}>
+              {drag.sym}
+            </div>
+          )}
           <form
             class="emoterow"
             onSubmit={(ev) => {

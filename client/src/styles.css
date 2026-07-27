@@ -1537,6 +1537,26 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .emoterow input.neon { width: 190px; padding: 6px 8px; font-size: 12px; }
 .emoterow .btn { font-size: 11px; padding: 6px 10px; }
 
+/* drag-to-head emotes: floating glyph + candidate outlines */
+.emotebtn { touch-action: none; }
+.emote-ghost {
+  position: fixed;
+  z-index: 95;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-head);
+  font-size: 26px;
+  color: var(--cyan);
+  text-shadow: 0 0 14px var(--cyan), 0 0 30px var(--cyan);
+}
+body.emote-dragging .enemy,
+body.emote-dragging .player-zone,
+body.emote-dragging .opp-zone {
+  outline: 1px dashed rgba(255, 209, 102, 0.55);
+  outline-offset: 5px;
+  border-radius: 10px;
+}
+
 /* speech bubble over a fighter panel */
 .emotepop {
   position: fixed;

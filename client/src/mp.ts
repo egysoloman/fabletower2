@@ -83,20 +83,30 @@ export function emoteText(def: EmoteDef): string {
 }
 
 /**
- * Render an incoming emote: bubble over the sender's zone; targeted emotes
- * also ping the target's zone. Unknown modded ids fall back to raw text.
+ * Render an incoming emote. Untargeted: bubble over the sender's zone.
+ * Targeted (clicked target or dragged onto a head): the bubble lands on the
+ * TARGET — ally/opponent zone or enemy — credited to the sender, with a ping.
+ * Unknown modded ids fall back to raw text.
  */
 export function showIncomingEmote(
-  data: { who: number; name: string; id?: string; text?: string; target?: number | null },
+  data: { who: number; name: string; id?: string; text?: string; target?: number | null; etarget?: number | null },
   anchorOf: (idx: number) => string,
-  targetNameOf?: (idx: number) => string,
+  enemyAnchorOf?: (idx: number) => string,
 ) {
   const def = data.id ? EMOTES[data.id] : undefined
   const sym = def?.sym ?? '❝'
   const text = def ? emoteText(def) : String(data.text ?? '')
   if (!def && !text) return
-  const to = data.target != null ? targetNameOf?.(data.target) : undefined
-  showEmoteAt(anchorOf(data.who), sym, text, data.name, to)
-  if (data.target != null) pingAnchor(anchorOf(data.target), '#ffd166')
+  if (data.etarget != null && enemyAnchorOf) {
+    const at = enemyAnchorOf(data.etarget)
+    showEmoteAt(at, sym, text, data.name)
+    pingAnchor(at, '#ff3b5b')
+  } else if (data.target != null && data.target !== data.who) {
+    const at = anchorOf(data.target)
+    showEmoteAt(at, sym, text, data.name)
+    pingAnchor(at, '#ffd166')
+  } else {
+    showEmoteAt(anchorOf(data.who), sym, text, data.name)
+  }
   sfx.click()
 }

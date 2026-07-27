@@ -168,7 +168,14 @@ export function ClimbScreen() {
             )}
           </div>
         </div>
-        <EmotePanel send={climbSendEmote} targets={[{ idx: 1 - view.you, name: them.name }]} />
+        <EmotePanel
+          send={climbSendEmote}
+          targets={[{ idx: 1 - view.you, name: them.name }]}
+          dropZones={[
+            { anchor: 'p' + view.you, payload: { target: view.you } },
+            { anchor: 'p' + (1 - view.you), payload: { target: 1 - view.you } },
+          ]}
+        />
         <div class="dock">
           <DraggableHand
             cards={hand}

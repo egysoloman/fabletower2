@@ -59,38 +59,102 @@ let ws: WebSocket | null = null
 let token: string | null = null
 let retryUntil = 0
 
+// --- Seat persistence: a co-op run survives closing the page -----------------
+// The server holds the seat for the reconnect grace window; we keep the token
+// so the CO-OP screen can offer RESUME RUN after a reload.
+
+/** Must match the server's RECONNECT_GRACE_MS. */
+export const COOP_SEAT_TTL_MS = 15 * 60 * 1000
+
+function saveSeat(url: string) {
+  try {
+    if (token) localStorage.setItem('ns-coop-seat', JSON.stringify({ url, token, at: Date.now() }))
+  } catch {
+    /* best-effort */
+  }
+}
+
+function clearSeat() {
+  try {
+    localStorage.removeItem('ns-coop-seat')
+  } catch {
+    /* best-effort */
+  }
+}
+
+/** Stored seat if it can still be inside the server's grace window. */
+export function coopSavedSeat(): { url: string; token: string; at: number } | null {
+  try {
+    const s = JSON.parse(localStorage.getItem('ns-coop-seat') ?? 'null')
+    if (!s?.token || !s?.url) return null
+    if (Date.now() - s.at > COOP_SEAT_TTL_MS) {
+      clearSeat()
+      return null
+    }
+    return s
+  } catch {
+    return null
+  }
+}
+
+/** Reconnect into a stored seat (after a reload / app restart). */
+export function coopResumeSaved() {
+  const seat = coopSavedSeat()
+  if (!seat) return
+  token = seat.token
+  retryUntil = Date.now() + 30 * 1000
+  coopNotice.value = ''
+  coopConn.value = 'reconnecting'
+  coopPhase.value = 'connecting'
+  coopResume(seat.url)
+}
+
+/** Wire a socket with the shared handlers (queue and resume paths). */
+function attach(sock: WebSocket, url: string, onOpen: () => void) {
+  ws = sock
+  sock.onopen = onOpen
+  sock.onerror = () => {
+    if (coopPhase.value === 'connecting' && !token) {
+      coopNotice.value = 'server unreachable'
+      coopPhase.value = 'error'
+    }
+  }
+  sock.onclose = () => {
+    if (ws !== sock) return
+    const p = coopPhase.value
+    const inRun = p === 'map' || p === 'combat' || p === 'reward' || p === 'rest' || p === 'shop' || p === 'event' || p === 'connecting'
+    if (token && inRun) {
+      // Seat is held server-side: auto-resume within the grace window.
+      coopConn.value = 'reconnecting'
+      if (!retryUntil) retryUntil = Date.now() + 4.5 * 60 * 1000
+      if (Date.now() < retryUntil) {
+        setTimeout(() => coopResume(url), 1500)
+        return
+      }
+    }
+    if (p !== 'idle' && p !== 'error' && p !== 'victory' && p !== 'defeat' && p !== 'ended') {
+      coopNotice.value = coopNotice.value || 'connection lost'
+      coopPhase.value = 'error'
+    }
+  }
+  sock.onmessage = (msg) => handleMsg(msg, url)
+}
+
 export function coopQueue(name: string, char: CharId, size: number) {
   coopLeave()
   coopNotice.value = ''
   coopPhase.value = 'connecting'
   const url = mpWsUrl()
   try {
-    const sock = new WebSocket(url)
-    ws = sock
-    sock.onopen = () => sock.send(JSON.stringify({ t: 'coopqueue', name, char, size, modsKey: modsKey() }))
-    sock.onerror = () => {
-      coopNotice.value = 'server unreachable'
-      coopPhase.value = 'error'
-    }
-    sock.onclose = () => {
-      if (ws !== sock) return
-      const p = coopPhase.value
-      const inRun = p === 'map' || p === 'combat' || p === 'reward' || p === 'rest'
-      if (token && inRun) {
-        // Seat is held server-side: auto-resume within the grace window.
-        coopConn.value = 'reconnecting'
-        if (!retryUntil) retryUntil = Date.now() + 4.5 * 60 * 1000
-        if (Date.now() < retryUntil) {
-          setTimeout(() => coopResume(url), 1500)
-          return
-        }
-      }
-      if (p !== 'idle' && p !== 'error' && p !== 'victory' && p !== 'defeat' && p !== 'ended') {
-        coopNotice.value = coopNotice.value || 'connection lost'
-        coopPhase.value = 'error'
-      }
-    }
-    sock.onmessage = handlerRef = (msg) => {
+    attach(new WebSocket(url), url, () => coopSend({ t: 'coopqueue', name, char, size, modsKey: modsKey() }))
+  } catch {
+    coopNotice.value = 'bad server url'
+    coopPhase.value = 'error'
+  }
+}
+
+function handleMsg(msg: MessageEvent, url: string) {
+  {
       let data: any
       try {
         data = JSON.parse(String(msg.data))
@@ -111,7 +175,8 @@ export function coopQueue(name: string, char: CharId, size: number) {
           break
         case 'resume-fail':
           token = null
-          coopNotice.value = 'connection lost'
+          clearSeat()
+          coopNotice.value = 'run expired'
           coopPhase.value = 'error'
           break
         case 'peer-conn':
@@ -124,6 +189,7 @@ export function coopQueue(name: string, char: CharId, size: number) {
         case 'coopstart':
         case 'coopmap':
           if (data.token) token = data.token
+          saveSeat(url)
           retryUntil = 0
           coopConn.value = 'online'
           coopForm.value = null
@@ -181,7 +247,7 @@ export function coopQueue(name: string, char: CharId, size: number) {
           break
         case 'emote': {
           if (coopPhase.value === 'combat') {
-            showIncomingEmote(data, (i) => 'c' + i, (i) => coopMap.value?.party?.[i]?.name ?? '')
+            showIncomingEmote(data, (i) => 'c' + i, (i) => 'e' + i)
           } else {
             const def = data.id ? EMOTES[data.id] : undefined
             const text = def ? emoteText(def) : String(data.text ?? '')
@@ -195,55 +261,35 @@ export function coopQueue(name: string, char: CharId, size: number) {
         }
         case 'coopvictory':
           coopPhase.value = 'victory'
+          clearSeat()
           import('./meta').then((m) => m.award('coopwin'))
           sfx.win()
           break
         case 'coopdefeat':
           coopPhase.value = 'defeat'
+          clearSeat()
           sfx.lose()
           break
         case 'coopend':
           coopNotice.value = String(data.reason ?? '')
           coopPhase.value = 'ended'
+          clearSeat()
           break
         case 'err':
           coopPending.value = false
           break
       }
-    }
-  } catch {
-    coopNotice.value = 'bad server url'
-    coopPhase.value = 'error'
   }
 }
 
 /** Reopen the socket and resume the held seat. */
 function coopResume(url: string) {
   try {
-    const sock = new WebSocket(url)
-    const prev = ws
-    ws = sock
-    void prev
-    sock.onopen = () => sock.send(JSON.stringify({ t: 'resume', token }))
-    sock.onerror = () => {}
-    // reuse the full handler by re-dispatching through coopQueue's wiring is
-    // not possible here; instead clone the minimal handlers:
-    sock.onclose = (ev) => {
-      void ev
-      if (ws !== sock) return
-      if (token && Date.now() < retryUntil) setTimeout(() => coopResume(url), 2000)
-      else {
-        coopNotice.value = 'connection lost'
-        coopPhase.value = 'error'
-      }
-    }
-    sock.onmessage = handlerRef!
+    attach(new WebSocket(url), url, () => coopSend({ t: 'resume', token }))
   } catch {
     coopPhase.value = 'error'
   }
 }
-
-let handlerRef: ((msg: MessageEvent) => void) | null = null
 
 export function coopReady() {
   coopSend({ t: 'coopready' })
@@ -260,6 +306,7 @@ export function coopLeave() {
     /* gone */
   }
   token = null
+  clearSeat()
   retryUntil = 0
   coopLobby.value = null
   coopForm.value = null

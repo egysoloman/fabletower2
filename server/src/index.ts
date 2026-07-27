@@ -150,7 +150,9 @@ function unqueue(c: Client) {
 
 /** token -> seated client, alive for the duration of a match (+grace). */
 const seats = new Map<string, Client>()
-const RECONNECT_GRACE_MS = 5 * 60 * 1000
+/** Seats survive this long offline — long enough to close the app and come
+ * back; the client stores its token so the CO-OP screen can offer RESUME. */
+const RECONNECT_GRACE_MS = 15 * 60 * 1000
 
 function mintToken(c: Client): string {
   if (c.token) seats.delete(c.token)
@@ -447,7 +449,11 @@ function handleEmote(client: Client, msg: any) {
   if (coop && !coop.ended) {
     const who = coop.players.findIndex((p) => p.client === client)
     const tgt = target !== null && coop.players[target] ? target : null
-    coopBroadcast(coop, () => ({ t: 'emote', who, name: tagOf(client), id, text, target: tgt }))
+    // Enemy-targeted emotes (dragged onto an enemy) only mean anything in combat.
+    const et = Number.isInteger(msg.etarget) && coop.combat && coop.combat.enemies[Number(msg.etarget)]
+      ? Number(msg.etarget)
+      : null
+    coopBroadcast(coop, () => ({ t: 'emote', who, name: tagOf(client), id, text, target: tgt, etarget: et }))
     return
   }
   const room = client.room
@@ -628,9 +634,19 @@ wss.on('connection', (ws) => {
           }
         } else if (coop && !coop.ended) {
           const idx = coop.players.findIndex((p) => p.client === client)
+          const player = coop.players[idx]
           send(ws, { ...coopMapMsg(coop, idx), t: 'coopstart', seed: 0, token: client.token, rejoin: true })
-          if (coop.combat) send(ws, { t: 'coopcombat', you: idx, view: coopViewFor(coop.combat) })
-          else if (coop.rewards) send(ws, { t: 'coopreward', you: idx, ...coop.rewards[idx] })
+          // Replay whatever phase the party is stuck waiting on for us.
+          if (coop.combat) send(ws, { t: 'coopcombat', you: idx, view: coopViewFor(coop.combat), belt: player.potions })
+          else if (coop.rewards) {
+            if (!player.replied) send(ws, { t: 'coopreward', you: idx, ...coop.rewards[idx] })
+          } else if (coop.shop) {
+            send(ws, { t: 'coopshop', you: idx, stock: coop.shop, gold: player.gold, deck: player.deck, belt: player.potions })
+          } else if (coop.event) {
+            if (!player.replied) send(ws, { t: 'coopevent', you: idx, id: coop.event.id, gold: player.gold })
+          } else if (coop.pos && nodeById(coop.map, coop.pos)?.type === 'rest' && !player.replied) {
+            send(ws, { t: 'cooprest', you: idx, deck: player.deck })
+          }
         } else {
           releaseSeat(client)
           send(ws, { t: 'resume-fail' })

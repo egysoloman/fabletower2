@@ -67,8 +67,6 @@ export function PvpScreen() {
   const [myTag, setMyTag] = useState('')
   const [pileOpen, setPileOpen] = useState(false)
   const shakeCls = useShake()
-  /** Latest side names for the ws handler (closures would go stale). */
-  const namesRef = useRef<string[]>([])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -119,7 +117,7 @@ export function PvpScreen() {
             setPhase('queued')
             break
           case 'emote':
-            showIncomingEmote(data, (i) => 'p' + i, (i) => namesRef.current[i] ?? '')
+            showIncomingEmote(data, (i) => 'p' + i)
             break
           case 'match':
             if (data.mode) setMode(data.mode)
@@ -298,7 +296,6 @@ export function PvpScreen() {
   if (!view) return null
   const me = view.sides[view.you]
   const them = view.sides[1 - view.you]
-  namesRef.current = [view.sides[0].name, view.sides[1].name]
   const myTurn = view.active === view.you && !view.over
   const hand = me.hand ?? []
   const iWon = view.over ? view.over.winner === view.you : forfeitWin
@@ -421,6 +418,10 @@ export function PvpScreen() {
       <EmotePanel
         send={(m) => ws.current?.send(JSON.stringify({ t: 'emote', ...m }))}
         targets={[{ idx: 1 - view.you, name: them.name }]}
+        dropZones={[
+          { anchor: 'p' + view.you, payload: { target: view.you } },
+          { anchor: 'p' + (1 - view.you), payload: { target: 1 - view.you } },
+        ]}
       />
 
       {pileOpen && (

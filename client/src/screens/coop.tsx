@@ -27,6 +27,8 @@ import {
   coopLobby,
   coopReady,
   coopRestDeck,
+  coopResumeSaved,
+  coopSavedSeat,
   coopShop,
   coopToast,
 } from '../coopclient'
@@ -187,7 +189,16 @@ export function CoopScreen() {
             {t('endTurn')}
           </button>
         </div>
-        <EmotePanel send={sendEmote} targets={emoteTargets()} />
+        <EmotePanel
+          send={sendEmote}
+          targets={emoteTargets()}
+          dropZones={[
+            ...v.players.map((_: unknown, i: number) => ({ anchor: 'c' + i, payload: { target: i } })),
+            ...(v.enemies
+              .map((e: any, i: number) => (e.dead ? null : { anchor: 'e' + i, payload: { etarget: i } }))
+              .filter(Boolean) as { anchor: string; payload: Record<string, number> }[]),
+          ]}
+        />
         {coopToast.value && (
           <div class="turnbanner bare" style={{ top: '20%', fontSize: '15px', animation: 'none', color: 'var(--green)' }}>
             {coopToast.value}
@@ -211,6 +222,15 @@ export function CoopScreen() {
         {phase === 'idle' && (
           <>
             <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('coopIntro')}</div>
+            {coopSavedSeat() && (
+              <button
+                class="btn big"
+                style={{ borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                onClick={() => (sfx.click(), coopResumeSaved())}
+              >
+                ↻ {t('coopResume')}
+              </button>
+            )}
             <CharPickButton char={char} onOpen={() => setPicking(true)} />
             <div style={{ display: 'flex', gap: '10px' }}>
               {[2, 3, 4].map((n) => (
