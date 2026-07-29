@@ -4,7 +4,7 @@
  * these states is the ordinary offline game with a rival HUD.
  */
 import { useEffect, useState } from 'preact/hooks'
-import { CARDS, MINIONS, cardName, type CharId, type PvpAction } from '@neonspire/engine'
+import { CARDS, MINIONS, cardName, previewCard, type CharId, type PvpAction } from '@neonspire/engine'
 import { BlockChip, HpBar, StatusRow } from '../components'
 import {
   anchorCenter,
@@ -182,6 +182,7 @@ export function ClimbScreen() {
             playable={playableSet}
             targets={myTurn && !pending ? [oppWho] : []}
             disabled={!myTurn || pending}
+            previewCard={(card) => previewCard(card, me, [them])}
             onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
             onPlay={playFromHand}
           />

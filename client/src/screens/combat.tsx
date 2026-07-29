@@ -8,6 +8,9 @@ import {
   minionName,
   moveName,
   playableCards,
+  previewCard,
+  previewEnemyIntent,
+  type DeckSide,
   type EnemyC,
   type Intent,
 } from '@neonspire/engine'
@@ -40,10 +43,18 @@ function intentText(intent: Intent): string {
 
 type Highlight = 'none' | 'candidate' | 'snap'
 
-function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarget: () => void }) {
+function EnemyBox(props: {
+  e: EnemyC
+  idx: number
+  defender: DeckSide
+  asc: number
+  highlight: Highlight
+  onTarget: () => void
+}) {
   const { e, idx } = props
   const boss = e.maxHp >= 100
   const hl = props.highlight
+  const liveIntent = previewEnemyIntent(e, props.defender, props.asc)
   // Materialize animation only right after mount (combat start / summon).
   const [justIn, setJustIn] = useState(true)
   useEffect(() => {
@@ -60,9 +71,9 @@ function EnemyBox(props: { e: EnemyC; idx: number; highlight: Highlight; onTarge
       ref={(el) => registerAnchor('e' + idx, el)}
     >
       <BlockChip block={e.block} />
-      {e.intent && !e.dead ? (
-        <div class={`intent ${e.intent.kind}`} data-tip={moveName(e.defId, e.intent.moveId)}>
-          {intentText(e.intent)}
+      {liveIntent && !e.dead ? (
+        <div class={`intent ${liveIntent.kind}`} data-tip={moveName(e.defId, liveIntent.moveId)}>
+          {intentText(liveIntent)}
         </div>
       ) : (
         <div class="intent" style={{ opacity: 0.25 }}>
@@ -173,6 +184,9 @@ export function CombatScreen() {
 
   const dm = dragMode.value
   const dh = dragHoverWho.value
+  const hoveredEnemy = dh?.startsWith('e') ? cs.enemies[Number(dh.slice(1))] : undefined
+  const previewTargets =
+    hoveredEnemy && !hoveredEnemy.dead ? [hoveredEnemy] : cs.enemies.filter((e) => !e.dead)
   const highlightOf = (i: number, e: EnemyC): Highlight => {
     if (e.dead) return 'none'
     if (dm === 'target') return dh === 'e' + i ? 'snap' : 'candidate'
@@ -235,7 +249,15 @@ export function CombatScreen() {
 
         <div class="enemies">
           {cs.enemies.map((e, i) => (
-            <EnemyBox key={i} e={e} idx={i} highlight={highlightOf(i, e)} onTarget={() => clickEnemy(i)} />
+            <EnemyBox
+              key={i}
+              e={e}
+              idx={i}
+              defender={p}
+              asc={cs.asc}
+              highlight={highlightOf(i, e)}
+              onTarget={() => clickEnemy(i)}
+            />
           ))}
         </div>
       </div>
@@ -270,6 +292,12 @@ export function CombatScreen() {
           targets={aliveWhos}
           disabled={!!cs.over}
           selected={selected}
+          previewCard={(card) =>
+            previewCard(card, p, previewTargets, {
+              relics: cs.relics,
+              firstCardFree: cs.firstCardFree,
+            })
+          }
           onCardClick={clickCard}
           onPlay={(idx, who, from) => {
             setSelected(null)

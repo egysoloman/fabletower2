@@ -4,7 +4,7 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, cardName, predictPvpPlay, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
+import { CARDS, cardName, predictPvpPlay, previewCard, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
 import { BlockChip, CardView, HpBar, StatusRow } from '../components'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
@@ -462,6 +462,7 @@ export function PvpScreen() {
             playable={playableSet}
             targets={myTurn && !pending ? [oppWho] : []}
             disabled={!myTurn || pending}
+            previewCard={(card) => previewCard(card, me, [them])}
             onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
             onPlay={playFromHand}
           />

@@ -15,6 +15,7 @@ import {
   relicName,
   statusDesc,
   statusName,
+  type CardCombatPreview,
   type CardInst,
   type Statuses,
   type StatusId,
@@ -32,6 +33,8 @@ export function CardView(props: {
   onClick?: () => void
   cls?: string
   style?: JSX.CSSProperties
+  /** Live combat-only values produced by the shared rules engine. */
+  preview?: CardCombatPreview
 }) {
   const { card } = props
   const def = CARDS[card.id]
@@ -44,13 +47,33 @@ export function CardView(props: {
       style={props.style}
       onClick={props.onClick}
     >
-      {!def.unplayable && <div class="cost">{card.up && def.upCost !== undefined ? def.upCost : cardCost(card)}</div>}
+      {!def.unplayable && (
+        <div class={`cost ${props.preview && props.preview.cost !== cardCost(card) ? 'live' : ''}`}>
+          {props.preview?.cost ?? (card.up && def.upCost !== undefined ? def.upCost : cardCost(card))}
+        </div>
+      )}
       <div class={`cname ${card.up ? 'upgraded' : ''}`}>{cardName(card)}</div>
       <div class="ctype">{typeLabel}</div>
       <div class="cdesc">{describeCard(card)}</div>
+      {props.preview && (props.preview.damage || props.preview.block) && (
+        <div class="cpreview">
+          {props.preview.damage && (
+            <span class="live-dmg">
+              ⚔ {previewAmount(props.preview.damage)}
+            </span>
+          )}
+          {props.preview.block !== undefined && <span class="live-block">▰ {props.preview.block}</span>}
+        </div>
+      )}
       {flavor && <div class="cflavor">{flavor}</div>}
     </div>
   )
+}
+
+function previewAmount(v: NonNullable<CardCombatPreview['damage']>): string {
+  const amount = v.min === v.max ? String(v.min) : `${v.min}–${v.max}`
+  if (v.times && v.times > 1) return `${amount}×${v.times}`
+  return v.total ? `Σ${amount}` : amount
 }
 
 export function CardById(props: { id: string; up?: boolean; onClick?: () => void; cls?: string; style?: JSX.CSSProperties }) {

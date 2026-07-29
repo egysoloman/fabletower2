@@ -9,7 +9,7 @@
  */
 import { signal } from '@preact/signals'
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, type CardInst } from '@neonspire/engine'
+import { CARDS, type CardCombatPreview, type CardInst } from '@neonspire/engine'
 import { CardView } from '../components'
 import { anchorBox, anchorCenter } from '../fx'
 import { t } from '../i18n'
@@ -65,6 +65,8 @@ export interface DraggableHandProps {
   onCardClick?: (idx: number) => void
   disabled?: boolean
   selected?: number | null
+  /** Supplies live, rules-engine-derived values for each card in combat. */
+  previewCard?: (card: CardInst) => CardCombatPreview | undefined
 }
 
 export function DraggableHand(props: DraggableHandProps) {
@@ -304,7 +306,7 @@ export function DraggableHand(props: DraggableHandProps) {
                 }
               }}
             >
-              <CardView card={c} />
+              <CardView card={c} preview={props.previewCard?.(c)} />
             </div>
           )
         })}
@@ -319,7 +321,7 @@ export function DraggableHand(props: DraggableHandProps) {
             }px, 0) translate(-50%,-50%) rotate(${drag.tilt.toFixed(1)}deg)`,
           }}
         >
-          <CardView card={dragCard} />
+          <CardView card={dragCard} preview={props.previewCard?.(dragCard)} />
         </div>
       )}
 
@@ -332,7 +334,7 @@ export function DraggableHand(props: DraggableHandProps) {
             }px, 0) translate(-50%,-50%) scale(0.92)`,
           }}
         >
-          <CardView card={retCard} />
+          <CardView card={retCard} preview={props.previewCard?.(retCard)} />
         </div>
       )}
 

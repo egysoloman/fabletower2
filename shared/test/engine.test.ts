@@ -24,6 +24,8 @@ import {
   nodeById,
   obtainableCards,
   playableCards,
+  previewCard,
+  previewEnemyIntent,
   pvpReduce,
   randInt,
   randomRelicId,
@@ -94,6 +96,40 @@ describe('damage math', () => {
     expect(modifiedDamage(6, F({ weak: 1 }), F({}))).toBe(4) // floor(6*0.75)
     expect(modifiedDamage(6, F({}), F({ vuln: 2 }))).toBe(9) // floor(6*1.5)
     expect(modifiedDamage(6, F({ str: 2, weak: 1 }), F({ vuln: 1 }))).toBe(9) // floor(floor(8*.75)*1.5)
+  })
+
+  it('previews live card values through the real interpreter', () => {
+    const side = {
+      hp: 75,
+      maxHp: 75,
+      block: 0,
+      statuses: { str: 2, weak: 1 },
+      powersPlayed: 0,
+      cardsPlayed: 0,
+      cardsThisTurn: 0,
+    }
+    const targets = [
+      { name: 'plain', hp: 20, maxHp: 20, block: 0, statuses: {} },
+      { name: 'vulnerable', hp: 20, maxHp: 20, block: 0, statuses: { vuln: 1 } },
+    ]
+    // Strike: floor((6 + 2) × .75) = 6, then Vulnerable raises it to 9.
+    expect(previewCard(inst('strike', 1), side, targets)).toEqual({
+      cost: 1,
+      damage: { min: 6, max: 9 },
+    })
+    // Relic card-block hooks are included instead of being reimplemented by UI.
+    expect(previewCard(inst('defend', 2), side, targets, { relics: ['aegismatrix'] }).block).toBe(6)
+  })
+
+  it('recalculates stored enemy intent against current statuses', () => {
+    const cs = fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['spambot'])
+    const enemy = cs.enemies[0]
+    enemy.intent = { moveId: 'ping', name: 'Ping', kind: 'attack', dmg: 5 }
+    enemy.statuses.str = 2
+    cs.player.statuses.vuln = 1
+    expect(previewEnemyIntent(enemy, cs.player)?.dmg).toBe(10)
+    enemy.statuses.weak = 1
+    expect(previewEnemyIntent(enemy, cs.player)?.dmg).toBe(7)
   })
 })
 

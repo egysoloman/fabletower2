@@ -4,7 +4,7 @@
  * Everything is server-authoritative; this file only renders and asks.
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, relicName, type CharId } from '@neonspire/engine'
+import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CharId } from '@neonspire/engine'
 import { BlockChip, CardById, CardView, HpBar, StatusRow } from '../components'
 import { anchorCenter, burst, flyCard, fxPulses, processEvents, registerAnchor, useShake } from '../fx'
 import {
@@ -37,7 +37,7 @@ import {
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
-import { DraggableHand } from './hand'
+import { DraggableHand, dragHoverWho } from './hand'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { MapView, mapGeometry } from './mapview'
@@ -131,6 +131,10 @@ export function CoopScreen() {
       coopSend({ t: 'coopaction', action })
     }
     const enemyTargets = v.enemies.map((e: any, i: number) => (e.dead ? null : 'e' + i)).filter(Boolean) as string[]
+    const hoverWho = dragHoverWho.value
+    const hoverEnemy = hoverWho?.startsWith('e') ? v.enemies[Number(hoverWho.slice(1))] : undefined
+    const previewTargets =
+      hoverEnemy && !hoverEnemy.dead ? [hoverEnemy] : v.enemies.filter((e: any) => !e.dead)
 
     return (
       <div class={`combat screen ${shakeCls}`}>
@@ -175,17 +179,23 @@ export function CoopScreen() {
             {v.enemies.map((e: any, i: number) =>
               e.dead ? null : (
                 <div key={i} class={`enemy ${fxPulses.value['e' + i] ?? ''}`} ref={(el) => registerAnchor('e' + i, el)}>
-                  {e.intent && (
-                    <div class="intent">
-                      {e.intent.kind === 'attack' || e.intent.kind === 'mixed'
-                        ? `${t('intentAtk')} ${e.intent.dmg ?? '?'}${e.intent.times ? '×' + e.intent.times : ''}`
-                        : e.intent.kind === 'defend'
+                  {e.intent && (() => {
+                    const focus = typeof e.focus === 'number' && v.players[e.focus] ? e.focus : v.active
+                    const live = previewEnemyIntent(e, v.players[focus], v.asc) ?? e.intent
+                    const text =
+                      live.kind === 'attack' || live.kind === 'mixed'
+                        ? `${t('intentAtk')} ${live.dmg ?? '?'}${live.times ? '×' + live.times : ''}`
+                        : live.kind === 'defend'
                           ? t('intentDef')
-                          : e.intent.kind === 'buff'
+                          : live.kind === 'buff'
                             ? t('intentBuf')
-                            : t('intentHex')}
-                    </div>
-                  )}
+                            : t('intentHex')
+                    return (
+                      <div class={`intent ${live.kind}`}>
+                        {text} <small>→ {v.players[focus]?.name}</small>
+                      </div>
+                    )
+                  })()}
                   <div class="glyph">
                     <Sprite id={e.defId} size={52} />
                   </div>
@@ -223,6 +233,12 @@ export function CoopScreen() {
             playable={playableSet}
             targets={myTurn && !pending ? enemyTargets : []}
             disabled={!myTurn || pending}
+            previewCard={(card) =>
+              previewCard(card, me, previewTargets, {
+                relics: v.playerRelics[you] ?? [],
+                firstCardFree: v.firstCardFree,
+              })
+            }
             onCardClick={(i) => playableSet.has(i) && play(i, enemyTargets[0])}
             onPlay={play}
           />

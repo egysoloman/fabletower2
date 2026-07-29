@@ -134,6 +134,8 @@ export interface PvpSideView {
   discard: CardInst[]
   exhausted: CardInst[]
   powersPlayed: number
+  cardsPlayed: number
+  cardsThisTurn: number
   /** Summoned allies are public information. */
   minions: MinionC[]
   /** Present only on your own side. */
@@ -165,6 +167,8 @@ export function viewFor(ps: PvpState, idx: 0 | 1): PvpView {
       discard: s.discard,
       exhausted: s.exhausted,
       powersPlayed: s.powersPlayed,
+      cardsPlayed: s.cardsPlayed,
+      cardsThisTurn: s.cardsThisTurn,
       minions: s.minions,
       ...(i === idx ? { hand: s.hand } : {}),
     }

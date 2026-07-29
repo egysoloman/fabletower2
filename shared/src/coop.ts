@@ -158,7 +158,7 @@ function rollIntents(cs: CoopState) {
     const focus = alive[randInt(cs.rng, 0, alive.length - 1)]
     const move = chooseMove(e, aiView(cs, focus), cs.rng)
     e.intent = intentFor(move, e, cs.players[focus], cs.asc)
-    ;(e as any).focus = focus
+    e.focus = focus
   }
 }
 

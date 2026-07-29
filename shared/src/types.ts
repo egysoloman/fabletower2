@@ -249,6 +249,8 @@ export interface EnemyC extends Fighter {
   lastMoves: string[]
   /** turn number each move was last used on */
   usedOn: Record<string, number>
+  /** Co-op only: party member this intent is currently aimed at. */
+  focus?: number
   dead: boolean
 }
 
