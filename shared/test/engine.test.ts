@@ -32,6 +32,7 @@ import {
   restHealAmount,
   rngFromSeed,
   rollCardRewards,
+  scoreClimbRound,
   startCombat,
   upgradeCard,
   viewFor,
@@ -1479,5 +1480,18 @@ describe('strict/hybrid mode support (cycle 45)', () => {
       // divergence detection: post-play state no longer matches pre-play sum
       expect(pvpChecksum(real.state)).not.toBe(sum1)
     }
+  })
+})
+
+describe('climb checkpoint scoring', () => {
+  it('awards one point without mutating the previous score', () => {
+    const before: [number, number] = [1, 0]
+    const result = scoreClimbRound(before, 1, 2)
+    expect(before).toEqual([1, 0])
+    expect(result).toEqual({ score: [1, 1], final: false })
+  })
+
+  it('marks the third checkpoint as the final round', () => {
+    expect(scoreClimbRound([1, 1], 0, 3)).toEqual({ score: [2, 1], final: true })
   })
 })

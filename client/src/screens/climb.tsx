@@ -28,14 +28,18 @@ import {
   climbPending,
   climbPhase,
   climbQueue,
+  climbFinalWon,
+  climbRoundWon,
+  climbScore,
   climbSendAction,
   climbSendEmote,
+  climbYou,
   climbView,
 } from '../climb'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
-import { continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
+import { continueClimbAfterRound, continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
 import { screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -47,6 +51,7 @@ export function ClimbScreen() {
   const [picking, setPicking] = useState(false)
   const phase = climbPhase.value
   const view = climbView.value
+  const raceScore = climbScore.value
   const shakeCls = useShake()
 
   const youIdx = view?.you
@@ -113,6 +118,9 @@ export function ClimbScreen() {
             {myTurn ? t('yourTurn') : tf('theirTurn', { name: them.name })}
           </span>
           <span class="spacer" />
+          <span class="stat" style={{ color: 'var(--gold)' }}>
+            {raceScore[view.you]} — {raceScore[1 - view.you]}
+          </span>
         </div>
         <div class="arena">
           <div class={`player-zone ${fxPulses.value[meWho] ?? ''}`} ref={(el) => registerAnchor(meWho, el)}>
@@ -236,6 +244,35 @@ export function ClimbScreen() {
               </div>
             )}
             <EmotePanel send={climbSendEmote} />
+          </>
+        )}
+        {phase === 'round' && (
+          <>
+            <h2 class={climbRoundWon.value ? '' : 'pink'}>
+              {climbRoundWon.value ? t('checkpointWon') : t('checkpointLost')}
+            </h2>
+            <div class="sub">{tf('raceScore', {
+              you: raceScore[climbYou.value],
+              them: raceScore[1 - climbYou.value],
+            })}</div>
+            <div class="sub">{climbNotice.value}</div>
+            <button class="btn big pink" onClick={continueClimbAfterRound}>
+              {t('continueClimb')}
+            </button>
+          </>
+        )}
+        {phase === 'final' && (
+          <>
+            <h2 class={climbFinalWon.value ? '' : 'pink'}>
+              {climbFinalWon.value ? t('raceWon') : t('raceLost')}
+            </h2>
+            <div class="sub">{tf('raceScore', {
+              you: raceScore[climbYou.value],
+              them: raceScore[1 - climbYou.value],
+            })}</div>
+            <button class="btn big pink" onClick={continueClimbAfterWin}>
+              {t('finishRun')}
+            </button>
           </>
         )}
         {phase === 'won' && (

@@ -35,7 +35,7 @@ the same server). For production: `npm run build && npm start` — the server
 serves the built client and the WebSocket on one port.
 
 ```bash
-npm test                     # engine test suite (95 tests, incl. full simulated runs)
+npm test                     # engine + multiplayer persistence/integration tests
 npm run typecheck            # strict TS across all three packages
 npm run balance -w shared    # heuristic-bot balance sweep (win rates per character)
 ```
@@ -145,8 +145,10 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
     maps, with live progress relayed to each other's HUD. Felling your act
     boss reaches the checkpoint: both players then duel with their **real
     run decks** (upgrades, summons and all) at their run Max HP. The winner
-    keeps climbing; the loser is eliminated. Dying mid-climb or
-    disconnecting forfeits the race.
+    scores one point; both players then resume their untouched solo run for
+    the next act. After all three checkpoint rounds, the higher score wins
+    the race. Dying
+    during the solo climb or disconnecting still forfeits the race.
   - **Co-op expedition** — party up (2-4) and climb ONE shared Spire: the
     host picks the path, every battle is fought side by side against
     enemies scaled to party size (HP ×1.55 per extra member), each player
@@ -154,6 +156,11 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
     (Med Patch, Cover Fire, Ration Pack) patch teammates mid-fight, rest
     sites let you sacrifice your rest to heal an ally, downed players are
     revived at 30% after victory, and everyone drafts their own rewards.
+    Every accepted room change is revisioned, broadcast to all clients and
+    atomically snapshotted server-side, so the party can resume even after a
+    server restart. Mount the data directory in production, or point
+    `NS_COOP_DATA_FILE` at a persistent volume; inactive snapshots expire
+    after seven days.
 
 ![pvp](docs/pvp.png)
 

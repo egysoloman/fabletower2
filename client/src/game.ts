@@ -55,7 +55,7 @@ import {
   touch,
 } from './store'
 import { anchorCenter, codeBurstPt, energyRipple, flyCard, glyphSplash, playRemovalCine, processEvents, screenWipe } from './fx'
-import { climbActive, climbBossKill, climbDied, climbLeave, climbReport } from './climb'
+import { climbActive, climbBossKill, climbContinueRound, climbDied, climbLeave, climbReport } from './climb'
 import { checkCombat, checkRun, discoverEnemies, discoverEvent, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
@@ -438,6 +438,9 @@ export function continueFromReward() {
     if (climbActive()) {
       climbBossKill(r)
       touch()
+      // The checkpoint duel is isolated; persist the untouched solo run so a
+      // reload cannot accidentally resurrect the consumed boss reward.
+      saveGame()
       return
     }
     // Beating Act 3 opens the way down: the player chooses whether to jack
@@ -481,7 +484,7 @@ export function startClimbRun(seed: number, char: import('@neonspire/engine').Ch
   newGame(seed, 0, char)
 }
 
-/** Checkpoint duel won: the rival is out — keep climbing. */
+/** Race resolved by the final checkpoint or a forfeit: finish the solo run. */
 export function continueClimbAfterWin() {
   const r = run.value
   climbLeave()
@@ -490,6 +493,7 @@ export function continueClimbAfterWin() {
     return
   }
   if (advanceAct(r) === 'victory') {
+    recordRun(true)
     clearSave()
     screen.value = 'victory'
     sfx.win()
@@ -502,7 +506,31 @@ export function continueClimbAfterWin() {
   saveGame()
 }
 
-/** Checkpoint duel lost (or rival won the race): the run is over. */
+/** Scored checkpoint duel complete: both racers advance with untouched runs. */
+export function continueClimbAfterRound() {
+  const r = run.value
+  if (!r) {
+    climbLeave()
+    screen.value = 'menu'
+    return
+  }
+  if (advanceAct(r) === 'victory') {
+    climbLeave()
+    recordRun(true)
+    clearSave()
+    screen.value = 'victory'
+    sfx.win()
+    touch()
+    return
+  }
+  climbContinueRound()
+  screen.value = 'map'
+  sfx.win()
+  touch()
+  saveGame()
+}
+
+/** The solo climb ended in death or forfeit: discard the run. */
 export function loseClimb() {
   climbLeave()
   run.value = null

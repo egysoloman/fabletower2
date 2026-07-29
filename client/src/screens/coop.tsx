@@ -6,7 +6,20 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CharId } from '@neonspire/engine'
 import { BlockChip, CardById, CardView, HpBar, StatusRow } from '../components'
-import { anchorCenter, burst, flyCard, fxPulses, processEvents, registerAnchor, useShake } from '../fx'
+import {
+  anchorCenter,
+  burst,
+  codeBurstPt,
+  energyRipple,
+  flyCard,
+  fxPulses,
+  glyphSplash,
+  localWho,
+  processEvents,
+  registerAnchor,
+  uiRipple,
+  useShake,
+} from '../fx'
 import {
   coopExit,
   coopHost,
@@ -33,6 +46,9 @@ import {
   coopSavedSeat,
   coopShop,
   coopToast,
+  coopWaitingFor,
+  coopTravelTarget,
+  coopCompletedNode,
 } from '../coopclient'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -40,7 +56,7 @@ import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho } from './hand'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
-import { MapView, mapGeometry } from './mapview'
+import { MapView, mapGeometry, type MapTravel } from './mapview'
 import { mpName } from '../mp'
 
 export function CoopScreen() {
@@ -49,6 +65,17 @@ export function CoopScreen() {
   const [size, setSize] = useState(2)
   const phase = coopPhase.value
   const shakeCls = useShake()
+  const submitAndWait = (msg: unknown, waitingFor: string) => {
+    coopSend(msg)
+    coopWaitingFor.value = waitingFor
+    coopPhase.value = 'waiting'
+  }
+  useEffect(() => {
+    if (phase === 'combat') localWho.value = 'c' + coopYou.value
+    return () => {
+      localWho.value = 'p'
+    }
+  }, [phase, coopYou.value])
   /** Party members other than you — emote targets. */
   const emoteTargets = () => {
     const m = coopMap.value
@@ -63,6 +90,7 @@ export function CoopScreen() {
   const coopSvg = useRef<SVGSVGElement | null>(null)
   const wrapRef = useRef<HTMLDivElement | null>(null)
   const [orbitPos, setOrbitPos] = useState<{ x: number; y: number } | null>(null)
+  const [mapTravel, setMapTravel] = useState<MapTravel | null>(null)
   const mapPos = coopMap.value?.pos ?? null
   useEffect(() => {
     if (phase !== 'map' || !mapPos) {
@@ -87,6 +115,78 @@ export function CoopScreen() {
     return () => cancelAnimationFrame(raf)
   }, [phase, mapPos])
 
+  // The server announces a selected node before applying it, so every party
+  // member sees the same group of colored motes travel along the edge.
+  const travelTarget = coopTravelTarget.value
+  useEffect(() => {
+    const mm = coopMap.value
+    if (phase !== 'map' || !travelTarget || !mm) {
+      setMapTravel(null)
+      return
+    }
+    const nodes = mm.map.rows.flat()
+    const target = nodes.find((n: any) => n.id === travelTarget)
+    const from = mm.pos ? nodes.find((n: any) => n.id === mm.pos) : null
+    if (!target) return
+    const g = mapGeometry(mm.map)
+    const tr: MapTravel = {
+      fx: from ? g.cx(from) : g.cx(target),
+      fy: from ? g.cy(from) : g.H + 18,
+      tx: g.cx(target),
+      ty: g.cy(target),
+      go: false,
+    }
+    setMapTravel(tr)
+    sfx.whoosh()
+    const raf = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setMapTravel((value) => (value ? { ...value, go: true } : value))),
+    )
+    let step = 0
+    const trail = window.setInterval(() => {
+      step++
+      const k = step / 6
+      const svg = coopSvg.current
+      if (svg) {
+        const rect = svg.getBoundingClientRect()
+        const x = tr.fx + (tr.tx - tr.fx) * k
+        const y = tr.fy + (tr.ty - tr.fy) * k
+        const p = { x: rect.left + (x / g.W) * rect.width, y: rect.top + (y / g.H) * rect.height }
+        const party = mm.party ?? []
+        const color = party[(step - 1) % Math.max(1, party.length)]?.color ?? 'var(--green)'
+        burst(p.x, p.y, color, 4, 1.6)
+      }
+      if (step >= 6) clearInterval(trail)
+    }, 78)
+    return () => {
+      cancelAnimationFrame(raf)
+      clearInterval(trail)
+    }
+  }, [phase, travelTarget])
+
+  // When the party returns from the selected node, celebrate the completed
+  // marker with the same ripple/burst language as solo adventure mode.
+  useEffect(() => {
+    const id = coopCompletedNode.value
+    const mm = coopMap.value
+    if (phase !== 'map' || travelTarget || !id || !mm) return
+    const node = mm.map.rows.flat().find((n: any) => n.id === id)
+    coopCompletedNode.value = null
+    if (!node) return
+    const timer = window.setTimeout(() => {
+      const svg = coopSvg.current
+      if (!svg) return
+      const g = mapGeometry(mm.map)
+      const rect = svg.getBoundingClientRect()
+      const p = {
+        x: rect.left + (g.cx(node) / g.W) * rect.width,
+        y: rect.top + (g.cy(node) / g.H) * rect.height,
+      }
+      burst(p.x, p.y, '#ffd166', 22, 3.7)
+      uiRipple(p.x, p.y, '#ffd166')
+    }, 260)
+    return () => clearTimeout(timer)
+  }, [phase, mapPos, travelTarget])
+
   // --- Combat ---------------------------------------------------------------
   if (phase === 'combat' && coopView.value) {
     const v = coopView.value
@@ -107,10 +207,18 @@ export function CoopScreen() {
       const def = CARDS[card.id]
       const target = who?.startsWith('e') ? Number(who.slice(1)) : undefined
       const dest = anchorCenter(who ?? 'c' + you)
-      if (from && dest) {
-        flyCard(from, dest, def.type, cardName(card))
+      const src = from ?? anchorCenter('c' + you)
+      if (src && dest) {
+        flyCard(src, dest, def.type, cardName(card))
         sfx.whoosh()
+        const d = dest
+        const ext = def.type === 'attack' ? '.sh' : def.type === 'power' ? '.sys' : '.cfg'
+        setTimeout(() => {
+          codeBurstPt(d, [`> exec ${card.id}${ext}`, '[ok]'])
+          glyphSplash(d.x, d.y, def.type === 'attack' ? '#00e5ff' : '#7dffa8', 9)
+        }, 230)
       }
+      energyRipple()
       sfx.play()
       const action = { t: 'play', hand: idx, target, ally: def.target === 'ally' ? you : undefined }
       // Hybrid: play the outcome instantly from a local prediction; the
@@ -176,9 +284,15 @@ export function CoopScreen() {
             ))}
           </div>
           <div class="enemies">
-            {v.enemies.map((e: any, i: number) =>
-              e.dead ? null : (
-                <div key={i} class={`enemy ${fxPulses.value['e' + i] ?? ''}`} ref={(el) => registerAnchor('e' + i, el)}>
+            {v.enemies.map((e: any, i: number) => {
+              const boss = e.maxHp >= 100
+              return (
+                <div
+                  key={i}
+                  class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} spawn-in ${e.dead ? '' : (fxPulses.value['e' + i] ?? '')}`}
+                  ref={(el) => registerAnchor('e' + i, el)}
+                >
+                  <BlockChip block={e.block} />
                   {e.intent && (() => {
                     const focus = typeof e.focus === 'number' && v.players[e.focus] ? e.focus : v.active
                     const live = previewEnemyIntent(e, v.players[focus], v.asc) ?? e.intent
@@ -197,14 +311,14 @@ export function CoopScreen() {
                     )
                   })()}
                   <div class="glyph">
-                    <Sprite id={e.defId} size={52} />
+                    <Sprite id={e.defId} size={boss ? 62 : 52} />
                   </div>
                   <div class="ename">{e.name}</div>
                   <HpBar hp={e.hp} maxHp={e.maxHp} />
                   <StatusRow statuses={e.statuses} />
                 </div>
-              ),
-            )}
+              )
+            })}
           </div>
         </div>
         {coopBelt.value.length > 0 && (
@@ -360,13 +474,13 @@ export function CoopScreen() {
                 pos={m.pos}
                 path={m.path ?? []}
                 open={
-                  new Set<string>(
+                  mapTravel ? new Set<string>() : new Set<string>(
                     m.pos === null
                       ? m.map.rows[0].map((n: any) => n.id)
                       : (m.map.rows.flat().find((n: any) => n.id === m.pos)?.next ?? []),
                   )
                 }
-                onNode={(n) => coopSend(coopHost.value ? { t: 'cooppick', id: n.id } : { t: 'coopvote', id: n.id })}
+                onNode={(n) => !mapTravel && coopSend(coopHost.value ? { t: 'cooppick', id: n.id } : { t: 'coopvote', id: n.id })}
                 pc={charColor((m.party?.[0]?.char ?? 'runner') as never)}
                 ringColors={(m.party ?? []).slice(1).map((p: any) => charColor((p.char ?? 'runner') as never))}
                 votes={(() => {
@@ -374,9 +488,11 @@ export function CoopScreen() {
                   for (const v of coopVotes.value) if (v.id) (out[v.id] ??= []).push(v.color)
                   return out
                 })()}
+                travel={mapTravel}
+                travelColors={(m.party ?? []).map((p: any) => p.color)}
                 svgRef={(el) => (coopSvg.current = el)}
               />
-              {orbitPos && (
+              {orbitPos && !mapTravel && (
                 <div class="orbitwrap onmap" style={{ left: orbitPos.x + 'px', top: orbitPos.y + 'px' }}>
                   {m.party.map((p: any, i: number) => (
                     <div
@@ -411,28 +527,33 @@ export function CoopScreen() {
             <div class="sub">+{coopReward.value.gold}¤{coopReward.value.relic ? ` · ${coopReward.value.relic}` : ''}</div>
             <div class="cardrow" style={{ display: 'flex', gap: '12px' }}>
               {coopReward.value.cards.map((id: string, i: number) => (
-                <div key={id} onClick={() => (coopSend({ t: 'cooptake', card: id, relic: true }), (coopReward.value = null), (coopPhase.value = 'map'))}>
+                <div key={id} onClick={() => (submitAndWait({ t: 'cooptake', card: id, relic: true }, 'reward'), (coopReward.value = null))}>
                   <CardView card={{ uid: 0, id, up: false }} cls="reveal" style={{ '--reveal': `${i * 110}ms` } as never} />
                 </div>
               ))}
             </div>
-            <button class="btn ghost" onClick={() => (coopSend({ t: 'cooptake', card: null, relic: true }), (coopReward.value = null), (coopPhase.value = 'map'))}>
+            <button class="btn ghost" onClick={() => (submitAndWait({ t: 'cooptake', card: null, relic: true }, 'reward'), (coopReward.value = null))}>
               {t('skip')}
             </button>
+          </div>
+        )}
+        {phase === 'waiting' && (
+          <div class="phase-in">
+            <div class="pulse" style={{ color: 'var(--green)' }}>{t('coopWaiting')}</div>
           </div>
         )}
         {phase === 'rest' && m && (
           <div class="phase-in panel restglow">
             <h2>{t('safehouse')}</h2>
             <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <button class="btn" onClick={() => coopSend({ t: 'cooprestpick', what: 'heal' })}>
+              <button class="btn" onClick={() => submitAndWait({ t: 'cooprestpick', what: 'heal' }, 'rest')}>
                 {t('coopRestHeal')}
               </button>
               <details>
                 <summary class="btn" style={{ display: 'inline-block', cursor: 'pointer' }}>{t('patch')}</summary>
                 <div class="gridcards" style={{ maxWidth: '640px' }}>
                   {coopRestDeck.value.filter((c: any) => !c.up && CARDS[c.id]?.rarity !== 'special').map((c: any, i: number) => (
-                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, '#ffd166', 16, 3.2); coopSend({ t: 'cooprestpick', what: 'upgrade', uid: c.uid }); sfx.heal() }}>
+                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2, '#ffd166', 16, 3.2); submitAndWait({ t: 'cooprestpick', what: 'upgrade', uid: c.uid }, 'rest'); sfx.heal() }}>
                       <CardView card={c} />
                     </div>
                   ))}
@@ -442,7 +563,7 @@ export function CoopScreen() {
                 <summary class="btn ghost" style={{ display: 'inline-block', cursor: 'pointer' }}>{t('removeTitle')}</summary>
                 <div class="gridcards" style={{ maxWidth: '640px' }}>
                   {coopRestDeck.value.map((c: any, i: number) => (
-                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={() => coopSend({ t: 'cooprestpick', what: 'remove', uid: c.uid })}>
+                    <div key={c.uid} style={{ '--fan': Math.min(i, 14) } as never} onClick={() => submitAndWait({ t: 'cooprestpick', what: 'remove', uid: c.uid }, 'rest')}>
                       <CardView card={c} />
                     </div>
                   ))}
@@ -450,7 +571,7 @@ export function CoopScreen() {
               </details>
               {m.party.map((p: any, i: number) =>
                 i === m.you ? null : (
-                  <button key={i} class="btn ghost" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); burst(r.left + r.width / 2, r.top, '#3dffa2', 18, 3); coopSend({ t: 'cooprestpick', what: 'ally', ally: i }); sfx.heal() }}>
+                  <button key={i} class="btn ghost" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); burst(r.left + r.width / 2, r.top, '#3dffa2', 18, 3); submitAndWait({ t: 'cooprestpick', what: 'ally', ally: i }, 'rest'); sfx.heal() }}>
                     {tf('coopRestAlly', { name: p.name })}
                   </button>
                 ),
@@ -497,7 +618,7 @@ export function CoopScreen() {
                 </div>
               </details>
             </div>
-            <button class="btn pink" onClick={() => coopSend({ t: 'coopshopdone' })}>
+            <button class="btn pink" onClick={() => submitAndWait({ t: 'coopshopdone' }, 'shop')}>
               {t('leave')}
             </button>
           </div>
@@ -518,7 +639,7 @@ export function CoopScreen() {
                     key={i}
                     class={`bigchoice pop-in ${i % 2 ? 'pink' : ''} ${ch.needGold && coopEvent.value.gold < ch.needGold ? 'disabled' : ''}`}
                     style={{ '--i': i } as never}
-                    onClick={() => (coopSend({ t: 'coopeventpick', choice: i }), sfx.click())}
+                    onClick={() => (submitAndWait({ t: 'coopeventpick', choice: i }, 'event'), sfx.click())}
                   >
                     <div class="t">{eventChoiceLabel(ev, i)}</div>
                     <div class="d">{eventChoiceDetail(ev, i)}</div>
