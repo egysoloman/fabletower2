@@ -70,6 +70,8 @@ export function MapView(props: {
   /** Advisory votes: node id -> voter colors (co-op). */
   votes?: Record<string, string[]>
   travel?: MapTravel | null
+  /** Co-op travel renders one glowing party mote per member. */
+  travelColors?: string[]
   svgRef?: (el: SVGSVGElement | null) => void
 }) {
   const { map, pos, open } = props
@@ -143,7 +145,29 @@ export function MapView(props: {
             style={{ '--rc': col, '--rd': `${(k * (2.4 / rings.length)).toFixed(2)}s` } as never}
           />
         ))}
-      {props.travel && (
+      {props.travel && props.travelColors && props.travelColors.length > 0 ? (
+        <g
+          class="travel-party"
+          style={{
+            transform: `translate(${props.travel.go ? props.travel.tx : props.travel.fx}px, ${props.travel.go ? props.travel.ty : props.travel.fy}px)`,
+          }}
+        >
+          {props.travelColors.map((color, i) => {
+            const angle = (Math.PI * 2 * i) / props.travelColors!.length - Math.PI / 2
+            const radius = props.travelColors!.length > 1 ? 7 : 0
+            return (
+              <circle
+                key={i}
+                class="travel-party-dot"
+                r={5}
+                cx={Math.cos(angle) * radius}
+                cy={Math.sin(angle) * radius}
+                style={{ '--tc': color } as never}
+              />
+            )
+          })}
+        </g>
+      ) : props.travel ? (
         <circle
           class="travel-dot"
           r={7}
@@ -153,7 +177,7 @@ export function MapView(props: {
             transform: `translate(${props.travel.go ? props.travel.tx : props.travel.fx}px, ${props.travel.go ? props.travel.ty : props.travel.fy}px)`,
           }}
         />
-      )}
+      ) : null}
     </svg>
   )
 }

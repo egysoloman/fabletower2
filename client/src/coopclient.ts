@@ -4,8 +4,8 @@
  * rewards — the client only renders and sends intents.
  */
 import { signal } from '@preact/signals'
-import { EMOTES, type CharId, type GameEvent } from '@neonspire/engine'
-import { processEvents, screenWipe } from './fx'
+import { CARDS, EMOTES, cardName, type CharId, type GameEvent } from '@neonspire/engine'
+import { anchorCenter, flyCard, fxRemainingMs, processEvents, screenWipe } from './fx'
 import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
 import { modsKey } from './mods'
 import { discoverEvent } from './meta'
@@ -24,6 +24,7 @@ export type CoopPhase =
   | 'combat'
   | 'reward'
   | 'rest'
+  | 'waiting'
   | 'victory'
   | 'defeat'
   | 'ended'
@@ -37,6 +38,10 @@ export const coopView = signal<any>(null)
 export const coopReward = signal<any>(null)
 export const coopNotice = signal('')
 export const coopPending = signal(false)
+export const coopRevision = signal(0)
+export const coopWaitingFor = signal('')
+export const coopTravelTarget = signal<string | null>(null)
+export const coopCompletedNode = signal<string | null>(null)
 /** Queue lobby: tags of everyone waiting for this party size. */
 export const coopLobby = signal<{ members: string[]; need: number } | null>(null)
 /** Formation stage: full party gathered, waiting on READY from everyone. */
@@ -63,13 +68,14 @@ export function coopFlash(msg: string) {
 let ws: WebSocket | null = null
 let token: string | null = null
 let retryUntil = 0
+let phaseTimer = 0
 
 // --- Seat persistence: a co-op run survives closing the page -----------------
 // The server holds the seat for the reconnect grace window; we keep the token
 // so the CO-OP screen can offer RESUME RUN after a reload.
 
-/** Must match the server's RECONNECT_GRACE_MS. */
-export const COOP_SEAT_TTL_MS = 15 * 60 * 1000
+/** Must match the server's COOP_RESUME_TTL_MS. */
+export const COOP_SEAT_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 function saveSeat(url: string) {
   try {
@@ -166,6 +172,12 @@ function handleMsg(msg: MessageEvent, url: string) {
       } catch {
         return
       }
+      if (Number.isInteger(data.rev)) {
+        const rev = Number(data.rev)
+        if (rev < coopRevision.value) return
+        if (coopRevision.value > 0 && rev > coopRevision.value + 1) coopSend({ t: 'coopsync' })
+        coopRevision.value = Math.max(coopRevision.value, rev)
+      }
       switch (data.t) {
         case 'queued':
           coopPhase.value = 'queued'
@@ -191,8 +203,13 @@ function handleMsg(msg: MessageEvent, url: string) {
         case 'coopvotes':
           coopVotes.value = data.votes ?? []
           break
+        case 'cooptravel':
+          coopTravelTarget.value = String(data.id ?? '')
+          coopCompletedNode.value = String(data.id ?? '')
+          break
         case 'coopstart':
         case 'coopmap':
+          if (data.t === 'coopmap' || data.rejoin) coopTravelTarget.value = null
           if (data.token) token = data.token
           saveSeat(url)
           retryUntil = 0
@@ -203,10 +220,12 @@ function handleMsg(msg: MessageEvent, url: string) {
           coopMap.value = data
           if (data.votes) coopVotes.value = data.votes
           coopReward.value = null
+          coopWaitingFor.value = ''
           coopPhase.value = 'map'
           if (data.t === 'coopstart' && !data.rejoin) sfx.win()
           break
         case 'coopcombat':
+          coopTravelTarget.value = null
           if (coopPhase.value !== 'combat') screenWipe('◈', 'var(--green)')
         // fall through
         case 'coopst': {
@@ -218,6 +237,19 @@ function handleMsg(msg: MessageEvent, url: string) {
           coopPhase.value = 'combat'
           if (data.played && data.played.who !== data.you) {
             coopFlash(`◈ ally ▸ ${data.played.card.id}${data.played.card.up ? '+' : ''}`)
+            const def = CARDS[data.played.card.id]
+            const src = anchorCenter('c' + data.played.who)
+            const destWho =
+              def?.target === 'enemy' && Number.isInteger(data.played.target)
+                ? 'e' + data.played.target
+                : def?.target === 'ally' && Number.isInteger(data.played.ally)
+                  ? 'c' + data.played.ally
+                  : 'c' + data.played.who
+            const dest = anchorCenter(destWho)
+            if (def && src && dest) {
+              flyCard(src, dest, def.type, cardName(data.played.card))
+              sfx.whoosh()
+            }
           }
           if (data.corrected) coopFlash(t('desyncFixed'))
           // Hybrid: our own action already animated from the local prediction —
@@ -229,16 +261,25 @@ function handleMsg(msg: MessageEvent, url: string) {
           if (mine) coopPredicted.current = false
           break
         }
-        case 'coopreward':
-          coopReward.value = data
-          coopPhase.value = 'reward'
-          sfx.win()
+        case 'coopreward': {
+          const show = () => {
+            coopReward.value = data
+            coopPhase.value = 'reward'
+            sfx.win()
+          }
+          clearTimeout(phaseTimer)
+          const wait = coopPhase.value === 'combat' && !data.rejoin ? fxRemainingMs() + 450 : 0
+          if (wait > 0) phaseTimer = window.setTimeout(show, wait)
+          else show()
           break
+        }
         case 'cooprest':
+          coopTravelTarget.value = null
           coopRestDeck.value = data.deck ?? []
           coopPhase.value = 'rest'
           break
         case 'coopshop':
+          coopTravelTarget.value = null
           coopShop.value = data
           if (data.belt) coopBelt.value = data.belt
           coopPhase.value = 'shop'
@@ -248,12 +289,23 @@ function handleMsg(msg: MessageEvent, url: string) {
           sfx.click()
           break
         case 'coopevent':
+          coopTravelTarget.value = null
           coopEvent.value = data
           discoverEvent(String(data.id))
           coopPhase.value = 'event'
           break
         case 'coopeventpicked':
           coopFlash(`${data.name} ▸ #${(data.choice ?? 0) + 1}`)
+          break
+        case 'coopwaiting':
+          coopWaitingFor.value = String(data.phase ?? '')
+          coopPhase.value = 'waiting'
+          break
+        case 'coopprogress':
+          if (data.waiting) {
+            coopWaitingFor.value = String(data.phase ?? '')
+            coopPhase.value = 'waiting'
+          }
           break
         case 'coopcomm':
           coopFlash(`${data.name}: ${data.k.toUpperCase()}`)
@@ -273,17 +325,31 @@ function handleMsg(msg: MessageEvent, url: string) {
           }
           break
         }
-        case 'coopvictory':
-          coopPhase.value = 'victory'
-          clearSeat()
-          import('./meta').then((m) => m.award('coopwin'))
-          sfx.win()
+        case 'coopvictory': {
+          const show = () => {
+            coopPhase.value = 'victory'
+            clearSeat()
+            import('./meta').then((m) => m.award('coopwin'))
+            sfx.win()
+          }
+          clearTimeout(phaseTimer)
+          const wait = coopPhase.value === 'combat' ? fxRemainingMs() + 450 : 0
+          if (wait > 0) phaseTimer = window.setTimeout(show, wait)
+          else show()
           break
-        case 'coopdefeat':
-          coopPhase.value = 'defeat'
-          clearSeat()
-          sfx.lose()
+        }
+        case 'coopdefeat': {
+          const show = () => {
+            coopPhase.value = 'defeat'
+            clearSeat()
+            sfx.lose()
+          }
+          clearTimeout(phaseTimer)
+          const wait = coopPhase.value === 'combat' ? fxRemainingMs() + 650 : 0
+          if (wait > 0) phaseTimer = window.setTimeout(show, wait)
+          else show()
           break
+        }
         case 'coopend':
           coopNotice.value = String(data.reason ?? '')
           coopPhase.value = 'ended'
@@ -322,6 +388,11 @@ export function coopLeave() {
   token = null
   clearSeat()
   retryUntil = 0
+  clearTimeout(phaseTimer)
+  coopRevision.value = 0
+  coopWaitingFor.value = ''
+  coopTravelTarget.value = null
+  coopCompletedNode.value = null
   coopLobby.value = null
   coopForm.value = null
   coopShop.value = null

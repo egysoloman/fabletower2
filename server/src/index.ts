@@ -13,6 +13,12 @@ import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
 import { ADMIN_API_PATH, getMpMode, handleApi } from './accounts'
+import {
+  deleteCoopSnapshot,
+  flushCoopSnapshots,
+  loadCoopSnapshots,
+  saveCoopSnapshot,
+} from './coop-store'
 
 const ADMIN_UI_PATH = (process.env.ADMIN_UI_PATH ?? '/admin').replace(/\/$/, '')
 import { adminHtml } from './admin-ui'
@@ -37,6 +43,7 @@ import {
   rngFromSeed,
   randInt,
   pick,
+  scoreClimbRound,
   startCoopCombat,
   viewFor,
   type ActMap,
@@ -138,6 +145,10 @@ interface Room {
   /** Match concluded (duel over / race decided) — room lingers for rematch/spectate. */
   finished: boolean
   rematch: [boolean, boolean]
+  /** Climb race only: checkpoint duel wins, from each player's perspective. */
+  score: [number, number]
+  /** Act whose checkpoint duel is currently running. */
+  checkpointAct: number
 }
 
 /** One waiting slot per (mode, modsKey): only same-mods players ever match. */
@@ -151,9 +162,9 @@ function unqueue(c: Client) {
 
 /** token -> seated client, alive for the duration of a match (+grace). */
 const seats = new Map<string, Client>()
-/** Seats survive this long offline — long enough to close the app and come
- * back; the client stores its token so the CO-OP screen can offer RESUME. */
-const RECONNECT_GRACE_MS = 15 * 60 * 1000
+const MATCH_RECONNECT_GRACE_MS = 15 * 60 * 1000
+/** Durable co-op seats expire after a week without room activity. */
+const COOP_RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 function mintToken(c: Client): string {
   if (c.token) seats.delete(c.token)
@@ -202,6 +213,10 @@ interface CoopPlayer {
 }
 
 interface CoopRoom {
+  id: string
+  revision: number
+  updatedAt: number
+  expiresAt: number
   players: CoopPlayer[]
   rng: Rng
   uid: number
@@ -226,7 +241,23 @@ interface CoopRoom {
   /** Advisory path votes: player index -> node id. Cleared on each pick. */
   votes: Record<number, string>
   lastEncounter: string
+  /** Node selected by the host while the shared travel animation plays. */
+  pendingNode: string | null
   ended: boolean
+}
+
+interface CoopPlayerSnapshot extends Omit<CoopPlayer, 'client'> {
+  client: {
+    token: string
+    name: string
+    vid: string
+    char: CharId
+    modsKey: string
+  }
+}
+
+interface CoopRoomSnapshot extends Omit<CoopRoom, 'players'> {
+  players: CoopPlayerSnapshot[]
 }
 
 /** Keyed by `${size}|${modsKey}` — parties only form among same-mods players. */
@@ -237,6 +268,98 @@ const coopKey = (size: number, modsKey: string) => `${size}|${modsKey}`
 const coopKeySize = (key: string) => Number(key.split('|')[0]) || 2
 
 const tagOf = (c: Client) => `${c.name}#${c.vid}`
+
+function coopSnapshot(room: CoopRoom): CoopRoomSnapshot {
+  return {
+    ...room,
+    players: room.players.map((p) => ({
+      ...p,
+      client: {
+        token: p.client.token!,
+        name: p.client.name,
+        vid: p.client.vid,
+        char: p.client.char,
+        modsKey: p.client.modsKey,
+      },
+    })),
+  }
+}
+
+function persistCoop(room: CoopRoom) {
+  if (room.ended) return
+  saveCoopSnapshot({
+    id: room.id,
+    updatedAt: room.updatedAt,
+    expiresAt: room.expiresAt,
+    data: coopSnapshot(room),
+  })
+}
+
+/** Commit one authoritative room mutation before broadcasting it. */
+function touchCoop(room: CoopRoom) {
+  room.revision++
+  room.updatedAt = Date.now()
+  room.expiresAt = room.updatedAt + COOP_RESUME_TTL_MS
+  persistCoop(room)
+}
+
+function armCoopExpiry(client: Client, room: CoopRoom) {
+  if (client.dcTimer) clearTimeout(client.dcTimer)
+  const delay = Math.max(1, room.expiresAt - Date.now())
+  client.dcTimer = setTimeout(() => {
+    client.dcTimer = null
+    if (!client.online && !room.ended) {
+      coopBroadcast(room, () => ({ t: 'coopend', reason: `${client.name} resume window expired` }))
+      endCoop(room)
+    }
+  }, delay)
+}
+
+const OFFLINE_WS = { readyState: WebSocket.CLOSED, send() {} } as unknown as WebSocket
+
+function restoreCoopRooms() {
+  for (const stored of loadCoopSnapshots()) {
+    try {
+      const snap = stored.data as CoopRoomSnapshot
+      if (!snap?.id || !Array.isArray(snap.players) || snap.players.length < 2 || snap.expiresAt <= Date.now()) {
+        deleteCoopSnapshot(stored.id)
+        continue
+      }
+      const players: CoopPlayer[] = snap.players.map((p) => {
+        if (!p.client?.token) throw new Error('missing co-op resume token')
+        const client: Client = {
+          ws: OFFLINE_WS,
+          name: p.client.name,
+          room: null,
+          alive: false,
+          token: p.client.token,
+          online: false,
+          dcTimer: null,
+          vid: p.client.vid,
+          char: p.client.char,
+          modsKey: p.client.modsKey,
+          lastEmote: 0,
+        }
+        const player: CoopPlayer = { ...p, client }
+        return player
+      })
+      const room: CoopRoom = { ...snap, players, pendingNode: snap.pendingNode ?? null, ended: false }
+      for (const p of players) {
+        coopRooms.set(p.client, room)
+        seats.set(p.client.token!, p.client)
+        armCoopExpiry(p.client, room)
+      }
+      if (room.pendingNode) {
+        const pending = room.pendingNode
+        setTimeout(() => completeCoopTravel(room, pending), 50)
+      }
+      console.log(`restored co-op room ${room.id} at revision ${room.revision}`)
+    } catch (e) {
+      console.error(`discarding invalid co-op room ${stored.id}:`, e)
+      deleteCoopSnapshot(stored.id)
+    }
+  }
+}
 
 /** Pre-run team formation: everyone sees the party and readies up. */
 interface PendingParty {
@@ -284,7 +407,10 @@ function coopMap(act: number, rng: Rng): ActMap {
 }
 
 function coopBroadcast(room: CoopRoom, msg: (idx: number) => unknown) {
-  room.players.forEach((p, i) => send(p.client.ws, msg(i)))
+  room.players.forEach((p, i) => {
+    const body = msg(i)
+    send(p.client.ws, body && typeof body === 'object' ? { ...body, rev: room.revision } : body)
+  })
 }
 
 function coopMapMsg(room: CoopRoom, idx: number) {
@@ -301,6 +427,46 @@ function coopMapMsg(room: CoopRoom, idx: number) {
       name: tagOf(p.client), char: p.char, color: p.color, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
     })),
     votes: voteList(room),
+  }
+}
+
+/** Full current phase for reconnects and revision-gap recovery. */
+function sendCoopSnapshot(room: CoopRoom, idx: number) {
+  const player = room.players[idx]
+  const ws = player.client.ws
+  send(ws, { ...coopMapMsg(room, idx), t: 'coopstart', seed: 0, token: player.client.token, rejoin: true, rev: room.revision })
+  if (room.combat) {
+    send(ws, {
+      t: 'coopcombat',
+      you: idx,
+      view: coopViewFor(room.combat),
+      belt: player.potions,
+      mode: getMpMode(),
+      rejoin: true,
+      rev: room.revision,
+    })
+  } else if (room.rewards) {
+    if (!player.replied) send(ws, { t: 'coopreward', you: idx, ...room.rewards[idx], rejoin: true, rev: room.revision })
+    else send(ws, { t: 'coopwaiting', phase: 'reward', rev: room.revision })
+  } else if (room.shop) {
+    if (!player.replied) {
+      send(ws, {
+        t: 'coopshop',
+        you: idx,
+        stock: room.shop,
+        gold: player.gold,
+        deck: player.deck,
+        belt: player.potions,
+        rejoin: true,
+        rev: room.revision,
+      })
+    } else send(ws, { t: 'coopwaiting', phase: 'shop', rev: room.revision })
+  } else if (room.event) {
+    if (!player.replied) send(ws, { t: 'coopevent', you: idx, id: room.event.id, gold: player.gold, rejoin: true, rev: room.revision })
+    else send(ws, { t: 'coopwaiting', phase: 'event', rev: room.revision })
+  } else if (room.pos && nodeById(room.map, room.pos)?.type === 'rest' && !room.players.every((p) => p.replied)) {
+    if (!player.replied) send(ws, { t: 'cooprest', you: idx, deck: player.deck, rejoin: true, rev: room.revision })
+    else send(ws, { t: 'coopwaiting', phase: 'rest', rev: room.revision })
   }
 }
 
@@ -321,12 +487,15 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     replied: false,
   }))
   const room: CoopRoom = {
+    id: randomBytes(12).toString('hex'), revision: 0, updatedAt: Date.now(), expiresAt: 0,
     players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null, path: [],
     map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, event: null,
-    votes: {}, lastEncounter: '', ended: false,
+    votes: {}, lastEncounter: '', pendingNode: null, ended: false,
   }
   for (const c of clients) coopRooms.set(c, room)
-  coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed, token: mintToken(room.players[i].client) }))
+  for (const p of room.players) mintToken(p.client)
+  touchCoop(room)
+  coopBroadcast(room, (i) => ({ ...coopMapMsg(room, i), t: 'coopstart', seed, token: room.players[i].client.token }))
 }
 
 function voteList(room: CoopRoom) {
@@ -338,8 +507,93 @@ function broadcastVotes(room: CoopRoom) {
 }
 
 function coopAvailable(room: CoopRoom): string[] {
+  const unresolvedRest =
+    room.pos !== null &&
+    nodeById(room.map, room.pos)?.type === 'rest' &&
+    !room.players.every((p) => p.replied)
+  if (room.pendingNode || room.combat || room.rewards || room.shop || room.event || unresolvedRest) return []
   if (room.pos === null) return room.map.rows[0].map((n) => n.id)
   return nodeById(room.map, room.pos)?.next ?? []
+}
+
+/** Apply the selected node after every client has seen the party travel. */
+function completeCoopTravel(room: CoopRoom, id: string) {
+  if (room.ended || room.pendingNode !== id) return
+  room.pendingNode = null
+  const node = nodeById(room.map, id)
+  if (!node) {
+    touchCoop(room)
+    return
+  }
+  room.pos = id
+  room.path.push(id)
+  room.floor++
+  if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
+    coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
+  } else if (node.type === 'shop') {
+    const stock = {
+      cards: Array.from({ length: 6 }, () => {
+        const who = room.players[randInt(room.rng, 0, room.players.length - 1)]
+        const r = randInt(room.rng, 1, 100)
+        const rarity = r <= 10 ? 'rare' : r <= 45 ? 'uncommon' : 'common'
+        const def = pick(room.rng, cardsByRarity(rarity as any, who.char))
+        return {
+          id: def.id,
+          price: randInt(
+            room.rng,
+            rarity === 'rare' ? 130 : rarity === 'uncommon' ? 75 : 45,
+            rarity === 'rare' ? 160 : rarity === 'uncommon' ? 95 : 60,
+          ),
+          sold: false,
+        }
+      }),
+      relics: Array.from({ length: 2 }, () => {
+        const rpool = obtainableRelics([], false)
+        const def = rpool[randInt(room.rng, 0, rpool.length - 1)]
+        return { id: def.id, price: randInt(room.rng, 150, 190), sold: false }
+      }),
+      potions: Array.from({ length: 2 }, () => {
+        const pool = Object.values(POTIONS)
+        const def = pool[randInt(room.rng, 0, pool.length - 1)]
+        return { id: def.id, price: randInt(room.rng, 45, 70), sold: false }
+      }),
+      removePrice: 80,
+    }
+    room.shop = stock
+    room.players.forEach((p) => (p.replied = false))
+    touchCoop(room)
+    coopBroadcast(room, (i) => ({
+      t: 'coopshop',
+      you: i,
+      stock,
+      gold: room.players[i].gold,
+      deck: room.players[i].deck,
+      belt: room.players[i].potions,
+    }))
+  } else if (node.type === 'event') {
+    const pool = EVENTS.filter((ev) =>
+      ev.choices.every((ch) =>
+        ch.outcomes.every((o) =>
+          ['gold', 'damage', 'heal', 'maxhp', 'cardRandom', 'cardGlitch', 'curse', 'upgradeRandom', 'cardSpecific', 'potion'].includes(o.k),
+        ),
+      ),
+    )
+    const ev = pick(room.rng, pool)
+    room.event = { id: ev.id, picked: room.players.map(() => null) }
+    room.players.forEach((p) => (p.replied = false))
+    touchCoop(room)
+    coopBroadcast(room, (i) => ({ t: 'coopevent', you: i, id: ev.id, gold: room.players[i].gold }))
+  } else if (node.type === 'treasure') {
+    room.players.forEach((p) => {
+      p.gold += randInt(room.rng, 22, 40)
+      p.replied = true
+    })
+    coopMaybeAdvance(room)
+  } else {
+    room.players.forEach((p) => (p.replied = false))
+    touchCoop(room)
+    coopBroadcast(room, (i) => ({ t: 'cooprest', you: i, deck: room.players[i].deck }))
+  }
 }
 
 function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
@@ -355,6 +609,7 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
     seed: randInt(room.rng, 1, 0x7fffffff),
     uidStart: room.uid,
   })
+  touchCoop(room)
   coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!), belt: room.players[i].potions, mode: getMpMode() }))
 }
 
@@ -386,6 +641,7 @@ function coopFinishFight(room: CoopRoom) {
     p.replied = false
     return { cards, relic, gold }
   })
+  touchCoop(room)
   coopBroadcast(room, (i) => ({ t: 'coopreward', you: i, ...room.rewards![i] }))
 }
 
@@ -408,16 +664,20 @@ function coopMaybeAdvance(room: CoopRoom) {
       p.hp = Math.min(p.maxHp, p.hp + Math.floor(p.maxHp * 0.25))
     })
   }
+  touchCoop(room)
   coopBroadcast(room, (i) => coopMapMsg(room, i))
 }
 
 function endCoop(room: CoopRoom) {
   room.ended = true
+  deleteCoopSnapshot(room.id)
   for (const p of room.players) {
     coopRooms.delete(p.client)
     releaseSeat(p.client)
   }
 }
+
+restoreCoopRooms()
 
 function send(ws: WebSocket, msg: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
@@ -489,7 +749,17 @@ function startMatch(a: Client, b: Client, mode: Mode) {
   const seed = randomBytes(4).readUInt32LE(0)
   if (mode === 'duel') {
     const state = newPvp(seed, [a.name, b.name])
-    const room: Room = { mode, players: [a, b], state, seed, ready: [null, null], finished: false, rematch: [false, false] }
+    const room: Room = {
+      mode,
+      players: [a, b],
+      state,
+      seed,
+      ready: [null, null],
+      finished: false,
+      rematch: [false, false],
+      score: [0, 0],
+      checkpointAct: 0,
+    }
     a.room = room
     b.room = room
     room.players.forEach((p, i) => {
@@ -498,11 +768,29 @@ function startMatch(a: Client, b: Client, mode: Mode) {
     return
   }
   // Climb race: both players run the SAME seed solo; the duel comes later.
-  const room: Room = { mode, players: [a, b], state: null, seed, ready: [null, null], finished: false, rematch: [false, false] }
+  const room: Room = {
+    mode,
+    players: [a, b],
+    state: null,
+    seed,
+    ready: [null, null],
+    finished: false,
+    rematch: [false, false],
+    score: [0, 0],
+    checkpointAct: 0,
+  }
   a.room = room
   b.room = room
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'climbstart', you: i, seed, opp: room.players[1 - i].name, oppChar: room.players[1 - i].char, token: mintToken(p) })
+    send(p.ws, {
+      t: 'climbstart',
+      you: i,
+      seed,
+      opp: room.players[1 - i].name,
+      oppChar: room.players[1 - i].char,
+      token: mintToken(p),
+      score: room.score,
+    })
   })
 }
 
@@ -522,7 +810,14 @@ function maybeStartClimbDuel(room: Room) {
     { deck: b.deck, hp: b.hp },
   ])
   room.players.forEach((p, i) => {
-    send(p.ws, { t: 'duelstart', you: i, view: viewFor(room.state!, i as 0 | 1), chars: roomChars(room) })
+    send(p.ws, {
+      t: 'duelstart',
+      you: i,
+      view: viewFor(room.state!, i as 0 | 1),
+      chars: roomChars(room),
+      score: room.score,
+      act: room.checkpointAct,
+    })
   })
 }
 
@@ -530,8 +825,31 @@ function finishClimb(room: Room, winnerIdx: 0 | 1, reason: string) {
   room.finished = true
   send(room.players[winnerIdx].ws, { t: 'climbwin', reason })
   send(room.players[1 - winnerIdx].ws, { t: 'climbloss', reason })
-  // room lingers: the winner may CONTINUE the climb (progress keeps
-  // relaying so the loser can spectate) until both leave.
+  // The room lingers long enough to render the result and let both clients
+  // explicitly leave; unlike checkpoint rounds, a climb death is final.
+}
+
+/** A checkpoint duel only awards a point. Both original solo runs continue. */
+function finishClimbRound(room: Room, winnerIdx: 0 | 1, reason: string) {
+  const result = scoreClimbRound(room.score, winnerIdx, room.checkpointAct)
+  room.score = result.score
+  const { final } = result
+  if (final) room.finished = true
+  room.players.forEach((p, i) => {
+    send(p.ws, {
+      t: final ? 'climbfinal' : 'climbround',
+      you: i,
+      roundWinner: winnerIdx,
+      score: room.score,
+      act: room.checkpointAct,
+      reason,
+    })
+  })
+  if (!final) {
+    room.state = null
+    room.ready = [null, null]
+    room.checkpointAct = 0
+  }
 }
 
 function handleAction(client: Client, rawAction: unknown, clientSum?: number) {
@@ -559,8 +877,8 @@ function handleAction(client: Client, rawAction: unknown, clientSum?: number) {
     })
   })
   if (room.state.over) {
-    room.finished = true
-    if (room.mode === 'climb') finishClimb(room, room.state.over.winner, room.state.over.reason)
+    if (room.mode === 'climb') finishClimbRound(room, room.state.over.winner, room.state.over.reason)
+    else room.finished = true
     // duel rooms linger so both sides can hit REMATCH
   }
 }
@@ -632,30 +950,46 @@ wss.on('connection', (ws) => {
         const coop = coopRooms.get(client)
         if (room) {
           const idx = room.players.indexOf(client) as 0 | 1
-          if (room.mode === 'duel' || room.state) {
+          if (room.mode === 'duel') {
             send(ws, { t: 'match', you: idx, view: viewFor(room.state!, idx), token: client.token, rejoin: true, mode: getMpMode(), chars: roomChars(room) })
+          } else if (room.state) {
+            send(ws, {
+              t: 'duelstart',
+              you: idx,
+              view: viewFor(room.state, idx),
+              token: client.token,
+              rejoin: true,
+              chars: roomChars(room),
+              score: room.score,
+              act: room.checkpointAct,
+            })
           } else {
-            send(ws, { t: 'climbstart', you: idx, seed: room.seed, opp: room.players[1 - idx].name, oppChar: room.players[1 - idx].char, token: client.token, rejoin: true })
+            send(ws, {
+              t: 'climbstart',
+              you: idx,
+              seed: room.seed,
+              opp: room.players[1 - idx].name,
+              oppChar: room.players[1 - idx].char,
+              token: client.token,
+              rejoin: true,
+              score: room.score,
+            })
+            if (room.ready[idx]) send(ws, { t: 'checkpoint', score: room.score, rejoin: true })
           }
         } else if (coop && !coop.ended) {
           const idx = coop.players.findIndex((p) => p.client === client)
-          const player = coop.players[idx]
-          send(ws, { ...coopMapMsg(coop, idx), t: 'coopstart', seed: 0, token: client.token, rejoin: true })
-          // Replay whatever phase the party is stuck waiting on for us.
-          if (coop.combat) send(ws, { t: 'coopcombat', you: idx, view: coopViewFor(coop.combat), belt: player.potions })
-          else if (coop.rewards) {
-            if (!player.replied) send(ws, { t: 'coopreward', you: idx, ...coop.rewards[idx] })
-          } else if (coop.shop) {
-            send(ws, { t: 'coopshop', you: idx, stock: coop.shop, gold: player.gold, deck: player.deck, belt: player.potions })
-          } else if (coop.event) {
-            if (!player.replied) send(ws, { t: 'coopevent', you: idx, id: coop.event.id, gold: player.gold })
-          } else if (coop.pos && nodeById(coop.map, coop.pos)?.type === 'rest' && !player.replied) {
-            send(ws, { t: 'cooprest', you: idx, deck: player.deck })
-          }
+          sendCoopSnapshot(coop, idx)
         } else {
           releaseSeat(client)
           send(ws, { t: 'resume-fail' })
         }
+        break
+      }
+      case 'coopsync': {
+        const room = coopRooms.get(client)
+        if (!room || room.ended) return send(ws, { t: 'resume-fail' })
+        const idx = room.players.findIndex((p) => p.client === client)
+        sendCoopSnapshot(room, idx)
         break
       }
       case 'rematch': {
@@ -752,69 +1086,21 @@ wss.on('connection', (ws) => {
         const id = String(msg.id ?? '')
         if (!coopAvailable(room).includes(id)) return send(ws, { t: 'err', msg: 'invalid node' })
         room.votes[idx] = id
+        touchCoop(room)
         broadcastVotes(room)
         break
       }
       case 'cooppick': {
         const room = coopRooms.get(client)
-        if (!room || room.ended || room.combat || room.rewards) break
+        if (!room || room.ended || room.combat || room.rewards || room.pendingNode) break
         if (room.players[0].client !== client) return send(ws, { t: 'err', msg: 'only the host picks the path' })
         const id = String(msg.id ?? '')
         if (!coopAvailable(room).includes(id)) return send(ws, { t: 'err', msg: 'invalid node' })
         room.votes = {}
-        broadcastVotes(room)
-        const node = nodeById(room.map, id)
-        if (!node) break
-        room.pos = id
-        room.path.push(id)
-        room.floor++
-        if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
-          coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
-        } else if (node.type === 'shop') {
-          const stock = {
-            cards: Array.from({ length: 6 }, () => {
-              const who = room.players[randInt(room.rng, 0, room.players.length - 1)]
-              const r = randInt(room.rng, 1, 100)
-              const rarity = r <= 10 ? 'rare' : r <= 45 ? 'uncommon' : 'common'
-              const def = pick(room.rng, cardsByRarity(rarity as any, who.char))
-              return { id: def.id, price: randInt(room.rng, rarity === 'rare' ? 130 : rarity === 'uncommon' ? 75 : 45, rarity === 'rare' ? 160 : rarity === 'uncommon' ? 95 : 60), sold: false }
-            }),
-            relics: Array.from({ length: 2 }, () => {
-              const rpool = obtainableRelics([], false)
-              const def = rpool[randInt(room.rng, 0, rpool.length - 1)]
-              return { id: def.id, price: randInt(room.rng, 150, 190), sold: false }
-            }),
-            potions: Array.from({ length: 2 }, () => {
-              const pool = Object.values(POTIONS)
-              const def = pool[randInt(room.rng, 0, pool.length - 1)]
-              return { id: def.id, price: randInt(room.rng, 45, 70), sold: false }
-            }),
-            removePrice: 80,
-          }
-          room.shop = stock
-          room.players.forEach((p) => (p.replied = false))
-          coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock, gold: room.players[i].gold, deck: room.players[i].deck, belt: room.players[i].potions }))
-        } else if (node.type === 'event') {
-          const pool = EVENTS.filter((ev) =>
-            ev.choices.every((ch) =>
-              ch.outcomes.every((o) => ['gold', 'damage', 'heal', 'maxhp', 'cardRandom', 'cardGlitch', 'curse', 'upgradeRandom', 'cardSpecific', 'potion'].includes(o.k)),
-            ),
-          )
-          const ev = pick(room.rng, pool)
-          room.event = { id: ev.id, picked: room.players.map(() => null) }
-          room.players.forEach((p) => (p.replied = false))
-          coopBroadcast(room, (i) => ({ t: 'coopevent', you: i, id: ev.id, gold: room.players[i].gold }))
-        } else if (node.type === 'treasure') {
-          room.players.forEach((p) => {
-            p.gold += randInt(room.rng, 22, 40)
-            p.replied = true
-          })
-          coopMaybeAdvance(room)
-        } else {
-          // rest: every player chooses heal / heal-an-ally / upgrade
-          room.players.forEach((p) => (p.replied = false))
-          coopBroadcast(room, (i) => ({ t: 'cooprest', you: i, deck: room.players[i].deck }))
-        }
+        room.pendingNode = id
+        touchCoop(room)
+        coopBroadcast(room, () => ({ t: 'cooptravel', id }))
+        setTimeout(() => completeCoopTravel(room, id), 560)
         break
       }
       case 'coopaction': {
@@ -828,11 +1114,12 @@ wss.on('connection', (ws) => {
         const corrected = typeof msg.sum === 'number' && msg.sum !== coopChecksum(room.combat)
         const played =
           a.t === 'play' && room.combat.players[idx]?.hand[a.hand]
-            ? { who: idx, card: room.combat.players[idx].hand[a.hand] }
+            ? { who: idx, card: room.combat.players[idx].hand[a.hand], target: a.target, ally: a.ally }
             : null
         const res = coopReduce(room.combat, idx, a)
         if (res.error) return send(ws, { t: 'err', msg: res.error })
         room.combat = res.state
+        touchCoop(room)
         coopBroadcast(room, (i) => ({
           t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, played,
           mode: getMpMode(), by: idx, ...(corrected && i === idx ? { corrected: true } : {}),
@@ -859,6 +1146,14 @@ wss.on('connection', (ws) => {
           player.relics.push(room.rewards[idx].relic!)
         }
         player.replied = true
+        touchCoop(room)
+        coopBroadcast(room, (i) => ({
+          t: 'coopprogress',
+          phase: 'reward',
+          replied: room.players.filter((p) => p.replied).length,
+          total: room.players.length,
+          waiting: i === idx,
+        }))
         coopMaybeAdvance(room)
         break
       }
@@ -867,6 +1162,7 @@ wss.on('connection', (ws) => {
         if (!room || !room.shop || room.ended) break
         const idx = room.players.findIndex((p) => p.client === client)
         const player = room.players[idx]
+        if (player.replied) return send(ws, { t: 'err', msg: 'already left the shop' })
         const kind = String(msg.kind ?? '')
         if (kind === 'card' || kind === 'relic' || kind === 'potion') {
           const list = kind === 'card' ? room.shop.cards : kind === 'relic' ? room.shop.relics : room.shop.potions
@@ -887,6 +1183,7 @@ wss.on('connection', (ws) => {
           player.gold -= room.shop.removePrice
           player.deck.splice(at, 1)
         }
+        touchCoop(room)
         coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold, deck: room.players[i].deck, belt: room.players[i].potions }))
         break
       }
@@ -897,7 +1194,17 @@ wss.on('connection', (ws) => {
         room.players[idx].replied = true
         if (room.players.every((p) => p.replied)) {
           room.shop = null
+          touchCoop(room)
           coopBroadcast(room, (i) => coopMapMsg(room, i))
+        } else {
+          touchCoop(room)
+          coopBroadcast(room, (i) => ({
+            t: 'coopprogress',
+            phase: 'shop',
+            replied: room.players.filter((p) => p.replied).length,
+            total: room.players.length,
+            waiting: i === idx,
+          }))
         }
         break
       }
@@ -930,9 +1237,11 @@ wss.on('connection', (ws) => {
         }
         player.replied = true
         room.event.picked[idx] = ci
+        touchCoop(room)
         coopBroadcast(room, () => ({ t: 'coopeventpicked', who: idx, choice: ci, name: tagOf(player.client) }))
         if (room.players.every((p) => p.replied)) {
           room.event = null
+          touchCoop(room)
           coopBroadcast(room, (i) => coopMapMsg(room, i))
         }
         break
@@ -949,6 +1258,7 @@ wss.on('connection', (ws) => {
         if (res.error) return send(ws, { t: 'err', msg: res.error })
         player.potions.splice(pi, 1)
         room.combat = res.state
+        touchCoop(room)
         coopBroadcast(room, (i) => ({ t: 'coopst', you: i, view: coopViewFor(room.combat!), events: res.events, belt: i === idx ? player.potions : undefined }))
         if (room.combat.over === 'win') coopFinishFight(room)
         else if (room.combat.over === 'lose') {
@@ -995,7 +1305,17 @@ wss.on('connection', (ws) => {
         }
         player.replied = true
         if (room.players.every((p) => p.replied)) {
+          touchCoop(room)
           coopBroadcast(room, (i) => coopMapMsg(room, i))
+        } else {
+          touchCoop(room)
+          coopBroadcast(room, (i) => ({
+            t: 'coopprogress',
+            phase: 'rest',
+            replied: room.players.filter((p) => p.replied).length,
+            total: room.players.length,
+            waiting: i === idx,
+          }))
         }
         break
       }
@@ -1020,13 +1340,19 @@ wss.on('connection', (ws) => {
         if (!room || room.mode !== 'climb') return send(ws, { t: 'err', msg: 'not in a climb race' })
         if (room.state) return send(ws, { t: 'err', msg: 'duel already running' })
         const idx = room.players.indexOf(client) as 0 | 1
+        if (room.ready[idx]) return send(ws, { t: 'err', msg: 'checkpoint already submitted' })
         const deck = cleanDeck(msg.deck)
         if (!deck) return send(ws, { t: 'err', msg: 'invalid deck' })
-        const hp = Math.max(1, Math.min(999, Math.floor(Number(msg.maxHp) || 1)))
-        room.ready[idx] = { deck, hp }
+        const act = Math.max(1, Math.min(3, Math.floor(Number(msg.act) || 1)))
+        if (room.checkpointAct && room.checkpointAct !== act) return send(ws, { t: 'err', msg: 'checkpoint act mismatch' })
+        room.checkpointAct = act
+        // The duel is an isolated scoring round: both duelists start at their
+        // run's maximum HP and no duel mutation is copied back to RunState.
+        const duelHp = Math.max(1, Math.min(999, Math.floor(Number(msg.maxHp) || 1)))
+        room.ready[idx] = { deck, hp: duelHp }
         const other = room.players.find((p) => p !== client)
         if (other) send(other.ws, { t: 'oppready' })
-        send(ws, { t: 'checkpoint' })
+        send(ws, { t: 'checkpoint', score: room.score, act })
         maybeStartClimbDuel(room)
         break
       }
@@ -1066,13 +1392,13 @@ wss.on('connection', (ws) => {
     // Live match: hold the seat for the reconnect grace window.
     client.online = false
     notifyPeerConn(client, false)
+    const liveCoop = coopRooms.get(client)
+    if (liveCoop && !liveCoop.ended) {
+      armCoopExpiry(client, liveCoop)
+      return
+    }
     client.dcTimer = setTimeout(() => {
       client.dcTimer = null
-      const coop = coopRooms.get(client)
-      if (coop && !coop.ended) {
-        coopBroadcast(coop, () => ({ t: 'coopend', reason: `${client.name} disconnected` }))
-        endCoop(coop)
-      }
       const room = client.room
       if (room) {
         const over = room.finished || room.state?.over
@@ -1084,7 +1410,7 @@ wss.on('connection', (ws) => {
         }
       }
       releaseSeat(client)
-    }, RECONNECT_GRACE_MS)
+    }, MATCH_RECONNECT_GRACE_MS)
   })
 })
 
@@ -1101,6 +1427,15 @@ const heartbeat = setInterval(() => {
   }
 }, 30000)
 wss.on('close', () => clearInterval(heartbeat))
+
+process.once('SIGTERM', () => {
+  flushCoopSnapshots()
+  process.exit(0)
+})
+process.once('SIGINT', () => {
+  flushCoopSnapshots()
+  process.exit(0)
+})
 
 http.listen(PORT, () => {
   console.log(`NEONSPIRE server listening on http://localhost:${PORT} (ws same port)`)

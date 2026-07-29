@@ -7,7 +7,7 @@
  */
 import { signal } from '@preact/signals'
 import { EMOTES, type CharId, type GameEvent, type PvpAction, type PvpView, type RunState } from '@neonspire/engine'
-import { processEvents } from './fx'
+import { fxRemainingMs, processEvents } from './fx'
 import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
 import { modsKey } from './mods'
 import { screen } from './store'
@@ -20,6 +20,8 @@ export type ClimbPhase =
   | 'racing'
   | 'waiting' // at the checkpoint, rival still climbing
   | 'duel'
+  | 'round'
+  | 'final'
   | 'won'
   | 'lost'
   | 'error'
@@ -42,11 +44,16 @@ export const climbOppReady = signal(false)
 export const climbView = signal<PvpView | null>(null)
 export const climbNotice = signal('')
 export const climbSeed = signal(0)
+export const climbYou = signal<0 | 1>(0)
+export const climbScore = signal<[number, number]>([0, 0])
+export const climbRoundWon = signal(false)
+export const climbFinalWon = signal(false)
 /** Set while an action awaits the server (blocks double-plays). */
 export const climbPending = signal(false)
 
 let ws: WebSocket | null = null
 let onMatched: ((seed: number) => void) | null = null
+let resultTimer = 0
 
 export const climbActive = () => climbPhase.value !== 'idle' && climbPhase.value !== 'error'
 
@@ -83,11 +90,15 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
           climbPhase.value = 'queued'
           break
         case 'climbstart':
+          climbYou.value = data.you === 1 ? 1 : 0
           climbOpp.value = String(data.opp ?? 'RIVAL')
           climbSeed.value = Number(data.seed) >>> 0
+          if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
           climbPhase.value = 'racing'
-          sfx.win()
-          onMatched?.(climbSeed.value)
+          if (!data.rejoin) {
+            sfx.win()
+            onMatched?.(climbSeed.value)
+          }
           break
         case 'opp':
           climbOppProgress.value = { act: data.act, floor: data.floor, hp: data.hp }
@@ -99,8 +110,10 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
           climbPhase.value = 'waiting'
           break
         case 'duelstart':
+          climbYou.value = data.you === 1 ? 1 : 0
           climbView.value = data.view
           if (Array.isArray(data.chars)) climbChars.value = data.chars
+          if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
           climbPending.value = false
           climbPhase.value = 'duel'
           screen.value = 'climb'
@@ -126,6 +139,31 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
           climbPending.value = false
           processEvents((data.events ?? []) as GameEvent[], { delay: 220, step: 130 })
           break
+        case 'climbround': {
+          if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
+          climbRoundWon.value = Number(data.roundWinner) === climbYou.value
+          climbNotice.value = String(data.reason ?? '')
+          clearTimeout(resultTimer)
+          resultTimer = window.setTimeout(() => {
+            climbPhase.value = 'round'
+            screen.value = 'climb'
+            climbRoundWon.value ? sfx.win() : sfx.lose()
+          }, fxRemainingMs() + 450)
+          break
+        }
+        case 'climbfinal': {
+          if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
+          climbFinalWon.value = climbScore.value[climbYou.value] > climbScore.value[1 - climbYou.value]
+          climbNotice.value = String(data.reason ?? '')
+          clearTimeout(resultTimer)
+          resultTimer = window.setTimeout(() => {
+            climbPhase.value = 'final'
+            screen.value = 'climb'
+            climbFinalWon.value ? sfx.win() : sfx.lose()
+            closeSocket()
+          }, fxRemainingMs() + 450)
+          break
+        }
         case 'err':
           climbPending.value = false
           break
@@ -165,6 +203,7 @@ export function climbBossKill(run: RunState) {
       t: 'bosskill',
       deck: run.deck.map((c) => ({ id: c.id, up: c.up })),
       maxHp: run.maxHp,
+      act: run.act,
     }),
   )
   climbPhase.value = 'waiting'
@@ -184,6 +223,15 @@ export function climbSendAction(action: PvpAction) {
 
 export function climbSendEmote(m: { id?: string; text?: string; target?: number }) {
   if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ t: 'emote', ...m }))
+}
+
+/** Start the next solo act after a scored checkpoint duel. */
+export function climbContinueRound() {
+  climbView.value = null
+  climbOppReady.value = false
+  climbRoundWon.value = false
+  climbNotice.value = ''
+  climbPhase.value = 'racing'
 }
 
 function closeSocket() {
@@ -206,4 +254,8 @@ export function climbLeave() {
   climbOppReady.value = false
   climbNotice.value = ''
   climbPending.value = false
+  climbScore.value = [0, 0]
+  climbRoundWon.value = false
+  climbFinalWon.value = false
+  clearTimeout(resultTimer)
 }
