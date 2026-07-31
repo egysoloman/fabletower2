@@ -45,6 +45,7 @@ import {
   combatKind,
   currentEvent,
   eventLines,
+  eventRelic,
   picker,
   restUsed,
   reward,
@@ -672,8 +673,10 @@ export function chooseEventOption(idx: number) {
   if (!ev || !r || eventLines.value) return
   const choice = ev.choices[idx]
   if (!choice || (choice.needGold && r.gold < choice.needGold)) return
+  const relicBefore = r.relics.length
   const { lines, removeChoose } = applyOutcomes(r, choice.outcomes)
   eventLines.value = lines.length > 0 ? lines : [t('nothingHappened')]
+  if (r.relics.length > relicBefore) eventRelic.value = r.relics[r.relics.length - 1]
   if (removeChoose) {
     picker.value = {
       title: t('removeTitle'),
@@ -699,6 +702,7 @@ export function leaveNode() {
   shop.value = null
   currentEvent.value = null
   eventLines.value = null
+  eventRelic.value = null
   completedNode.value = run.value?.pos ?? null
   screen.value = 'map'
   saveGame()
@@ -782,6 +786,43 @@ export function cheatUpgradeAll() {
   })
   sfx.buy()
   touch()
+  saveGame()
+}
+
+/**
+ * Cheat: play any card immediately, auto-targeting the first living foe.
+ * Works mid-combat only — the chosen card resolves through the real engine.
+ */
+export function cheatPlayCard(id: string) {
+  if (!canCheat()) return
+  const cs = combat.value
+  if (!cs || cs.over) return
+  const def = CARDS[id]
+  if (!def || def.unplayable) return
+  // Append a temporary upgraded copy to the hand so the normal play path
+  // (validation, cost, events, discard) runs untouched.
+  const handIdx = cs.player.hand.length
+  cs.player.hand.push({ uid: cs.uid++, id, up: true })
+  let target: number | undefined
+  if (def.target === 'enemy') {
+    const alive = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+    target = alive[0]
+    if (target === undefined) {
+      cs.player.hand.pop()
+      sfx.click()
+      return
+    }
+  }
+  const res = combatReduce(cs, { t: 'play', hand: handIdx, target })
+  if (res.error) {
+    cs.player.hand.pop()
+    sfx.click()
+    return
+  }
+  sfx.play()
+  combat.value = res.state
+  checkCombat(res.state)
+  processEvents(res.events, {})
   saveGame()
 }
 

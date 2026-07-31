@@ -1,6 +1,6 @@
 /** Solo-mode cheat console: difficulty is a suggestion. */
 import { useState } from 'preact/hooks'
-import { CARDS, obtainableRelics, relicDesc, relicName, RELICS } from '@neonspire/engine'
+import { CARDS, cardName, obtainableRelics, relicDesc, relicName, RELICS } from '@neonspire/engine'
 import { CardById } from '../components'
 import {
   cheatAddCard,
@@ -12,6 +12,7 @@ import {
   cheatGold,
   cheatKillAll,
   cheatMaxHp,
+  cheatPlayCard,
   cheatRemoveCard,
   cheatUpgradeAll,
 } from '../game'
@@ -20,9 +21,67 @@ import { t } from '../i18n'
 import { sfx } from '../sfx'
 import { cheatsEnabled } from '../account'
 
-type Tab = 'main' | 'cards' | 'relics'
+type Tab = 'main' | 'cards' | 'play' | 'relics'
 
 const CHEATABLE_SCREENS = new Set(['map', 'combat', 'reward', 'shop', 'rest', 'event'])
+
+/** Searchable, filterable card picker shared by ADD ANY CARD and PLAY ANY CARD. */
+function CardPicker(props: {
+  title: string
+  sub?: string
+  onPick: (id: string) => void
+  onBack: () => void
+  onClose: () => void
+}) {
+  const [q, setQ] = useState('')
+  const [type, setType] = useState<'all' | 'attack' | 'skill' | 'power'>('all')
+  const norm = q.trim().toLowerCase()
+  const pool = Object.values(CARDS).filter((c) => c.rarity !== 'special')
+  const shown = pool.filter((def) => {
+    if (type !== 'all' && def.type !== type) return false
+    if (!norm) return true
+    const name = cardName({ uid: 0, id: def.id, up: false }).toLowerCase()
+    return name.includes(norm) || def.id.toLowerCase().includes(norm)
+  })
+  return (
+    <div class="overlay" onClick={props.onClose}>
+      <div class="panel" onClick={(e) => e.stopPropagation()}>
+        <h2 class="pink">{props.title}</h2>
+        {props.sub && <div class="sub">{props.sub}</div>}
+        <div class="cheat-filters">
+          <input
+            class="neon cheat-search"
+            placeholder={t('cheatSearch')}
+            value={q}
+            onInput={(e) => setQ((e.target as HTMLInputElement).value)}
+          />
+          <div class="cheat-type">
+            {(['all', 'attack', 'skill', 'power'] as const).map((k) => (
+              <button
+                key={k}
+                class={`btn ${type === k ? 'on' : ''}`}
+                onClick={() => setType(k)}
+              >
+                {k === 'all'
+                  ? t('cheatTypeAll')
+                  : t(k === 'attack' ? 'typeAttack' : k === 'skill' ? 'typeSkill' : 'typePower')}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div class="gridcards">
+          {shown.map((def) => (
+            <CardById key={def.id} id={def.id} onClick={() => props.onPick(def.id)} />
+          ))}
+          {shown.length === 0 && <div class="sub">{t('empty')}</div>}
+        </div>
+        <button class="btn ghost" onClick={props.onBack}>
+          {t('back')}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export function CheatMenu() {
   const [tab, setTab] = useState<Tab>('main')
@@ -37,23 +96,16 @@ export function CheatMenu() {
     setTab('main')
   }
 
-  if (tab === 'cards') {
-    const pool = Object.values(CARDS).filter((c) => c.rarity !== 'special')
+  if (tab === 'cards' || tab === 'play') {
+    const play = tab === 'play'
     return (
-      <div class="overlay" onClick={close}>
-        <div class="panel" onClick={(e) => e.stopPropagation()}>
-          <h2 class="pink">{t('cheatAddCard')}</h2>
-          <div class="sub">{t('cheatAddCardSub')}</div>
-          <div class="gridcards">
-            {pool.map((def) => (
-              <CardById key={def.id} id={def.id} onClick={() => cheatAddCard(def.id)} />
-            ))}
-          </div>
-          <button class="btn ghost" onClick={() => setTab('main')}>
-            {t('back')}
-          </button>
-        </div>
-      </div>
+      <CardPicker
+        title={play ? t('cheatPlay') : t('cheatAddCard')}
+        sub={play ? t('cheatPlaySub') : t('cheatAddCardSub')}
+        onPick={play ? cheatPlayCard : cheatAddCard}
+        onBack={() => setTab('main')}
+        onClose={close}
+      />
     )
   }
 
@@ -105,6 +157,7 @@ export function CheatMenu() {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'center' }}>
               <button class="btn pink" onClick={cheatKillAll}>{t('cheatKill')}</button>
+              <button class="btn pink" onClick={() => (sfx.click(), setTab('play'))}>{t('cheatPlay')}</button>
               <button class="btn pink" onClick={cheatEnergy}>{t('cheatEnergy')}</button>
               <button class="btn pink" onClick={cheatDraw}>{t('cheatDraw')}</button>
             </div>

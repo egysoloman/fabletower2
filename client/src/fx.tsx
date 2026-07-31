@@ -715,12 +715,14 @@ function playOne(ev: GameEvent) {
       setTimeout(() => {
         const p = anchorCenter(ev.who)
         if (p) {
-          burst(p.x, p.y, '#a855f7', 20, 3.8)
-          spawnRing(p.x, p.y, '#a855f7')
+          burst(p.x, p.y, '#3dffa2', 26, 4.2)
+          spawnRing(p.x, p.y, '#3dffa2')
+          spawnRing(p.x, p.y, '#7df5c8')
           spawnFloatAt(p.x, p.y - 40, ev.name ?? '', 'name')
         }
       }, 80)
       sfx.whoosh()
+      sfx.tick()
       break
     }
   }

@@ -2,10 +2,13 @@
 import type { JSX } from 'preact'
 import {
   CARDS,
+  MINIONS,
   POTIONS,
   RELICS,
   STATUS_INFO,
   cardCost,
+  minionDesc,
+  minionName,
   potionDesc,
   potionName,
   cardFlavor,
@@ -17,13 +20,14 @@ import {
   statusName,
   type CardCombatPreview,
   type CardInst,
+  type MinionC,
   type Statuses,
   type StatusId,
 } from '@neonspire/engine'
 import { cheatOpen, picker, pileView, run, screen } from './store'
 import { muted, sfx, toggleMute } from './sfx'
 import { burst, fxPulses, registerAnchor, statFlash } from './fx'
-import { useEffect, useRef } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { lang, t, tf, toggleLang } from './i18n'
 import { SoundIcon } from './sprites'
 import { abandonRun, backToMenu, discardPotion } from './game'
@@ -93,6 +97,42 @@ export function HpBar(props: { hp: number; maxHp: number; mine?: boolean }) {
       </div>
     </div>
   )
+}
+
+/**
+ * A summoned ally rendered as a small independent card: glyph, name and a
+ * mini HP bar (so it reads as its own fighter, not a status pill).
+ */
+export function MinionCard(props: { m: MinionC }) {
+  const { m } = props
+  return (
+    <div class="minion" data-tip={`${minionName(m.defId)}\n${minionDesc(m.defId)}`}>
+      <div class="mglyph">{MINIONS[m.defId]?.sym}</div>
+      <div class="mname">{minionName(m.defId)}</div>
+      <HpBar hp={m.hp} maxHp={m.maxHp} />
+    </div>
+  )
+}
+
+/** One-line deck stats: size, cost curve, type mix, upgrades. */
+export function DeckSummary(props: { deck: CardInst[] }) {
+  const d = props.deck
+  const costs = [0, 0, 0, 0]
+  let atk = 0
+  let skill = 0
+  let pow = 0
+  let up = 0
+  for (const c of d) {
+    const def = CARDS[c.id]
+    if (!def) continue
+    costs[Math.min(3, cardCost(c))]++
+    if (def.type === 'attack') atk++
+    else if (def.type === 'skill') skill++
+    else pow++
+    if (c.up) up++
+  }
+  const costStr = [0, 1, 2, 3].map((k, i) => `${i < 3 ? i : '3+'}:${costs[k]}`).join(' ')
+  return <div class="decksum">{tf('deckSummary', { n: d.length, costs: costStr, atk, skill, pow, up })}</div>
 }
 
 export function BlockChip(props: { block: number }) {
@@ -197,6 +237,28 @@ export function TopBar(props: { showAbandon?: boolean }) {
       statFlash('deck', d > 0 ? `+${d}` : `${d}`, d > 0 ? 'stat' : 'dmg')
     }
   }, [r?.deck.length])
+  // Acquisition toasts: when a relic or potion just landed (rewards, shops,
+  // events, cheats), say what it is — glyphs alone are easy to miss.
+  const prevRelics = useRef<number | null>(null)
+  const prevPotions = useRef<number | null>(null)
+  const [gained, setGained] = useState<{ kind: 'relic' | 'potion'; id: string } | null>(null)
+  const gainTimer = useRef<number | null>(null)
+  useEffect(() => {
+    if (!r) return
+    const fire = (kind: 'relic' | 'potion', id: string) => {
+      setGained({ kind, id })
+      if (gainTimer.current) window.clearTimeout(gainTimer.current)
+      gainTimer.current = window.setTimeout(() => setGained(null), 4200)
+    }
+    if (prevRelics.current !== null && r.relics.length > prevRelics.current) {
+      fire('relic', r.relics[r.relics.length - 1])
+    }
+    prevRelics.current = r.relics.length
+    if (prevPotions.current !== null && r.potions.length > prevPotions.current) {
+      fire('potion', r.potions[r.potions.length - 1])
+    }
+    prevPotions.current = r.potions.length
+  }, [r?.relics.length, r?.potions.length])
   if (!r) return null
   return (
     <div class="topbar">
@@ -241,6 +303,18 @@ export function TopBar(props: { showAbandon?: boolean }) {
         >
           ⌁ {t('cheats')}
         </span>
+      )}
+      {gained && (
+        <div class="gaintoast" key={gained.kind + gained.id}>
+          <div class="gaintoast-kind">
+            {gained.kind === 'relic'
+              ? tf('gainRelic', { name: relicName(gained.id) })
+              : tf('gainPotion', { name: potionName(gained.id) })}
+          </div>
+          <div class="gaintoast-desc">
+            {gained.kind === 'relic' ? relicDesc(gained.id) : potionDesc(gained.id)}
+          </div>
+        </div>
       )}
       <span class="stat linkish" onClick={toggleLang} style={{ color: 'var(--dim)' }} data-tip="EN / 中文">
         {lang.value === 'zh' ? 'EN' : '中'}
@@ -288,10 +362,21 @@ export function PileModal() {
     <div class="overlay" onClick={() => (pileView.value = null)}>
       <div class="panel" onClick={(e) => e.stopPropagation()}>
         <h2>{view.title}</h2>
+        <DeckSummary deck={view.cards} />
         <div class="gridcards fan">
-          {view.cards.map((c, i) => (
-            <CardView key={c.uid} card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
-          ))}
+          {view.cards.map((c, i) => {
+            const upDef = CARDS[c.id]?.upEffects
+            return (
+              <div key={c.uid} class={!c.up && upDef && upDef.length > 0 ? 'cardpick' : ''}>
+                <CardView card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
+                {!c.up && upDef && upDef.length > 0 && (
+                  <div class="cardpick-up">
+                    <CardView card={{ ...c, up: true }} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
+                  </div>
+                )}
+              </div>
+            )
+          })}
           {view.cards.length === 0 && <div class="sub">{t('empty')}</div>}
         </div>
         <button class="btn ghost" onClick={() => (pileView.value = null)}>

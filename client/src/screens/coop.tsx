@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CharId } from '@neonspire/engine'
-import { BlockChip, CardById, CardView, HpBar, StatusRow } from '../components'
+import { BlockChip, CardById, CardView, HpBar, MinionCard, StatusRow } from '../components'
 import {
   anchorCenter,
   burst,
@@ -57,6 +57,7 @@ import { DraggableHand, dragHoverWho } from './hand'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { MapView, mapGeometry, type MapTravel } from './mapview'
+import { enemyMove, intentText } from '../intent'
 import { mpName } from '../mp'
 
 export function CoopScreen() {
@@ -280,6 +281,13 @@ export function CoopScreen() {
                 <div class="pname">{p.name}{i === you ? ' ★' : ''}</div>
                 <HpBar hp={p.hp} maxHp={p.maxHp} mine={i === you} />
                 <StatusRow statuses={p.statuses} />
+                {p.minions.length > 0 && (
+                  <div class="minionrow">
+                    {p.minions.map((m: any, j: number) => (
+                      <MinionCard key={j} m={m} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -289,30 +297,23 @@ export function CoopScreen() {
               return (
                 <div
                   key={i}
-                  class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} spawn-in ${e.dead ? '' : (fxPulses.value['e' + i] ?? '')}`}
+                  class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${e.summoned ? 'summon' : ''} spawn-in ${e.dead ? '' : (fxPulses.value['e' + i] ?? '')}`}
                   ref={(el) => registerAnchor('e' + i, el)}
                 >
                   <BlockChip block={e.block} />
                   {e.intent && (() => {
                     const focus = typeof e.focus === 'number' && v.players[e.focus] ? e.focus : v.active
                     const live = previewEnemyIntent(e, v.players[focus], v.asc) ?? e.intent
-                    const text =
-                      live.kind === 'attack' || live.kind === 'mixed'
-                        ? `${t('intentAtk')} ${live.dmg ?? '?'}${live.times ? '×' + live.times : ''}`
-                        : live.kind === 'defend'
-                          ? t('intentDef')
-                          : live.kind === 'buff'
-                            ? t('intentBuf')
-                            : t('intentHex')
                     return (
                       <div class={`intent ${live.kind}`}>
-                        {text} <small>→ {v.players[focus]?.name}</small>
+                        {intentText(live, enemyMove(e))} <small>→ {v.players[focus]?.name}</small>
                       </div>
                     )
                   })()}
                   <div class="glyph">
-                    <Sprite id={e.defId} size={boss ? 62 : 52} />
+                    <Sprite id={e.defId} size={boss ? 62 : e.summoned ? 34 : 52} />
                   </div>
+                  {e.summoned && <div class="summon-tag">{t('summonTag')}</div>}
                   <div class="ename">{e.name}</div>
                   <HpBar hp={e.hp} maxHp={e.maxHp} />
                   <StatusRow statuses={e.statuses} />

@@ -12,7 +12,7 @@ import {
   relicName,
   restHealAmount,
 } from '@neonspire/engine'
-import { CardById, TopBar } from '../components'
+import { CardById, DeckSummary, TopBar } from '../components'
 import { useEffect } from 'preact/hooks'
 import { anchorCenter, burst, flyGoldTo, flyMini, flyToDeck, uiRipple } from '../fx'
 import { sfx } from '../sfx'
@@ -46,7 +46,7 @@ import {
   takePotionReward,
   takeRelicReward,
 } from '../game'
-import { currentEvent, eventLines, restUsed, reward, run, shop } from '../store'
+import { currentEvent, eventLines, eventRelic, restUsed, reward, run, shop } from '../store'
 
 function RelicOffer(props: { id: string; note?: string; onClick?: (e?: MouseEvent) => void; dim?: boolean }) {
   const def = RELICS[props.id]
@@ -74,6 +74,30 @@ export function RewardScreen() {
     }, 350)
     return () => clearTimeout(timer)
   }, [])
+
+  // Number keys take rewards in display order: boss relics → relic → potion → cards.
+  useEffect(() => {
+    const cur = reward.value
+    if (!cur) return
+    const actions: (() => void)[] = []
+    if (cur.bossChoices.length > 0 && !cur.bossChoiceTaken) {
+      for (const id of cur.bossChoices) actions.push(() => takeBossRelic(id))
+    } else if (cur.relic && !cur.relicTaken) {
+      actions.push(() => takeRelicReward())
+    }
+    if (cur.potion && !cur.potionTaken) actions.push(() => takePotionReward())
+    if (cur.cards && !cur.cardTaken) for (const id of cur.cards) actions.push(() => takeCardReward(id))
+    const onKey = (e: KeyboardEvent) => {
+      if (!reward.value) return
+      const d = Number(e.key)
+      if (d >= 1 && d <= 9 && actions[d - 1]) {
+        e.preventDefault()
+        actions[d - 1]()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [reward.value])
   if (!b) return null
   return (
     <div class="screen">
@@ -142,6 +166,7 @@ export function RewardScreen() {
                 {b.cards.map((id, i) => (
                   <div
                     key={id}
+                    class="cardpick"
                     onClick={(e) => {
                       const p = evCenter(e)
                       flyToDeck(p, '#00e5ff')
@@ -151,9 +176,16 @@ export function RewardScreen() {
                     }}
                   >
                     <CardById id={id} cls="reveal" style={{ '--reveal': `${i * 110}ms` } as never} />
+                    <div class="cardpick-up">
+                      <CardById id={id} up />
+                    </div>
                   </div>
                 ))}
               </div>
+              <div class="sub" style={{ fontSize: '11px', color: 'var(--dim)', marginTop: '-6px' }}>
+                {t('upgradePreview')}
+              </div>
+              <DeckSummary deck={run.value?.deck ?? []} />
             </>
           )}
           {b.cards && b.cardTaken && <div class="result-lines">{t('cardIntegrated')}</div>}
@@ -175,6 +207,39 @@ export function RewardScreen() {
 export function ShopScreen() {
   const s = shop.value
   const r = run.value
+
+  // Number keys quick-buy: 1-5 cards, 6-7 relics, 8-9 potions, R = remove service.
+  useEffect(() => {
+    const cur = shop.value
+    const run2 = run.value
+    if (!cur || !run2) return
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) return
+      const d = Number(e.key)
+      const tryBuy = (sold: boolean, price: number, fn: () => void) => {
+        if (!sold && run2.gold >= price) {
+          e.preventDefault()
+          fn()
+        }
+      }
+      if (d >= 1 && d <= 5 && cur.cards[d - 1]) {
+        const it = cur.cards[d - 1]
+        tryBuy(it.sold, it.price, () => shopBuyCard(d - 1))
+      } else if (d === 6 || d === 7) {
+        const it = cur.relics[d - 6]
+        if (it) tryBuy(it.sold, it.price, () => shopBuyRelic(d - 6))
+      } else if (d === 8 || d === 9) {
+        const it = cur.potions[d - 8]
+        if (it) tryBuy(it.sold, it.price, () => shopBuyPotion(d - 8))
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault()
+        shopRemoveService()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [shop.value])
   if (!s || !r) return null
   return (
     <div class="screen">
@@ -196,7 +261,12 @@ export function ShopScreen() {
                   shopBuyCard(i)
                 }}
               >
-                <CardById id={item.id} />
+                <div class="cardpick">
+                  <CardById id={item.id} />
+                  <div class="cardpick-up">
+                    <CardById id={item.id} up />
+                  </div>
+                </div>
                 <div class="pricetag" style={r.gold < item.price ? { color: 'var(--red)' } : {}}>
                   {item.sold ? t('sold') : `${item.price}¤`}
                 </div>
@@ -378,6 +448,11 @@ export function EventScreen() {
                   <div key={i} style={{ '--i': i } as never}>▸ {l}</div>
                 ))}
               </div>
+              {eventRelic.value && (
+                <div style={{ marginTop: '6px' }}>
+                  <RelicOffer id={eventRelic.value} />
+                </div>
+              )}
               <button
                 class="btn"
                 onClick={(e) => {

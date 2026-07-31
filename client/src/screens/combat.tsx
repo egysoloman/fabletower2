@@ -1,20 +1,18 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import {
   CARDS,
-  MINIONS,
+  cardName,
   cardRetains,
   enemyName,
-  minionDesc,
-  minionName,
   moveName,
   playableCards,
+  potionName,
   previewCard,
   previewEnemyIntent,
   type DeckSide,
   type EnemyC,
-  type Intent,
 } from '@neonspire/engine'
-import { BlockChip, CardView, HpBar, PotionBelt, StatusRow, TopBar } from '../components'
+import { BlockChip, CardView, HpBar, MinionCard, PotionBelt, StatusRow, TopBar } from '../components'
 import { POTIONS } from '@neonspire/engine'
 import { discardPotion, doCombat, playCardWithFx, resolveCombatIfOver, usePotion } from '../game'
 import { defeatFx, flyMini, fxPulses, fxRemainingMs, localWho, registerAnchor, useShake, victoryFx } from '../fx'
@@ -22,24 +20,10 @@ import { combat, pileView, run } from '../store'
 import { byName } from '../components'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
+import { enemyMove, intentText } from '../intent'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
 import { charColor } from './charselect'
 import { isTouch } from '../touch'
-
-function intentText(intent: Intent): string {
-  switch (intent.kind) {
-    case 'attack':
-      return `${t('intentAtk')} ${intent.dmg}${intent.times ? '×' + intent.times : ''}`
-    case 'defend':
-      return t('intentDef')
-    case 'buff':
-      return t('intentBuf')
-    case 'debuff':
-      return t('intentHex')
-    case 'mixed':
-      return `${t('intentAtk')} ${intent.dmg ?? '?'}${intent.times ? '×' + intent.times : ''} +`
-  }
-}
 
 type Highlight = 'none' | 'candidate' | 'snap'
 
@@ -50,30 +34,35 @@ function EnemyBox(props: {
   asc: number
   highlight: Highlight
   onTarget: () => void
+  onHover: (idx: number | null) => void
 }) {
   const { e, idx } = props
   const boss = e.maxHp >= 100
   const hl = props.highlight
   const liveIntent = previewEnemyIntent(e, props.defender, props.asc)
+  const move = enemyMove(e)
   // Materialize animation only right after mount (combat start / summon).
   const [justIn, setJustIn] = useState(true)
   useEffect(() => {
-    const timer = setTimeout(() => setJustIn(false), 560)
+    // Summons play the longer portal animation; everyone else gets the quick entrance.
+    const timer = setTimeout(() => setJustIn(false), e.summoned ? 780 : 560)
     return () => clearTimeout(timer)
-  }, [])
+  }, [e.summoned])
   // No impact pulses on a corpse: the recoil animation would override the
   // .dead fade transform and pop the fading panel back to full size.
   const pulseCls = e.dead ? '' : (fxPulses.value['e' + idx] ?? '')
   return (
     <div
-      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${justIn ? 'spawn-in' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''} ${pulseCls}`}
+      class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${e.summoned ? 'summon' : ''} ${justIn ? 'spawn-in' : ''} ${hl !== 'none' ? 'targetable' : ''} ${hl === 'snap' ? 'snap' : ''} ${pulseCls}`}
       onClick={() => hl !== 'none' && props.onTarget()}
+      onMouseEnter={() => props.onHover(idx)}
+      onMouseLeave={() => props.onHover(null)}
       ref={(el) => registerAnchor('e' + idx, el)}
     >
       <BlockChip block={e.block} />
       {liveIntent && !e.dead ? (
         <div class={`intent ${liveIntent.kind}`} data-tip={moveName(e.defId, liveIntent.moveId)}>
-          {intentText(liveIntent)}
+          {intentText(liveIntent, move)}
         </div>
       ) : (
         <div class="intent" style={{ opacity: 0.25 }}>
@@ -81,8 +70,9 @@ function EnemyBox(props: {
         </div>
       )}
       <div class="glyph">
-        <Sprite id={e.defId} size={boss ? 62 : 52} />
+        <Sprite id={e.defId} size={boss ? 62 : e.summoned ? 34 : 52} />
       </div>
+      {e.summoned && <div class="summon-tag">{t('summonTag')}</div>}
       <div class="ename">{enemyName(e.defId)}</div>
       <HpBar hp={e.hp} maxHp={e.maxHp} />
       <StatusRow statuses={e.statuses} />
@@ -94,6 +84,7 @@ export function CombatScreen() {
   const cs = combat.value
   const [selected, setSelected] = useState<number | null>(null)
   const [potionSel, setPotionSel] = useState<number | null>(null)
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   const shakeCls = useShake()
 
   useEffect(() => {
@@ -182,11 +173,58 @@ export function CombatScreen() {
     }
   }
 
+  // --- Keyboard shortcuts: 1-9 play hand cards, E end turn, T potion, Esc cancel ---
+  const clickCardRef = useRef(clickCard)
+  clickCardRef.current = clickCard
+  const clickPotionRef = useRef(clickPotion)
+  clickPotionRef.current = clickPotion
+  const sweepRef = useRef(sweepDiscard)
+  sweepRef.current = sweepDiscard
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Leave modal surfaces (pile view, cheat console, pickers) alone.
+      if (document.querySelector('.overlay')) return
+      const cs = combat.value
+      if (!cs || cs.over) return
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)) return
+      if (e.key === 'Escape') {
+        setSelected(null)
+        setPotionSel(null)
+        return
+      }
+      if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault()
+        setSelected(null)
+        sweepRef.current()
+        doCombat({ t: 'end' })
+        return
+      }
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault()
+        const belt = run.value?.potions ?? []
+        if (belt.length > 0) clickPotionRef.current(0)
+        return
+      }
+      const d = Number(e.key)
+      if (d >= 1 && d <= 9) {
+        const i = d - 1
+        if (i < cs.player.hand.length) clickCardRef.current(i)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const dm = dragMode.value
   const dh = dragHoverWho.value
   const hoveredEnemy = dh?.startsWith('e') ? cs.enemies[Number(dh.slice(1))] : undefined
   const previewTargets =
-    hoveredEnemy && !hoveredEnemy.dead ? [hoveredEnemy] : cs.enemies.filter((e) => !e.dead)
+    hoveredEnemy && !hoveredEnemy.dead
+      ? [hoveredEnemy]
+      : hoverIdx !== null && !cs.enemies[hoverIdx]?.dead
+        ? [cs.enemies[hoverIdx]]
+        : cs.enemies.filter((e) => !e.dead)
   const highlightOf = (i: number, e: EnemyC): Highlight => {
     if (e.dead) return 'none'
     if (dm === 'target') return dh === 'e' + i ? 'snap' : 'candidate'
@@ -236,12 +274,7 @@ export function CombatScreen() {
           {p.minions.length > 0 && (
             <div class="minionrow">
               {p.minions.map((m, i) => (
-                <div key={i} class="minion" data-tip={`${minionName(m.defId)}\n${minionDesc(m.defId)}`}>
-                  <span class="msym">{MINIONS[m.defId]?.sym}</span>
-                  <span class="mhp">
-                    {m.hp}/{m.maxHp}
-                  </span>
-                </div>
+                <MinionCard key={i} m={m} />
               ))}
             </div>
           )}
@@ -257,6 +290,7 @@ export function CombatScreen() {
               asc={cs.asc}
               highlight={highlightOf(i, e)}
               onTarget={() => clickEnemy(i)}
+              onHover={setHoverIdx}
             />
           ))}
         </div>
@@ -271,7 +305,15 @@ export function CombatScreen() {
             setPotionSel(null)
           }}
         >
-          {isTouch() ? t('selectTargetTouch') : t('selectTarget')}
+          {(() => {
+            const name =
+              selected !== null
+                ? cardName(p.hand[selected])
+                : potionSel !== null && run.value
+                  ? potionName(run.value.potions[potionSel])
+                  : ''
+            return tf(isTouch() ? 'selectTargetCardTouch' : 'selectTargetCard', { name })
+          })()}
         </div>
       )}
 
