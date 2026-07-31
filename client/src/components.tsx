@@ -367,7 +367,7 @@ export function PileModal() {
           {view.cards.map((c, i) => {
             const upDef = CARDS[c.id]?.upEffects
             return (
-              <div key={c.uid} class={!c.up && upDef && upDef.length > 0 ? 'cardpick' : ''}>
+              <div key={c.uid} class={!c.up && upDef && upDef.length > 0 ? 'cardpick preview-on-tap' : ''}>
                 <CardView card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
                 {!c.up && upDef && upDef.length > 0 && (
                   <div class="cardpick-up">

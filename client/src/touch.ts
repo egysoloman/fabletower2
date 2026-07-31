@@ -25,16 +25,35 @@ export function installTouchTips() {
   document.addEventListener(
     'click',
     (e) => {
-      const el = (e.target as HTMLElement).closest?.('[data-tip]') as HTMLElement | null
+      const target = e.target as HTMLElement
+      const el = target.closest?.('[data-tip]') as HTMLElement | null
+      // Read-only piles (.cardpick.preview-on-tap) toggle the upgrade preview
+      // on tap; interactive reward/shop cards are excluded so tap still takes.
+      const pick = target.closest?.('.cardpick.preview-on-tap') as HTMLElement | null
       clearTimeout(timer)
-      if (!el || el === active) {
+      if (el) {
+        if (el === active) {
+          hide()
+          return
+        }
         hide()
+        active = el
+        el.classList.add('tip-on')
+        timer = window.setTimeout(hide, 2600)
+        return
+      }
+      if (pick) {
+        if (pick === active) {
+          hide()
+          return
+        }
+        hide()
+        active = pick
+        pick.classList.add('tip-on')
+        timer = window.setTimeout(hide, 2600)
         return
       }
       hide()
-      active = el
-      el.classList.add('tip-on')
-      timer = window.setTimeout(hide, 2600)
     },
     true,
   )
