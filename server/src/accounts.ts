@@ -16,6 +16,8 @@ interface Account {
   hash: string
   created: number
   banned?: boolean
+  /** Cheat console access is opt-in and can only be changed by an admin. */
+  cheatsEnabled?: boolean
   blob?: string
   blobUpdated?: number
 }
@@ -120,6 +122,12 @@ function authed(req: IncomingMessage): Account | null {
   return acc && !acc.banned ? acc : null
 }
 
+function revokeSessions(user: string) {
+  for (const [token, sessionUser] of sessions) {
+    if (sessionUser === user) sessions.delete(token)
+  }
+}
+
 function isAdmin(req: IncomingMessage): boolean {
   return ADMIN_KEY.length >= 8 && String(req.headers['x-admin-key'] ?? '') === ADMIN_KEY
 }
@@ -169,7 +177,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     persist()
     const token = randomBytes(16).toString('hex')
     sessions.set(token, key)
-    return json(res, 200, { token, name: user }), true
+    return json(res, 200, { token, name: user, cheatsEnabled: false }), true
   }
   if (url === '/api/login' && req.method === 'POST') {
     const b = await readBody(req)
@@ -182,7 +190,14 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (!ok) return json(res, 401, { err: 'bad credentials' }), true
     const token = randomBytes(16).toString('hex')
     sessions.set(token, acc.user)
-    return json(res, 200, { token, name: acc.name, updated: acc.blobUpdated ?? 0 }), true
+    return json(res, 200, {
+      token, name: acc.name, updated: acc.blobUpdated ?? 0, cheatsEnabled: !!acc.cheatsEnabled,
+    }), true
+  }
+  if (url === '/api/session' && req.method === 'GET') {
+    const acc = authed(req)
+    if (!acc) return json(res, 401, { err: 'not logged in' }), true
+    return json(res, 200, { name: acc.name, cheatsEnabled: !!acc.cheatsEnabled }), true
   }
 
   // --- cloud save ------------------------------------------------------
@@ -249,7 +264,8 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (!isAdmin(req)) return json(res, 403, { err: 'admin key required' }), true
     if (sub === '/accounts' && req.method === 'GET') {
       const list = Object.values(db.accounts).map((a) => ({
-        user: a.user, name: a.name, created: a.created, banned: !!a.banned, blobUpdated: a.blobUpdated ?? 0,
+        user: a.user, name: a.name, created: a.created, banned: !!a.banned,
+        cheatsEnabled: !!a.cheatsEnabled, blobUpdated: a.blobUpdated ?? 0,
       }))
       return json(res, 200, { registrationsOpen: db.registrationsOpen, mpMode: getMpMode(), mpEnvLocked: ENV_MP_MODE !== null, accounts: list }), true
     }
@@ -258,7 +274,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       const key = keyOf(delMatch[1])
       if (!db.accounts[key]) return json(res, 404, { err: 'no such account' }), true
       delete db.accounts[key]
-      for (const [tok, u] of sessions) if (u === key) sessions.delete(tok)
+      revokeSessions(key)
       persist()
       return json(res, 200, { ok: true }), true
     }
@@ -270,6 +286,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       if (pass.length < 6) return json(res, 400, { err: 'password too short' }), true
       acc.salt = randomBytes(12).toString('hex')
       acc.hash = hashPass(pass, acc.salt)
+      revokeSessions(acc.user)
       persist()
       return json(res, 200, { ok: true }), true
     }
@@ -278,8 +295,17 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       const acc = db.accounts[keyOf(String(b?.user ?? ''))]
       if (!acc) return json(res, 404, { err: 'no such account' }), true
       acc.banned = !!b?.banned
+      if (acc.banned) revokeSessions(acc.user)
       persist()
       return json(res, 200, { ok: true, banned: acc.banned }), true
+    }
+    if (sub === '/cheats' && req.method === 'POST') {
+      const b = await readBody(req)
+      const acc = db.accounts[keyOf(String(b?.user ?? ''))]
+      if (!acc) return json(res, 404, { err: 'no such account' }), true
+      acc.cheatsEnabled = b?.enabled === true
+      persist()
+      return json(res, 200, { ok: true, cheatsEnabled: acc.cheatsEnabled }), true
     }
     if (sub === '/mpmode' && req.method === 'POST') {
       const b = await readBody(req)
@@ -302,6 +328,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       const b = await readBody(req)
       if (!b || typeof b.accounts !== 'object') return json(res, 400, { err: 'bad import payload' }), true
       db = { registrationsOpen: b.registrationsOpen !== false, accounts: b.accounts, dailyScores: b.dailyScores ?? {} }
+      sessions.clear()
       persist()
       return json(res, 200, { ok: true, count: Object.keys(db.accounts).length }), true
     }

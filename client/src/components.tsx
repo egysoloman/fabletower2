@@ -27,6 +27,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import { lang, t, tf, toggleLang } from './i18n'
 import { SoundIcon } from './sprites'
 import { abandonRun, backToMenu, discardPotion } from './game'
+import { cheatsEnabled, validateSession } from './account'
 
 export function CardView(props: {
   card: CardInst
@@ -227,16 +228,20 @@ export function TopBar(props: { showAbandon?: boolean }) {
       >
         {tf('deckBtn', { n: r.deck.length })}
       </span>
-      <span
-        class="stat linkish"
-        style={{ color: 'var(--gold)' }}
-        onClick={() => {
-          sfx.click()
-          cheatOpen.value = true
-        }}
-      >
-        ⌁ {t('cheats')}
-      </span>
+      {cheatsEnabled.value && (
+        <span
+          class="stat linkish"
+          style={{ color: 'var(--gold)' }}
+          onClick={() => {
+            sfx.click()
+            void validateSession().then((valid) => {
+              if (valid && cheatsEnabled.value) cheatOpen.value = true
+            })
+          }}
+        >
+          ⌁ {t('cheats')}
+        </span>
+      )}
       <span class="stat linkish" onClick={toggleLang} style={{ color: 'var(--dim)' }} data-tip="EN / 中文">
         {lang.value === 'zh' ? 'EN' : '中'}
       </span>

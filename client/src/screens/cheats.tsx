@@ -18,6 +18,7 @@ import {
 import { cheatOpen, combat, run, screen } from '../store'
 import { t } from '../i18n'
 import { sfx } from '../sfx'
+import { cheatsEnabled } from '../account'
 
 type Tab = 'main' | 'cards' | 'relics'
 
@@ -25,7 +26,7 @@ const CHEATABLE_SCREENS = new Set(['map', 'combat', 'reward', 'shop', 'rest', 'e
 
 export function CheatMenu() {
   const [tab, setTab] = useState<Tab>('main')
-  if (!cheatOpen.value) return null
+  if (!cheatsEnabled.value || !cheatOpen.value) return null
   const r = run.value
   if (!r || !CHEATABLE_SCREENS.has(screen.value)) return null
   const cs = combat.value

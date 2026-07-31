@@ -8,19 +8,29 @@ import { signal } from '@preact/signals'
 
 const META_KEYS = ['ns-history', 'ns-ach', 'ns-codex', 'ns-pal', 'ns-ascmax', 'ns-settings'] as const
 
-export const account = signal<{ name: string; token: string } | null>(loadSession())
+interface AccountSession {
+  name: string
+  token: string
+}
+
+export const account = signal<AccountSession | null>(loadSession())
+/** Server-authorized, memory-only permission. Never trust a persisted flag. */
+export const cheatsEnabled = signal(false)
 export const syncMsg = signal('')
 
-function loadSession() {
+function loadSession(): AccountSession | null {
   try {
-    return JSON.parse(localStorage.getItem('ns-account') ?? 'null')
+    const saved = JSON.parse(localStorage.getItem('ns-account') ?? 'null')
+    if (typeof saved?.name !== 'string' || typeof saved?.token !== 'string') return null
+    return { name: saved.name, token: saved.token }
   } catch {
     return null
   }
 }
 
-function saveSession(v: { name: string; token: string } | null) {
+function saveSession(v: AccountSession | null) {
   account.value = v
+  cheatsEnabled.value = false
   try {
     if (v) localStorage.setItem('ns-account', JSON.stringify(v))
     else localStorage.removeItem('ns-account')
@@ -69,8 +79,19 @@ async function api(path: string, method = 'GET', body?: unknown, token?: string)
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.err ?? `http ${res.status}`)
+  if (!res.ok) throw new ApiError(data.err ?? `http ${res.status}`, res.status)
   return data
+}
+
+class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
+
+function acceptAuthenticatedSession(name: string, token: string, canCheat: unknown) {
+  saveSession({ name, token })
+  cheatsEnabled.value = canCheat === true
 }
 
 function collectBlob(): string {
@@ -110,15 +131,38 @@ function mergeCodex(a: any, b: any) {
 
 export async function register(user: string, pass: string) {
   const r = await api('/api/register', 'POST', { user, pass })
-  saveSession({ name: r.name, token: r.token })
+  acceptAuthenticatedSession(r.name, r.token, r.cheatsEnabled)
   await syncUp()
 }
 
 export async function login(user: string, pass: string) {
   const r = await api('/api/login', 'POST', { user, pass })
-  saveSession({ name: r.name, token: r.token })
+  acceptAuthenticatedSession(r.name, r.token, r.cheatsEnabled)
   await syncDown()
   await syncUp()
+}
+
+/** Validate a restored token and refresh server-controlled account permissions. */
+export async function validateSession(): Promise<boolean> {
+  const saved = account.value
+  if (!saved) {
+    cheatsEnabled.value = false
+    return false
+  }
+  try {
+    const r = await api('/api/session', 'GET', undefined, saved.token)
+    // Ignore a late response if the player logged out or switched accounts.
+    if (account.value?.token !== saved.token) return false
+    acceptAuthenticatedSession(r.name, saved.token, r.cheatsEnabled)
+    return true
+  } catch (e) {
+    cheatsEnabled.value = false
+    if (e instanceof ApiError && (e.status === 401 || e.status === 403) && account.value?.token === saved.token) {
+      saveSession(null)
+      syncMsg.value = ''
+    }
+    return false
+  }
 }
 
 export function logout() {

@@ -59,6 +59,7 @@ import { climbActive, climbBossKill, climbContinueRound, climbDied, climbLeave, 
 import { checkCombat, checkRun, discoverEnemies, discoverEvent, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
+import { cheatsEnabled } from './account'
 
 // --- Ascension unlock + run history (device-local meta-progression) ---------
 
@@ -722,7 +723,12 @@ function withCombat(fn: (cs: CombatState) => void, allowOver = false): boolean {
   return true
 }
 
+function canCheat(): boolean {
+  return cheatsEnabled.value
+}
+
 export function cheatFullHeal() {
+  if (!canCheat()) return
   const r = run.value
   if (!r) return
   let healed = 0
@@ -740,6 +746,7 @@ export function cheatFullHeal() {
 }
 
 export function cheatGold() {
+  if (!canCheat()) return
   const r = run.value
   if (!r) return
   r.gold += 100
@@ -749,6 +756,7 @@ export function cheatGold() {
 }
 
 export function cheatMaxHp() {
+  if (!canCheat()) return
   const r = run.value
   if (!r) return
   r.maxHp += 10
@@ -763,6 +771,7 @@ export function cheatMaxHp() {
 }
 
 export function cheatUpgradeAll() {
+  if (!canCheat()) return
   const r = run.value
   if (!r) return
   for (const c of r.deck) if (!c.up && CARDS[c.id].rarity !== 'special') c.up = true
@@ -777,6 +786,7 @@ export function cheatUpgradeAll() {
 }
 
 export function cheatAddCard(id: string) {
+  if (!canCheat()) return
   const r = run.value
   if (!r || !CARDS[id]) return
   addCardToDeck(r, id)
@@ -791,6 +801,7 @@ export function cheatAddCard(id: string) {
 }
 
 export function cheatAddRelic(id: string) {
+  if (!canCheat()) return
   const r = run.value
   if (!r || r.relics.includes(id)) return
   const hpBefore = r.hp
@@ -811,6 +822,7 @@ export function cheatAddRelic(id: string) {
 }
 
 export function cheatRemoveCard() {
+  if (!canCheat()) return
   const r = run.value
   if (!r) return
   cheatOpen.value = false
@@ -818,6 +830,7 @@ export function cheatRemoveCard() {
     title: t('removeTitle'),
     cancellable: true,
     onPick: (uid) => {
+      if (!canCheat()) return
       const gone = r.deck.find((c) => c.uid === uid)
       removeCard(r, uid)
       if (gone) playRemovalCine(gone)
@@ -830,6 +843,7 @@ export function cheatRemoveCard() {
 }
 
 export function cheatAddPotion() {
+  if (!canCheat()) return
   const r = run.value
   if (!r || r.potions.length >= MAX_POTIONS) return
   r.potions.push(randomPotionId(r))
@@ -839,6 +853,7 @@ export function cheatAddPotion() {
 }
 
 export function cheatKillAll() {
+  if (!canCheat()) return
   const evs: { e: 'die'; who: string }[] = []
   const done = withCombat((cs) => {
     cs.enemies.forEach((e, i) => {
@@ -858,6 +873,7 @@ export function cheatKillAll() {
 }
 
 export function cheatEnergy() {
+  if (!canCheat()) return
   withCombat((cs) => {
     cs.player.energy += 3
   })
@@ -866,6 +882,7 @@ export function cheatEnergy() {
 }
 
 export function cheatDraw() {
+  if (!canCheat()) return
   const evs: import('@neonspire/engine').GameEvent[] = []
   const done = withCombat((cs) => {
     drawCards(cs.player, 3, cs, 'p', evs)
