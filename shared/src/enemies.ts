@@ -754,6 +754,9 @@ function isLegal(m: MoveDef, e: EnemyC, turn: number): boolean {
   return true
 }
 
+/** Max living foes at once — stops summoners from flooding the arena. */
+export const MAX_ALIVE_ENEMIES = 4
+
 /**
  * Heuristic enemy AI. Enemies react to the board instead of rolling a fixed
  * script: they go for lethal, turtle when hurt, punish Vulnerability, and
@@ -763,7 +766,7 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   const def = ENEMIES[e.defId]
   // No summoning into a full arena.
   const aliveCount = cs.enemies.filter((x) => !x.dead).length
-  const noSummon = (m: MoveDef) => !(aliveCount >= 4 && m.effects.some((x) => x.k === 'summon'))
+  const noSummon = (m: MoveDef) => !(aliveCount >= MAX_ALIVE_ENEMIES && m.effects.some((x) => x.k === 'summon'))
   let legal = def.moves.filter((m) => isLegal(m, e, cs.turn) && noSummon(m))
   if (legal.length === 0) legal = def.moves.filter(noSummon)
   if (legal.length === 0) legal = def.moves

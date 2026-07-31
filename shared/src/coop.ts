@@ -9,7 +9,7 @@ import type { CardInst, CombatState, DeckSide, EnemyC, GameEvent, MoveEffect, St
 import { DEBUFFS } from './types'
 import { CARDS } from './cards'
 import { POTIONS } from './potions'
-import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
+import { ENEMIES, MAX_ALIVE_ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
 import { RELICS } from './relics'
 import {
   applyEffects,
@@ -241,13 +241,13 @@ function enemyPhase(cs: CoopState, evs: GameEvent[]) {
         case 'summon': {
           for (let s = 0; s < (eff.n ?? 1); s++) {
             const aliveE = cs.enemies.filter((x) => !x.dead).length
-            if (aliveE >= 5 || cs.enemies.length >= 8) break
+            if (aliveE >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
             const def2 = ENEMIES[eff.id]
             if (!def2) break
             const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc) * coopScale(cs.partySize).hp)
             cs.enemies.push({
               defId: eff.id, name: def2.name, glyph: def2.glyph, hp, maxHp: hp, block: 0,
-              statuses: { ...(def2.traits ?? {}) }, intent: null, lastMoves: [], usedOn: {}, dead: false,
+              statuses: { ...(def2.traits ?? {}) }, intent: null, lastMoves: [], usedOn: {}, summoned: true, dead: false,
             })
             evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })
           }

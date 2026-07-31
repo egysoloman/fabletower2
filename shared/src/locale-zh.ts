@@ -423,7 +423,7 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   kernel: { name: '内核', desc: '卡牌提供格挡时，对随机敌人造成 {n} 点伤害。', powerText: '每当卡牌为你提供格挡，对一名随机敌人造成 {n} 点伤害。' },
   hyper: { name: '超线程', desc: '打出 0 费牌时抽 {n} 张牌。', powerText: '每当你打出一张 0 费牌，抽 {n} 张牌。' },
   chronic: { name: '慢性', desc: '敌人身上的侵蚀不再消退。', powerText: '敌人身上的侵蚀不再消退。' },
-  heat: { name: '高热', desc: '攻击伤害 +{n}。你的回合开始时，高热达到阈值（8）会灼烧你 {n} 点并清零。' },
+  heat: { name: '高热', desc: '攻击伤害 +{n}。你的回合开始时，高热达到阈值（{base}）会灼烧你 {n} 点并清零。' },
   coolant: { name: '冷却液', desc: '过热阈值提高 {n}。', powerText: '你的过热阈值提高 {n}。' },
   ignition: { name: '点火', desc: '回合结束时获得 {n} 点高热。', powerText: '你的回合结束时，获得 {n} 点高热。' },
   reactor: { name: '反应堆', desc: '过热不再伤害你，而是对所有敌人造成该伤害。', powerText: '过热不再伤害你——改为对所有敌人造成该伤害。' },

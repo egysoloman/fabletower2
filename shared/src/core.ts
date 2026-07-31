@@ -39,7 +39,7 @@ export function modifiedDamage(
   return Math.max(0, d)
 }
 
-export const OVERHEAT_BASE = 8
+export const OVERHEAT_BASE = 12
 
 export function overheatThreshold(f: Fighter): number {
   return OVERHEAT_BASE + (f.statuses.coolant ?? 0)

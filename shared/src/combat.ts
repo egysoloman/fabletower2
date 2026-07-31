@@ -10,7 +10,7 @@ import type {
 } from './types'
 import { DEBUFFS } from './types'
 import { CARDS, cardCost } from './cards'
-import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
+import { ENEMIES, MAX_ALIVE_ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
 import { POTIONS } from './potions'
 import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
@@ -191,7 +191,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
       case 'summon': {
         for (let s = 0; s < (eff.n ?? 1); s++) {
           const alive = cs.enemies.filter((x) => !x.dead).length
-          if (alive >= 5 || cs.enemies.length >= 8) break
+          if (alive >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
           const def2 = ENEMIES[eff.id]
           if (!def2) break
           const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc))
@@ -207,6 +207,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
             intent: null,
             lastMoves: [],
             usedOn: {},
+            summoned: true,
             dead: false,
           })
           evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })

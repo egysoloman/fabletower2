@@ -572,32 +572,32 @@ describe('VECTOR heat mechanic', () => {
 
   it('overheating burns you at the threshold; coolant raises it', () => {
     const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
-    cs.player.statuses.heat = 9
+    cs.player.statuses.heat = 12
     const s = combatReduce(cs, { t: 'end' }).state
     if (!s.over) {
       expect(s.player.statuses.heat).toBeUndefined()
-      // took 9 unblockable burn on top of whatever the golem did
-      expect(s.player.hp).toBeLessThanOrEqual(75 - 9)
+      // took 12 unblockable burn on top of whatever the golem did
+      expect(s.player.hp).toBeLessThanOrEqual(75 - 12)
     }
     const cool = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
-    cool.player.statuses.heat = 9
-    cool.player.statuses.coolant = 4 // threshold 12
+    cool.player.statuses.heat = 12
+    cool.player.statuses.coolant = 4 // threshold 16
     const s2 = combatReduce(cool, { t: 'end' }).state
-    if (!s2.over) expect(s2.player.statuses.heat).toBe(9) // no burn
+    if (!s2.over) expect(s2.player.statuses.heat).toBe(12) // no burn
   })
 
   it('reactor redirects the overheat blast into enemies', () => {
     const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['heatshield'])
-    cs.player.statuses.heat = 10
+    cs.player.statuses.heat = 12
     cs.player.statuses.reactor = 1
     const hpMe = cs.player.hp
     const s = combatReduce(cs, { t: 'end' }).state
     if (!s.over) {
       expect(s.player.statuses.heat).toBeUndefined()
-      // enemy ate the 10 (through block); we only took the golem's normal hit
+      // enemy ate the 12 (through block); we only took the golem's normal hit
       const enemyLoss = s.enemies[0].maxHp - s.enemies[0].hp - s.enemies[0].block
       expect(enemyLoss + s.enemies[0].block).toBeGreaterThanOrEqual(0)
-      expect(hpMe - s.player.hp).toBeLessThan(10 + 15) // no self-burn stacked on top
+      expect(hpMe - s.player.hp).toBeLessThan(12 + 15) // no self-burn stacked on top
     }
   })
 

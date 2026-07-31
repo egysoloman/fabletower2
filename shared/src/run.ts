@@ -258,7 +258,7 @@ export function genShop(run: RunState): ShopStock {
   const relics: ShopStock['relics'] = []
   for (let i = 0; i < 2 && relicPool.length > 0; i++) {
     const def = relicPool.splice(Math.floor(rand(run.rng) * relicPool.length), 1)[0]
-    relics.push({ id: def.id, price: mark(def.rarity === 'rare' ? randInt(run.rng, 220, 250) : randInt(run.rng, 140, 165)), sold: false })
+    relics.push({ id: def.id, price: mark(def.rarity === 'rare' ? randInt(run.rng, 180, 205) : randInt(run.rng, 115, 135)), sold: false })
   }
   const potions: ShopStock['potions'] = []
   for (let i = 0; i < 2; i++) {
