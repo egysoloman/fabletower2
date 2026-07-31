@@ -482,6 +482,11 @@ reg(E({ id: 'keylogger', name: 'Keylogger', glyph: '⌨', hp: [36, 42], moves: [
   { id: 'record', name: 'Record', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
   { id: 'playback', name: 'Playback', weight: 3, effects: [{ k: 'atk', n: 9 }] },
 ] }))
+reg(E({ id: 'hashrig', name: 'Hash Rig', glyph: '⛏', hp: [48, 56], moves: [
+  { id: 'difficultyspike', name: 'Difficulty Spike', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
+  { id: 'proofofwork', name: 'Proof of Work', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+  { id: 'doublespend', name: 'Double Spend', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 6, times: 2 }] },
+] }))
 reg(E({ id: 'cryptomite', name: 'Cryptomite', glyph: '₿', hp: [30, 36], moves: [
   { id: 'mine2', name: 'Mine', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'plating', n: 2 }] },
   { id: 'hashsmash', name: 'Hash Smash', weight: 3, effects: [{ k: 'atk', n: 8 }] },
@@ -660,6 +665,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['proxyshark'],
       ['tokenthief', 'voltmoth'],
       ['coldstorage'],
+      ['hashrig'],
       ['quicksort', 'quicksort'],
       ['stackghast'],
       ['tapeworm', 'hexbat'],
