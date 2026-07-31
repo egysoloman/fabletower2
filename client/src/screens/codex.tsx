@@ -32,6 +32,8 @@ import {
 } from '@neonspire/engine'
 import { CardById } from '../components'
 import { ACHIEVEMENTS, achievements, codex, dailyBoard, runStats } from '../meta'
+import { runHistory } from '../game'
+import { BalanceReportPanel } from '../balance'
 import { screen } from '../store'
 import { fetchGlobalBoard, type GlobalBoard } from '../account'
 import { sfx } from '../sfx'
@@ -209,6 +211,7 @@ export function CodexScreen() {
             <div><b>A{stats.highestAscWin}</b>{t('cxAsc')}</div>
             <div><b>{stats.bestScore}</b>{t('cxBest')}</div>
           </div>
+          <BalanceReportPanel history={runHistory()} />
           <h2 style={{ marginTop: '10px' }}>{global ? t('cxDailyGlobal') : t('cxDaily')}</h2>
           {global && global.you && <div class="sub" style={{ color: 'var(--gold)' }}>{tf('cxYourRank', { n: global.you })}</div>}
           {global ? (

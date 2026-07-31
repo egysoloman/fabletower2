@@ -1481,6 +1481,34 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 }
 .history .hscore { color: var(--cyan); font-family: var(--font-head); font-size: 11px; }
 
+/* --- Codex balance analytics ---------------------------------------------- */
+.balance-lab { width: min(92vw, 860px); margin-top: 14px; }
+.balance-lab h2 { color: var(--dim); font-size: 11px; letter-spacing: .2em; margin: 18px 0 8px; }
+.balance-note { margin: 7px 0 12px; line-height: 1.45; }
+.balance-table-wrap { width: 100%; overflow-x: auto; border: 1px solid rgba(0,229,255,.16); border-radius: 7px; }
+.balance-table { width: 100%; border-collapse: collapse; min-width: 540px; font-size: 11px; }
+.balance-table th,.balance-table td { padding: 7px 9px; text-align: right; border-bottom: 1px solid rgba(143,134,184,.14); white-space: nowrap; }
+.balance-table th { color: var(--dim); font-size: 9px; letter-spacing: .1em; }
+.balance-table th:first-child,.balance-table td:first-child { text-align: left; color: var(--text); }
+.balance-table tbody tr:last-child td { border-bottom: 0; }
+.profile-table { min-width: 720px; }
+.bound-chart { display: flex; flex-direction: column; gap: 9px; padding: 13px; border: 1px solid rgba(0,229,255,.18); border-radius: 7px; background: rgba(0,10,25,.45); }
+.bound-row { display: grid; grid-template-columns: 62px minmax(150px,1fr) 72px 96px; align-items: center; gap: 10px; font-size: 11px; }
+.bound-row b { color: var(--text); letter-spacing: .08em; }
+.bound-row > span { color: var(--gold); text-align: right; }
+.bound-row small { color: var(--dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bound-track { height: 8px; position: relative; border-radius: 8px; background: rgba(143,134,184,.18); }
+.bound-track i { position: absolute; width: 9px; height: 9px; border-radius: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 2; }
+.bound-low { background: var(--red); box-shadow: 0 0 7px var(--red); }
+.bound-high { background: var(--green); box-shadow: 0 0 7px var(--green); }
+.bound-gap { position: absolute; height: 4px; top: 2px; background: var(--gold); min-width: 2px; }
+.balance-legend { display: flex; gap: 18px; justify-content: center; margin: 7px 0 12px; font-size: 10px; }
+.balance-legend .low { color: var(--red); }.balance-legend .high { color: var(--green); }
+@media (max-width: 620px) {
+  .bound-row { grid-template-columns: 54px minmax(110px,1fr) 66px; }
+  .bound-row small { display: none; }
+}
+
 /* ========================================================================== */
 /*  PvP                                                                       */
 /* ========================================================================== */

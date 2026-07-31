@@ -37,7 +37,8 @@ serves the built client and the WebSocket on one port.
 ```bash
 npm test                     # engine + multiplayer persistence/integration tests
 npm run typecheck            # strict TS across all three packages
-npm run balance -w shared    # heuristic-bot balance sweep (win rates per character)
+npm run balance -w shared                         # quick greedy + archetype balance sweep
+npm run balance -w shared -- 60 0 --record       # record A0 JSON/Markdown/SVG snapshot
 ```
 
 ## The one-engine rule
@@ -167,7 +168,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 - **Optional cloud accounts** (guest mode is the default): register/log
   in from Settings to sync feats, codex, palettes and unlocks across
   devices — JSON-file store, scrypt-hashed credentials, bearer sessions,
-  and admin tools (list/delete/ban accounts, password resets, open/close
+  and admin tools (anonymous run/archetype balance analytics, list/delete/ban accounts, password resets, open/close
   registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
   Hardening knobs: GAME_ENTRY_PASSWORD (optional server-verified entry
   gate before the menu), ADMIN_API_PATH and ADMIN_UI_PATH (relocate the
