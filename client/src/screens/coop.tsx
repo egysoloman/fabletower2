@@ -303,7 +303,7 @@ export function CoopScreen() {
                   <BlockChip block={e.block} />
                   {e.intent && (() => {
                     const focus = typeof e.focus === 'number' && v.players[e.focus] ? e.focus : v.active
-                    const live = previewEnemyIntent(e, v.players[focus], v.asc) ?? e.intent
+                    const live = previewEnemyIntent(e, v.players[focus], v.asc, v.act ?? 1) ?? e.intent
                     return (
                       <div class={`intent ${live.kind}`}>
                         {intentText(live, enemyMove(e))} <small>→ {v.players[focus]?.name}</small>

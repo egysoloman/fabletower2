@@ -808,17 +808,23 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   return weightedPick(rng, legal, score)
 }
 
-/** Ascension damage scaling for enemy attacks (+4% per level, rounded). */
-export function ascAtk(n: number, asc: number): number {
-  return asc > 0 ? Math.round(n * (1 + 0.03 * asc)) : n
+/** Act difficulty ramp: act 1 is gentle (players build their deck), then
+ * +10% enemy HP/damage per act (2/3/4). Multiplies with ascension scaling. */
+export function actEnemyScale(act: number): number {
+  return 1 + Math.max(0, act - 1) * 0.1
 }
 
-export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0): Intent {
+/** Ascension damage scaling for enemy attacks (+3% per level) × act ramp. */
+export function ascAtk(n: number, asc: number, act = 1): number {
+  return asc > 0 ? Math.round(n * (1 + 0.03 * asc) * actEnemyScale(act)) : Math.round(n * actEnemyScale(act))
+}
+
+export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0, act = 1): Intent {
   const kind = moveIntentKind(m)
   const atk = m.effects.find((x) => x.k === 'atk')
   const intent: Intent = { moveId: m.id, name: m.name, kind }
   if (atk && atk.k === 'atk') {
-    intent.dmg = modifiedDamage(ascAtk(atk.n, asc), e, player)
+    intent.dmg = modifiedDamage(ascAtk(atk.n, asc, act), e, player)
     if (atk.times && atk.times > 1) intent.times = atk.times
   }
   return intent

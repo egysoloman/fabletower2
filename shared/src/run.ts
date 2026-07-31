@@ -119,6 +119,7 @@ export function combatFor(run: RunState, kind: 'normal' | 'elite' | 'boss'): Com
     uidStart: run.uid,
     asc: run.asc,
     kind,
+    act: run.act,
   })
 }
 

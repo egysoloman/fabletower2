@@ -32,6 +32,7 @@ function EnemyBox(props: {
   idx: number
   defender: DeckSide
   asc: number
+  act: number
   highlight: Highlight
   onTarget: () => void
   onHover: (idx: number | null) => void
@@ -39,7 +40,7 @@ function EnemyBox(props: {
   const { e, idx } = props
   const boss = e.maxHp >= 100
   const hl = props.highlight
-  const liveIntent = previewEnemyIntent(e, props.defender, props.asc)
+  const liveIntent = previewEnemyIntent(e, props.defender, props.asc, props.act)
   const move = enemyMove(e)
   // Materialize animation only right after mount (combat start / summon).
   const [justIn, setJustIn] = useState(true)
@@ -288,6 +289,7 @@ export function CombatScreen() {
               idx={i}
               defender={p}
               asc={cs.asc}
+              act={cs.act}
               highlight={highlightOf(i, e)}
               onTarget={() => clickEnemy(i)}
               onHover={setHoverIdx}

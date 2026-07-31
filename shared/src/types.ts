@@ -273,6 +273,8 @@ export interface CombatState {
   encounterId: string
   /** Ascension level the combat was started at (0 = base difficulty). */
   asc: number
+  /** Act this combat is in (1-4); ramps enemy stats via actEnemyScale. */
+  act: number
 }
 
 export type CombatAction = { t: 'play'; hand: number; target?: number } | { t: 'end' }

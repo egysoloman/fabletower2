@@ -9,6 +9,7 @@ import {
   allNodes,
   applyCombatResult,
   applyOutcomes,
+  ascAtk,
   availableNodeIds,
   combatFor,
   combatReduce,
@@ -1493,5 +1494,82 @@ describe('climb checkpoint scoring', () => {
 
   it('marks the third checkpoint as the final round', () => {
     expect(scoreClimbRound([1, 1], 0, 3)).toEqual({ score: [2, 1], final: true })
+  })
+})
+
+describe('archetype playstyles (流派导向)', () => {
+  function rig(cs: CombatState, ids: string[]) {
+    let uid = 8000
+    cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+    cs.player.energy = 99
+    return cs
+  }
+
+  it('act ramp: act 1 stays gentle, acts 2-4 scale HP +10% per act', () => {
+    const mk = (act: number) =>
+      startCombat({
+        deck: ['strike', 'strike', 'strike', 'strike', 'strike'].map((id, i) => inst(id, i + 1)),
+        hp: 75, maxHp: 75, relics: [], enemyIds: ['golem'], encounterId: 'golem',
+        seed: 8, uidStart: 100, act,
+      })
+    const base = mk(1).enemies[0].maxHp
+    expect(mk(2).enemies[0].maxHp).toBe(Math.round(base * 1.1))
+    expect(mk(3).enemies[0].maxHp).toBe(Math.round(base * 1.2))
+    expect(mk(4).enemies[0].maxHp).toBe(Math.round(base * 1.3))
+    // Damage preview follows the same ramp.
+    expect(ascAtk(10, 0, 2)).toBe(11)
+    expect(ascAtk(10, 0, 3)).toBe(12)
+    expect(ascAtk(10, 10, 3)).toBe(16) // 10 × 1.3 asc × 1.2 act
+  })
+
+  it('VECTOR heat engine: stoke stacks, vent blade cashes out 2× heat', () => {
+    function rigV(cs: CombatState, ids: string[]) {
+      let uid = 7000
+      cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+      cs.player.energy = 99
+      return cs
+    }
+    const cs = rigV(fixedCombat(['heatshield', 'heatshield', 'heatshield', 'heatshield', 'heatshield'], ['golem']), ['stoke', 'stoke', 'stoke', 'ventblade'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // +3
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // +3
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // +3 → 9 heat
+    expect(s.player.statuses.heat).toBe(9)
+    const hp0 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // vent 9×2
+    expect(hp0 - s.enemies[0].hp).toBe(18)
+    expect(s.player.statuses.heat).toBeUndefined()
+  })
+
+  it('ARRAY turret build: Auto-Turret pings a foe at end of turn', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['autoturret'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // turret 6
+    expect(s.player.statuses.turret).toBe(6)
+    const hp0 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'end' }).state
+    expect(hp0 - s.enemies[0].hp).toBe(6)
+  })
+
+  it('GHOST stance build: overdrive amps attacks ×1.5, stance wall blocks on entry', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['golem']), ['shroudloop', 'redshift', 'strike', 'blackout'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // stance wall 3
+    expect(s.player.statuses.stancewall).toBe(3)
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // enter overdrive → +3 block
+    expect(s.player.block).toBe(3)
+    const hp0 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // strike 6 × 1.5 = 9
+    expect(hp0 - s.enemies[0].hp).toBe(9)
+    const blk = s.player.block
+    s = combatReduce(s, { t: 'play', hand: 0 }).state // enter stealth → +3 block
+    expect(s.player.block).toBe(blk + 3)
+  })
+
+  it('RUNNER virus build: corrupt ticks at foe turn start and decays', () => {
+    const cs = rig(fixedCombat(['defend', 'defend', 'defend', 'defend', 'defend'], ['spambot']), ['malware', 'defend'])
+    let s = combatReduce(cs, { t: 'play', hand: 0 }).state // corrupt 4
+    expect(s.enemies[0].statuses.corrupt).toBe(4)
+    const hp0 = s.enemies[0].hp
+    s = combatReduce(s, { t: 'end' }).state
+    expect(hp0 - s.enemies[0].hp).toBe(4) // ticked at its turn start
+    expect(s.enemies[0].statuses.corrupt).toBe(3) // decayed by 1
   })
 })
