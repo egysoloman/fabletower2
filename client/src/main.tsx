@@ -7,7 +7,11 @@ import './styles.css'
 import { App } from './app'
 
 import('./mods').then((m) => void m.loadMods())
-import('./account').then((m) => void m.checkGate())
+import('./account').then((m) => {
+  void m.checkGate()
+  void m.validateSession()
+  window.addEventListener('focus', () => void m.validateSession())
+})
 render(<App />, document.getElementById('app')!)
 
 // --- Touch: tap-to-open tooltips + zoom lock ---------------------------------

@@ -56,7 +56,7 @@ td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
     <button class="warn" onclick="importDb()">IMPORT DB</button>
     <input type="file" id="importfile" accept=".json" style="display:none">
   </div>
-  <table><thead><tr><th>USER</th><th>CREATED</th><th>LAST SYNC</th><th>STATE</th><th>ACTIONS</th></tr></thead>
+  <table><thead><tr><th>USER</th><th>CREATED</th><th>LAST SYNC</th><th>STATE</th><th>CHEATS</th><th>ACTIONS</th></tr></thead>
   <tbody id="rows"></tbody></table>
 </div>
 <script>
@@ -100,12 +100,15 @@ function render() {
     .sort((a, b) => b.created - a.created)
     .map((a) => '<tr class="' + (a.banned ? 'banned' : '') + '"><td>' + a.name + '</td><td>' + fmt(a.created) +
       '</td><td>' + fmt(a.blobUpdated) + '</td><td>' + (a.banned ? 'BANNED' : 'ok') + '</td><td>' +
+      (a.cheatsEnabled ? '<span class="pill on">ENABLED</span>' : '<span class="pill off">OFF</span>') + '</td><td>' +
+      '<button class="mini gold" onclick="cheats(\\'' + a.user + '\\',' + !a.cheatsEnabled + ')">' + (a.cheatsEnabled ? 'DISABLE CHEATS' : 'ENABLE CHEATS') + '</button>' +
       '<button class="mini" onclick="ban(\\'' + a.user + '\\',' + !a.banned + ')">' + (a.banned ? 'UNBAN' : 'BAN') + '</button>' +
       '<button class="mini" onclick="resetPw(\\'' + a.user + '\\')">RESET PW</button>' +
       '<button class="mini warn" onclick="del(\\'' + a.user + '\\')">DELETE</button></td></tr>')
     .join('')
 }
 async function ban(user, banned) { try { await api(API + '/ban', 'POST', { user, banned }); load() } catch (e) { msg(e.message, true) } }
+async function cheats(user, enabled) { try { await api(API + '/cheats', 'POST', { user, enabled }); load() } catch (e) { msg(e.message, true) } }
 async function resetPw(user) {
   const pass = prompt('New password for ' + user + ' (6+ chars):')
   if (!pass) return
