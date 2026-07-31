@@ -115,9 +115,19 @@ function mergeBlob(blob: string) {
     }
     const asc = Math.max(Number(localStorage.getItem('ns-ascmax') ?? 0), Number(remote['ns-ascmax'] ?? 0))
     if (asc > 0) localStorage.setItem('ns-ascmax', String(asc))
-    for (const k of ['ns-history', 'ns-settings']) {
-      if (!localStorage.getItem(k) && remote[k]) localStorage.setItem(k, remote[k])
-    }
+    // Run history is a bounded union, so switching devices does not silently
+    // discard telemetry from either side.
+    try {
+      const localHistory = JSON.parse(localStorage.getItem('ns-history') ?? '[]')
+      const remoteHistory = JSON.parse(remote['ns-history'] ?? '[]')
+      const merged = [...localHistory, ...remoteHistory]
+        .filter((r: any) => Number.isFinite(r?.d) && Number.isFinite(r?.seed))
+        .filter((r: any, i: number, all: any[]) => all.findIndex((x) => x.d === r.d && x.seed === r.seed) === i)
+        .sort((a: any, b: any) => b.d - a.d)
+        .slice(0, 100)
+      if (merged.length) localStorage.setItem('ns-history', JSON.stringify(merged))
+    } catch { /* malformed remote history is ignored */ }
+    if (!localStorage.getItem('ns-settings') && remote['ns-settings']) localStorage.setItem('ns-settings', remote['ns-settings'])
   } catch {
     /* a bad blob never breaks local state */
   }

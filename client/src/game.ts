@@ -9,6 +9,7 @@ import {
   bossRelicChoices,
   combatFor,
   combatReduce,
+  detectDeckArchetype,
   genShop,
   goldReward,
   moveTo,
@@ -33,6 +34,7 @@ import {
   drawCards,
   firstAliveEnemy,
   type CombatAction,
+  type ArchetypeId,
   type CombatState,
 } from '@neonspire/engine'
 import {
@@ -60,7 +62,7 @@ import { climbActive, climbBossKill, climbContinueRound, climbDied, climbLeave, 
 import { checkCombat, checkRun, discoverEnemies, discoverEvent, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
-import { cheatsEnabled } from './account'
+import { cheatsEnabled, schedulePush } from './account'
 
 // --- Ascension unlock + run history (device-local meta-progression) ---------
 
@@ -91,6 +93,13 @@ export interface RunRecord {
   win: boolean
   sc?: number
   ch?: import('@neonspire/engine').CharId
+  /** Effect-derived build identity; absent on records made before telemetry v2. */
+  arch?: ArchetypeId
+  deck?: number
+  up?: number
+  relics?: number
+  hp?: number
+  maxHp?: number
 }
 
 export function runHistory(): RunRecord[] {
@@ -115,9 +124,18 @@ function recordRun(win: boolean) {
       win,
       sc: scoreRun(r, win).total,
       ch: r.char,
+      arch: detectDeckArchetype(r.char, r.deck) ?? undefined,
+      deck: r.deck.length,
+      up: r.deck.filter((c) => c.up).length,
+      relics: r.relics.length,
+      hp: r.hp,
+      maxHp: r.maxHp,
     }
     list.unshift(rec)
-    localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
+    // 100 compact records stay well below the cloud blob limit while making
+    // per-character/archetype percentiles useful instead of anecdotal.
+    localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 100)))
+    schedulePush()
     checkRun(rec, r, dailySeed())
     if (r.seed === dailySeed()) {
       recordDaily({ score: rec.sc ?? 0, ch: r.char, win, d: Date.now() })

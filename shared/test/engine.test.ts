@@ -14,10 +14,12 @@ import {
   combatFor,
   combatReduce,
   describeCard,
+  detectDeckArchetype,
   firstAliveEnemy,
   genActMap,
   genShop,
   goldReward,
+  rankDeckArchetypes,
   modifiedDamage,
   moveTo,
   newPvp,
@@ -1571,5 +1573,22 @@ describe('archetype playstyles (流派导向)', () => {
     s = combatReduce(s, { t: 'end' }).state
     expect(hp0 - s.enemies[0].hp).toBe(4) // ticked at its turn start
     expect(s.enemies[0].statuses.corrupt).toBe(3) // decayed by 1
+  })
+
+  it('classifies decks from effect semantics instead of card-name lists', () => {
+    const corruptDeck = ['strike', 'broadcast', 'payload', 'forkvirus', 'chronicinj']
+      .map((id, i) => inst(id, i + 1))
+    const arrayDeck = ['pulsebolt', 'deployturret', 'sparkloop', 'focuslens', 'hivecore']
+      .map((id, i) => inst(id, i + 1))
+    expect(detectDeckArchetype('runner', corruptDeck)).toBe('runner-corrupt')
+    expect(detectDeckArchetype('array', arrayDeck)).toBe('array-turret')
+  })
+
+  it('ranks upgraded synergy at least as high as its base card', () => {
+    const base = rankDeckArchetypes('vector', [inst('ventblade', 1)])[0]
+    const upgraded = rankDeckArchetypes('vector', [inst('ventblade', 1, true)])[0]
+    expect(base.id).toBe('vector-vent')
+    expect(upgraded.id).toBe('vector-vent')
+    expect(upgraded.score).toBeGreaterThanOrEqual(base.score)
   })
 })
