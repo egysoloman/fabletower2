@@ -810,7 +810,7 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
 
 /** Ascension damage scaling for enemy attacks (+4% per level, rounded). */
 export function ascAtk(n: number, asc: number): number {
-  return asc > 0 ? Math.round(n * (1 + 0.04 * asc)) : n
+  return asc > 0 ? Math.round(n * (1 + 0.03 * asc)) : n
 }
 
 export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0): Intent {

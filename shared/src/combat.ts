@@ -72,7 +72,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
   const asc = o.asc ?? 0
   const enemies: EnemyC[] = o.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc))
+    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.06 * asc))
     if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
     if (asc >= 16) hp = Math.round(hp * 1.1)
     const statuses = { ...(def.traits ?? {}) }
@@ -194,7 +194,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
           if (alive >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
           const def2 = ENEMIES[eff.id]
           if (!def2) break
-          const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc))
+          const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.06 * cs.asc))
           cs.enemies.push({
             defId: eff.id,
             name: def2.name,

@@ -1364,7 +1364,7 @@ describe('ascension 6-10 (cycle 8)', () => {
         hp: 60, maxHp: 60, relics: [], enemyIds: ['compiler'], encounterId: 'compiler',
         seed: 8, uidStart: 100, asc, kind: 'boss',
       })
-    expect(mkBoss(13).enemies[0].maxHp).toBe(Math.round(Math.round(120 * (1 + 0.08 * 13)) * 1.15))
+    expect(mkBoss(13).enemies[0].maxHp).toBe(Math.round(Math.round(120 * (1 + 0.06 * 13)) * 1.15))
   })
 
   it('A16-A20 modifiers apply', async () => {
@@ -1379,7 +1379,7 @@ describe('ascension 6-10 (cycle 8)', () => {
         seed: 8, uidStart: 100, asc, kind,
       })
     // A16: same seed, +10% hp over the A15 baseline formula
-    const base15 = Math.round(mk(15, 'normal').enemies[0].maxHp / (1 + 0.08 * 15) * (1 + 0.08 * 16))
+    const base15 = Math.round(mk(15, 'normal').enemies[0].maxHp / (1 + 0.06 * 15) * (1 + 0.06 * 16))
     expect(mk(16, 'normal').enemies[0].maxHp).toBe(Math.round(base15 * 1.1))
     // A18: elite/boss str stacks to +2 (plus A11's +1 = 3 total on a boss)
     expect(mk(18, 'boss', 'compiler').enemies[0].statuses.str).toBe(3)
