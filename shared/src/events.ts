@@ -619,6 +619,17 @@ EVENTS.push(
       { label: 'LOG OFF', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
+  {
+    id: 'recyclebin',
+    name: 'The Recycle Bin',
+    glyph: '♻',
+    text: 'A recycle bin the size of a room. Deleted files drift inside it like fish in a dark tank — some still readable, most just scraps.',
+    choices: [
+      { label: 'RESTORE A FILE', detail: 'Heal 18 HP.', outcomes: [{ k: 'heal', n: 18 }] },
+      { label: 'PURGE PERMANENTLY', detail: 'Remove a card from your deck. Gain 45¤.', outcomes: [{ k: 'removeChoose' }, { k: 'gold', n: 45 }] },
+      { label: 'WALK AWAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
 )
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */

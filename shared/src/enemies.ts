@@ -520,6 +520,11 @@ reg(E({ id: 'chainhound', name: 'Chain Hound', glyph: '⛓', hp: [56, 64], moves
   { id: 'linkbite', name: 'Link Bite', weight: 3, effects: [{ k: 'atk', n: 7, times: 2 }] },
   { id: 'shackle', name: 'Shackle', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
 ] }))
+reg(E({ id: 'autosave', name: 'Auto-Save Daemon', glyph: '⤾', hp: [52, 60], moves: [
+  { id: 'checkpoint', name: 'Checkpoint', weight: 2, effects: [{ k: 'block', n: 9 }] },
+  { id: 'restore', name: 'Restore', weight: 2, maxRepeat: 1, cond: { hpBelow: 0.6 }, effects: [{ k: 'heal', n: 12 }, { k: 'buff', id: 'str', n: 1 }] },
+  { id: 'forcequit', name: 'Force Quit', weight: 3, effects: [{ k: 'atk', n: 13 }] },
+] }))
 reg(E({ id: 'vaultmimic', name: 'Vault Mimic', glyph: '▣', hp: [62, 70], traits: { artifact: 1 }, moves: [
   { id: 'lidslam', name: 'Lid Slam', weight: 3, effects: [{ k: 'atk', n: 13 }] },
   { id: 'goldglint', name: 'Gold Glint', weight: 2, maxRepeat: 1, effects: [{ k: 'block', n: 11 }, { k: 'buff', id: 'str', n: 1 }] },
@@ -692,6 +697,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['nullhound'],
       ['panicdaemon', 'forkbomblet'],
       ['memleech'],
+      ['autosave'],
       ['forkbomb'],
       ['ossifier'],
       ['brokerimp', 'chainhound'],

@@ -695,6 +695,7 @@ export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, stri
   keylogger: { name: '键盘记录器', moves: { record: '记录', playback: '回放' } },
   cryptomite: { name: '挖矿螨', moves: { mine2: '挖矿', hashsmash: '哈希重击' } },
   hashrig: { name: '哈希矿机', moves: { difficultyspike: '难度飙升', proofofwork: '工作量证明', doublespend: '双重支付' } },
+  autosave: { name: '自动保存守护进程', moves: { checkpoint: '写入存档', restore: '还原', forcequit: '强制退出' } },
   junkgolem: { name: '废铁魔像', moves: { scrapfist: '废铁之拳', reassemble: '重组' } },
   sirenode: { name: '塞壬节点', moves: { song: '同步之歌', screech: '尖鸣' } },
   hexbat: { name: '十六进制蝠', moves: { divebomb: '俯冲轰炸', hexdust: '咒尘' } },
@@ -1182,6 +1183,15 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
       { label: '伪造账本', detail: '获得 120¤。一张「故障」加入你的牌组。' },
       { label: '撬开密码锁', detail: '获得一件随机遗物。受到 10 点伤害。' },
       { label: '登出', detail: '什么都不会发生。' },
+    ],
+  },
+  recyclebin: {
+    name: '回收站',
+    text: '一间屋子那么大的回收站。已删除的文件像暗缸里的鱼一样在其中漂游——有些还能读出内容，大多是碎片。',
+    choices: [
+      { label: '还原文件', detail: '回复 18 点生命。' },
+      { label: '彻底删除', detail: '从牌组中移除一张牌。获得 45¤。' },
+      { label: '转身离开', detail: '什么都不会发生。' },
     ],
   },
   boot: {
