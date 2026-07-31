@@ -696,6 +696,7 @@ export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, stri
   cryptomite: { name: '挖矿螨', moves: { mine2: '挖矿', hashsmash: '哈希重击' } },
   hashrig: { name: '哈希矿机', moves: { difficultyspike: '难度飙升', proofofwork: '工作量证明', doublespend: '双重支付' } },
   autosave: { name: '自动保存守护进程', moves: { checkpoint: '写入存档', restore: '还原', forcequit: '强制退出' } },
+  pixelmoth: { name: '像素蛾', moves: { flutter: '振翅', nibble: '啃食', dust: '落粉' } },
   junkgolem: { name: '废铁魔像', moves: { scrapfist: '废铁之拳', reassemble: '重组' } },
   sirenode: { name: '塞壬节点', moves: { song: '同步之歌', screech: '尖鸣' } },
   hexbat: { name: '十六进制蝠', moves: { divebomb: '俯冲轰炸', hexdust: '咒尘' } },

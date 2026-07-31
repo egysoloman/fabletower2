@@ -357,6 +357,7 @@ const ART: Record<string, JSX.Element> = {
   cryptomite: (<><circle cx="32" cy="34" r="14" /><path d="M28 26 V42 M36 26 V42 M24 30 H42 M24 38 H42" stroke-width="1.4" /></>),
   hashrig: (<><rect x="12" y="28" width="28" height="20" rx="2" /><rect x="42" y="20" width="10" height="26" rx="1" /><path d="M47 20 V14 M47 46 V52" stroke-width="1.6" /><path d="M22 24 Q28 10 44 12" stroke-width="1.4" />{dot(44, 12, 1.8)}</>),
   autosave: (<><rect x="16" y="16" width="32" height="32" rx="4" /><circle cx="32" cy="32" r="8" /><path d="M32 28 V32 L36 35" stroke-width="1.6" /><path d="M10 22 H16 M10 42 H16 M54 22 H48 M54 42 H48" stroke-width="1.4" /></>),
+  pixelmoth: (<><path d="M32 34 L20 18 Q8 22 18 34 Z M32 34 L44 18 Q56 22 46 34 Z" /><path d="M32 34 V46" stroke-width="2" />{dot(32, 50, 1.8)}{dot(24, 12, 1.4)}{dot(40, 12, 1.4)}</>),
   junkgolem: (<><rect x="18" y="28" width="28" height="24" rx="2" /><rect x="24" y="14" width="16" height="12" rx="2" /><path d="M18 36 L8 30 M46 36 L56 30" stroke-width="2" /></>),
   sirenode: (<><circle cx="32" cy="30" r="10" /><path d="M32 40 V52 M24 46 Q32 54 40 46" stroke-width="1.6" /><path d="M18 22 Q14 30 18 38 M46 22 Q50 30 46 38" stroke-width="1.2" /></>),
   hexbat: (<><path d="M32 30 L14 18 Q8 30 20 36 Z M32 30 L50 18 Q56 30 44 36 Z" /><circle cx="32" cy="34" r="5" /></>),

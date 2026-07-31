@@ -482,6 +482,11 @@ reg(E({ id: 'keylogger', name: 'Keylogger', glyph: '⌨', hp: [36, 42], moves: [
   { id: 'record', name: 'Record', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
   { id: 'playback', name: 'Playback', weight: 3, effects: [{ k: 'atk', n: 9 }] },
 ] }))
+reg(E({ id: 'pixelmoth', name: 'Pixel Moth', glyph: '✸', hp: [24, 30], moves: [
+  { id: 'flutter', name: 'Flutter', weight: 2, effects: [{ k: 'block', n: 5 }] },
+  { id: 'nibble', name: 'Nibble', weight: 3, effects: [{ k: 'atk', n: 6 }] },
+  { id: 'dust', name: 'Dust', weight: 1, maxRepeat: 1, effects: [{ k: 'debuff', id: 'weak', n: 1 }] },
+] }))
 reg(E({ id: 'hashrig', name: 'Hash Rig', glyph: '⛏', hp: [48, 56], moves: [
   { id: 'difficultyspike', name: 'Difficulty Spike', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
   { id: 'proofofwork', name: 'Proof of Work', weight: 3, effects: [{ k: 'atk', n: 11 }] },
@@ -649,6 +654,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['kiddie', 'spambot'],
       ['bitrat', 'bitrat', 'adfly'],
       ['cursorghoul'],
+      ['pixelmoth'],
       ['staticjelly'],
       ['packmule'],
       ['popupspawner', 'bitrat'],
