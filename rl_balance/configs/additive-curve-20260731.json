@@ -1,0 +1,111 @@
+[
+  {
+    "name": "baseline"
+  },
+  {
+    "name": "additive_curve_v1",
+    "ascensionTuning": {
+      "enemyHpPercentPerLevel": 0,
+      "enemyHpFlatPerLevel": 1,
+      "enemyAttackPercentPerLevel": 0,
+      "enemyAttackFlatSteps": [
+        { "asc": 0, "value": 0 },
+        { "asc": 3, "value": 1 },
+        { "asc": 6, "value": 2 },
+        { "asc": 9, "value": 3 }
+      ],
+      "lagAscensions": [4],
+      "maxHpSteps": [
+        { "asc": 0, "value": 75 },
+        { "asc": 6, "value": 70 },
+        { "asc": 10, "value": 65 }
+      ],
+      "goldRewardMultiplierSteps": [
+        { "asc": 0, "value": 1 },
+        { "asc": 4, "value": 0.9 }
+      ],
+      "restHealFractionSteps": [
+        { "asc": 0, "value": 0.3 },
+        { "asc": 3, "value": 0.25 },
+        { "asc": 8, "value": 0.2 }
+      ],
+      "potionDropChanceSteps": [
+        { "asc": 0, "value": 0.35 },
+        { "asc": 7, "value": 0.3 }
+      ],
+      "shopPriceMultiplierSteps": [
+        { "asc": 0, "value": 1 },
+        { "asc": 8, "value": 1.1 }
+      ],
+      "bossRelicChoiceSteps": [
+        { "asc": 0, "value": 3 },
+        { "asc": 10, "value": 2 }
+      ],
+      "eliteBossStrengthAsc": 5,
+      "eliteBossArtifactAsc": 9
+    }
+  },
+  {
+    "name": "combined_character_tuning_v4_additive_curve_v1",
+    "ascensionTuning": {
+      "enemyHpPercentPerLevel": 0,
+      "enemyHpFlatPerLevel": 1,
+      "enemyAttackPercentPerLevel": 0,
+      "enemyAttackFlatSteps": [
+        { "asc": 0, "value": 0 },
+        { "asc": 3, "value": 1 },
+        { "asc": 6, "value": 2 },
+        { "asc": 9, "value": 3 }
+      ],
+      "lagAscensions": [4],
+      "maxHpSteps": [
+        { "asc": 0, "value": 75 },
+        { "asc": 6, "value": 70 },
+        { "asc": 10, "value": 65 }
+      ],
+      "goldRewardMultiplierSteps": [
+        { "asc": 0, "value": 1 },
+        { "asc": 4, "value": 0.9 }
+      ],
+      "restHealFractionSteps": [
+        { "asc": 0, "value": 0.3 },
+        { "asc": 3, "value": 0.25 },
+        { "asc": 8, "value": 0.2 }
+      ],
+      "potionDropChanceSteps": [
+        { "asc": 0, "value": 0.35 },
+        { "asc": 7, "value": 0.3 }
+      ],
+      "shopPriceMultiplierSteps": [
+        { "asc": 0, "value": 1 },
+        { "asc": 8, "value": 1.1 }
+      ],
+      "bossRelicChoiceSteps": [
+        { "asc": 0, "value": 3 },
+        { "asc": 10, "value": 2 }
+      ],
+      "eliteBossStrengthAsc": 5,
+      "eliteBossArtifactAsc": 9
+    },
+    "cardPatches": {
+      "strike": { "effects": [{ "k": "dmg", "n": 8 }] },
+      "defend": { "effects": [{ "k": "block", "n": 7 }] },
+      "phaseblade": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "cloakfield": { "effects": [{ "k": "block", "n": 6 }] },
+      "ventblade": { "effects": [{ "k": "ventDmg", "mult": 3 }] },
+      "deployturret": {
+        "effects": [{ "k": "status", "to": "self", "id": "turret", "n": 1 }],
+        "upEffects": [{ "k": "status", "to": "self", "id": "turret", "n": 2 }]
+      },
+      "deployplating": {
+        "effects": [{ "k": "status", "to": "self", "id": "plating", "n": 1 }],
+        "upEffects": [{ "k": "status", "to": "self", "id": "plating", "n": 2 }]
+      }
+    },
+    "relicPatches": {
+      "cortexlink": { "hooks": { "firstTurnDraw": 2 } },
+      "phaselocket": { "hooks": { "combatStatuses": { "stancewall": 2 } } },
+      "dronecradle": { "hooks": { "combatStatuses": { "turret": 0 } } }
+    }
+  }
+]

@@ -1,0 +1,87 @@
+[
+  {
+    "name": "baseline"
+  },
+  {
+    "name": "enemy_hp_minus_5pct",
+    "enemyHpMultiplier": 0.95
+  },
+  {
+    "name": "enemy_attack_minus_5pct",
+    "enemyAttackMultiplier": 0.95
+  },
+  {
+    "name": "runner_starters_plus_1",
+    "cardPatches": {
+      "strike": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "defend": { "effects": [{ "k": "block", "n": 6 }] }
+    }
+  },
+  {
+    "name": "runner_cortex_draw_2",
+    "relicPatches": {
+      "cortexlink": { "hooks": { "firstTurnDraw": 2 } }
+    }
+  },
+  {
+    "name": "ghost_starters_plus_1",
+    "cardPatches": {
+      "phaseblade": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "cloakfield": { "effects": [{ "k": "block", "n": 6 }] }
+    }
+  },
+  {
+    "name": "ghost_stance_wall_2",
+    "relicPatches": {
+      "phaselocket": { "hooks": { "combatStatuses": { "stancewall": 2 } } }
+    }
+  },
+  {
+    "name": "vector_vent_multiplier_3",
+    "cardPatches": {
+      "ventblade": { "effects": [{ "k": "ventDmg", "mult": 3 }] }
+    }
+  },
+  {
+    "name": "array_no_starting_turret",
+    "relicPatches": {
+      "dronecradle": { "hooks": { "combatStatuses": { "turret": 0 } } }
+    }
+  },
+  {
+    "name": "array_deploy_turret_1",
+    "cardPatches": {
+      "deployturret": { "effects": [{ "k": "status", "to": "self", "id": "turret", "n": 1 }] }
+    }
+  },
+  {
+    "name": "array_deploy_plating_1",
+    "cardPatches": {
+      "deployplating": { "effects": [{ "k": "status", "to": "self", "id": "plating", "n": 1 }] }
+    }
+  },
+  {
+    "name": "array_automation_starters_1",
+    "cardPatches": {
+      "deployturret": { "effects": [{ "k": "status", "to": "self", "id": "turret", "n": 1 }] },
+      "deployplating": { "effects": [{ "k": "status", "to": "self", "id": "plating", "n": 1 }] }
+    }
+  },
+  {
+    "name": "combined_character_tuning_v1",
+    "cardPatches": {
+      "strike": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "defend": { "effects": [{ "k": "block", "n": 6 }] },
+      "phaseblade": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "cloakfield": { "effects": [{ "k": "block", "n": 6 }] },
+      "ventblade": { "effects": [{ "k": "ventDmg", "mult": 3 }] },
+      "deployturret": { "effects": [{ "k": "status", "to": "self", "id": "turret", "n": 1 }] },
+      "deployplating": { "effects": [{ "k": "status", "to": "self", "id": "plating", "n": 1 }] }
+    },
+    "relicPatches": {
+      "cortexlink": { "hooks": { "firstTurnDraw": 2 } },
+      "phaselocket": { "hooks": { "combatStatuses": { "stancewall": 2 } } },
+      "dronecradle": { "hooks": { "combatStatuses": { "turret": 0 } } }
+    }
+  }
+]

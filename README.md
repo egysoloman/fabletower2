@@ -182,6 +182,12 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   validated against the engine's effect vocabulary on load (no code
   execution, malformed mods ignored with warnings). Enable/disable per
   mod in Settings; a sample pack ships as a template.
+- **Versioned production balance patches**: immutable engine content is kept
+  as the rollback baseline while ordered, independently-versioned patch stacks
+  are resolved and validated at startup by the client, authoritative server
+  and RL lab. The About screen displays the game version, active balance patch
+  version, stack id and deterministic content fingerprint. Release notes live
+  in `docs/patches/`.
 - **PWA**: installable (manifest + icons + install button), fully
   offline-capable after first visit via a stale-while-revalidate service
   worker; admin dashboard at `/admin` and a global daily leaderboard

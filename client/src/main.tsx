@@ -5,7 +5,9 @@ import '@fontsource/orbitron/900.css'
 import '@fontsource/share-tech-mono/400.css'
 import './styles.css'
 import { App } from './app'
+import { activateProductionBalance } from '@neonspire/engine'
 
+activateProductionBalance()
 import('./mods').then((m) => void m.loadMods())
 import('./account').then((m) => {
   void m.checkGate()

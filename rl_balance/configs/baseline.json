@@ -1,0 +1,9 @@
+{
+  "name": "baseline",
+  "enemyHpMultiplier": 1.0,
+  "enemyAttackMultiplier": 1.0,
+  "playerMaxHpMultiplier": 1.0,
+  "cardPatches": {},
+  "enemyPatches": {},
+  "relicPatches": {}
+}

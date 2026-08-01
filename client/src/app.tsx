@@ -1,7 +1,7 @@
 import { FxLayer } from './fx'
 import { PickerModal, PileModal } from './components'
 import { screen } from './store'
-import { MenuScreen, NewRunScreen, SettingsScreen } from './screens/menu'
+import { AboutScreen, MenuScreen, NewRunScreen, SettingsScreen } from './screens/menu'
 import { CodexScreen } from './screens/codex'
 import { achToasts } from './meta'
 import { removalCine } from './fx'
@@ -29,6 +29,7 @@ export function App() {
         {s === 'menu' && <MenuScreen />}
         {s === 'newrun' && <NewRunScreen />}
         {s === 'settings' && <SettingsScreen />}
+        {s === 'about' && <AboutScreen />}
         {s === 'codex' && <CodexScreen />}
         {s === 'map' && <MapScreen />}
         {s === 'combat' && <CombatScreen />}

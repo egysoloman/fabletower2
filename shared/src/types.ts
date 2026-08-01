@@ -366,4 +366,8 @@ export interface RunState {
   asc: number
   /** Playable character for this run. */
   char: CharId
+  /** Balance stack used by the engine; recorded for saves and telemetry. */
+  balanceId?: string
+  /** Deterministic fingerprint of the fully resolved balance catalog. */
+  balanceHash?: string
 }

@@ -3,7 +3,10 @@ import {
   CARDS,
   ENEMIES,
   EVENTS,
+  RELIC_ZH,
   RELICS,
+  activateBalanceStack,
+  activateProductionBalance,
   addRelic,
   advanceAct,
   allNodes,
@@ -13,11 +16,13 @@ import {
   availableNodeIds,
   combatFor,
   combatReduce,
+  configureAscensionTuning,
   describeCard,
   detectDeckArchetype,
   firstAliveEnemy,
   genActMap,
   genShop,
+  getActiveBalance,
   goldReward,
   rankDeckArchetypes,
   modifiedDamage,
@@ -33,6 +38,8 @@ import {
   randInt,
   randomRelicId,
   restHealAmount,
+  resetAscensionTuning,
+  resetBalanceToBaseline,
   rngFromSeed,
   rollCardRewards,
   scoreClimbRound,
@@ -40,6 +47,7 @@ import {
   upgradeCard,
   viewFor,
   type CombatState,
+  type BalanceStack,
   type PvpState,
   type RunState,
 } from '../src/index'
@@ -48,6 +56,72 @@ const inst = (id: string, uid: number, up = false) => ({ uid, id, up })
 
 /** Index of a card in the (shuffled) opening hand. */
 const handIdx = (cs: CombatState, id: string) => cs.player.hand.findIndex((c) => c.id === id)
+
+describe('versioned production balance patches', () => {
+  it('applies v3 plus 5% lower enemy HP exactly once and rolls back cleanly', () => {
+    resetBalanceToBaseline()
+    const baseHp = Object.fromEntries(Object.entries(ENEMIES).map(([id, enemy]) => [id, [...enemy.hp]]))
+    try {
+      const first = activateProductionBalance()
+      expect(first.id).toBe('production-v3-enemy-hp-95')
+      expect(first.patchIds).toEqual([
+        'character-balance-v3@3.0.0',
+        'enemy-hp-minus-5-percent@1.0.0',
+      ])
+      expect(CARDS.strike.effects).toEqual([{ k: 'dmg', n: 8 }])
+      expect(CARDS.defend.effects).toEqual([{ k: 'block', n: 7 }])
+      expect(CARDS.phaseblade.effects).toEqual([{ k: 'dmg', n: 7 }])
+      expect(CARDS.cloakfield.effects).toEqual([{ k: 'block', n: 6 }])
+      expect(CARDS.ventblade.effects).toEqual([{ k: 'ventDmg', mult: 3 }])
+      expect(CARDS.deployturret.cost).toBe(2)
+      expect(CARDS.deployturret.effects).toEqual([{ k: 'status', to: 'self', id: 'turret', n: 1 }])
+      expect(CARDS.deployplating.cost).toBe(2)
+      expect(CARDS.deployplating.effects).toEqual([{ k: 'status', to: 'self', id: 'plating', n: 1 }])
+      expect(RELICS.cortexlink.hooks.firstTurnDraw).toBe(2)
+      expect(RELICS.phaselocket.hooks.combatStatuses?.stancewall).toBe(2)
+      expect(RELICS.dronecradle.hooks.combatStatuses?.turret).toBe(0)
+      expect(RELIC_ZH.cortexlink.desc).toContain('2 张牌')
+      for (const [id, enemy] of Object.entries(ENEMIES)) {
+        expect(enemy.hp).toEqual(baseHp[id].map((hp) => Math.max(1, Math.round(hp * 0.95))))
+      }
+
+      const run = newRun(17)
+      expect(run.balanceId).toBe(first.id)
+      expect(run.balanceHash).toBe(first.hash)
+
+      const second = activateProductionBalance()
+      expect(second.hash).toBe(first.hash)
+      for (const [id, enemy] of Object.entries(ENEMIES)) {
+        expect(enemy.hp).toEqual(baseHp[id].map((hp) => Math.max(1, Math.round(hp * 0.95))))
+      }
+    } finally {
+      resetBalanceToBaseline()
+    }
+    expect(CARDS.strike.effects).toEqual([{ k: 'dmg', n: 6 }])
+    expect(RELICS.cortexlink.hooks.firstTurnDraw).toBe(1)
+    for (const [id, enemy] of Object.entries(ENEMIES)) expect(enemy.hp).toEqual(baseHp[id])
+    expect(getActiveBalance().id).toBe('baseline')
+  })
+
+  it('rejects an invalid patch without partially changing live content', () => {
+    resetBalanceToBaseline()
+    const before = structuredClone(CARDS.strike)
+    const invalid: BalanceStack = {
+      id: 'invalid-test-stack',
+      version: '1.0.0',
+      patches: [{
+        schemaVersion: 1,
+        id: 'invalid-card-id',
+        version: '1.0.0',
+        baseVersion: 'content-2026.08.01',
+        cardPatches: { definitely_missing: { cost: 0 } },
+      }],
+    }
+    expect(() => activateBalanceStack(invalid)).toThrow(/unknown card patch id/)
+    expect(CARDS.strike).toEqual(before)
+    expect(getActiveBalance().id).toBe('baseline')
+  })
+})
 
 function fixedCombat(deckIds: string[], enemyIds: string[], seed = 42, relics: string[] = []): CombatState {
   return startCombat({
@@ -1318,6 +1392,32 @@ describe('boss & enemy variety (cycle 11)', () => {
 })
 
 describe('ascension 6-10 (cycle 8)', () => {
+  it('supports an additive lab curve without changing the default curve', () => {
+    const combat = (asc: number) => startCombat({
+      deck: ['strike', 'strike', 'strike', 'strike', 'strike'].map((id, i) => inst(id, i + 1)),
+      hp: 75, maxHp: 75, relics: [], enemyIds: ['golem'], encounterId: 'golem',
+      seed: 8, uidStart: 100, asc, kind: 'normal',
+    })
+    configureAscensionTuning({
+      enemyHpPercentPerLevel: 0,
+      enemyHpFlatPerLevel: 1,
+      enemyAttackPercentPerLevel: 0,
+      enemyAttackFlatSteps: [{ asc: 0, value: 0 }, { asc: 9, value: 3 }],
+      lagAscensions: [4],
+      maxHpSteps: [{ asc: 0, value: 75 }, { asc: 10, value: 65 }],
+    })
+    try {
+      expect(combat(10).enemies[0].maxHp).toBe(combat(0).enemies[0].maxHp + 10)
+      expect(ascAtk(10, 10)).toBe(13)
+      expect(newRun(1, 10).deck.filter((c) => c.id === 'lag').length).toBe(1)
+      expect(newRun(1, 10).maxHp).toBe(65)
+    } finally {
+      resetAscensionTuning()
+    }
+    expect(newRun(1, 10).deck.filter((c) => c.id === 'lag').length).toBe(2)
+    expect(newRun(1, 10).maxHp).toBe(60)
+  })
+
   it('A10 doubles the curse and cuts max hp to 60', async () => {
     const { MAX_ASC } = await import('../src/run')
     expect(MAX_ASC).toBeGreaterThanOrEqual(10)

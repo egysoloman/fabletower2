@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks'
-import type { CharId } from '@neonspire/engine'
+import { GAME_VERSION, getActiveBalance, type CharId } from '@neonspire/engine'
 import { ascUnlocked, newGame, runHistory } from '../game'
 import { lastChar } from './charselect'
 import { CharPickButton, CharSelectPage } from './mpsetup'
@@ -69,6 +69,9 @@ export function MenuScreen() {
           <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'settings'))}>
             ⚙ {t('settingsBtn')}
           </button>
+          <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'about'))}>
+            ⓘ {t('aboutBtn')}
+          </button>
           <button class="btn ghost" onClick={toggleLang}>
             {lang.value === 'zh' ? 'EN' : '中文'}
           </button>
@@ -94,6 +97,51 @@ export function MenuScreen() {
       )}
 
       <small style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('menuFooter')}</small>
+    </div>
+  )
+}
+
+export function AboutScreen() {
+  const balance = getActiveBalance()
+  return (
+    <div class="screen menu">
+      <div class="logo" style={{ fontSize: 'clamp(26px,5vw,44px)' }}>
+        ABOUT<span>.SYS</span>
+      </div>
+      <div class="panel popin" style={{ minWidth: 'min(420px, 88vw)', maxWidth: '560px' }}>
+        <h2>{t('aboutTitle')}</h2>
+        <div class="setrow">
+          <span>{t('gameVersionLabel')}</span>
+          <b>v{GAME_VERSION}</b>
+        </div>
+        <div class="setrow">
+          <span>{t('balancePatchLabel')}</span>
+          <b>v{balance.version}</b>
+        </div>
+        <div class="setrow">
+          <span>{t('patchIdLabel')}</span>
+          <code style={{ maxWidth: '300px', overflowWrap: 'anywhere', textAlign: 'right' }}>{balance.id}</code>
+        </div>
+        <div class="setrow">
+          <span>{t('patchLayersLabel')}</span>
+          <code style={{ maxWidth: '300px', overflowWrap: 'anywhere', textAlign: 'right' }}>
+            {balance.patchIds.join(' + ')}
+          </code>
+        </div>
+        <div class="setrow">
+          <span>{t('fingerprintLabel')}</span>
+          <code>{balance.hash}</code>
+        </div>
+        <h3 style={{ color: 'var(--pink)', marginBottom: 0 }}>{tf('patchContentsTitle', { version: balance.version })}</h3>
+        <div class="sub" style={{ textAlign: 'left', lineHeight: 1.8 }}>
+          <div>◆ {t('patchV3Line')}</div>
+          <div>◆ {t('patchEnemyHpLine')}</div>
+        </div>
+        <small style={{ color: 'var(--dim)', lineHeight: 1.6 }}>{t('patchNote')}</small>
+      </div>
+      <button class="btn ghost" onClick={() => (sfx.click(), (screen.value = 'menu'))}>
+        {t('back')}
+      </button>
     </div>
   )
 }

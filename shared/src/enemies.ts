@@ -3,6 +3,7 @@ import { weightedPick, type Rng } from './rng'
 import { modifiedDamage } from './core'
 import { isZh, statusName } from './i18n'
 import { ENEMY_ZH } from './locale-zh'
+import { ascensionEnemyAttack } from './ascension'
 
 const E = (def: EnemyDef) => def
 
@@ -822,7 +823,7 @@ export function actEnemyScale(act: number): number {
 
 /** Ascension damage scaling for enemy attacks (+3% per level) × act ramp. */
 export function ascAtk(n: number, asc: number, act = 1): number {
-  return asc > 0 ? Math.round(n * (1 + 0.03 * asc) * actEnemyScale(act)) : Math.round(n * actEnemyScale(act))
+  return ascensionEnemyAttack(n, asc, actEnemyScale(act))
 }
 
 export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0, act = 1): Intent {

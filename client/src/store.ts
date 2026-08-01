@@ -1,11 +1,13 @@
 /** Global app state (Preact signals) + save-game persistence. */
 import { signal } from '@preact/signals'
 import type { CardInst, CombatState, EventDef, RunState, ShopStock } from '@neonspire/engine'
+import { getActiveBalance } from '@neonspire/engine'
 
 export type Screen =
   | 'menu'
   | 'newrun'
   | 'settings'
+  | 'about'
   | 'codex'
   | 'map'
   | 'combat'
@@ -126,6 +128,11 @@ export function loadGame(): boolean {
     s.run.potions ??= []
     s.run.asc ??= 0
     s.run.char ??= 'runner'
+    const balance = getActiveBalance()
+    // Saves resume under the deployed production rules.  Recording the
+    // resolved id/hash keeps telemetry and future replay migrations explicit.
+    s.run.balanceId = balance.id
+    s.run.balanceHash = balance.hash
     if (s.reward) {
       s.reward.bossChoices ??= s.reward.bossRelic ? [s.reward.bossRelic] : []
       s.reward.bossChoiceTaken ??= !!s.reward.bossRelicTaken
