@@ -165,8 +165,8 @@ export function previewCard(
  * The stored intent selects the move; its damage is intentionally not trusted
  * because Weak/Vulnerable/stances can change during the player's turn.
  */
-export function previewEnemyIntent(e: EnemyC, defender: Pick<Fighter, 'statuses'>, asc = 0): Intent | null {
+export function previewEnemyIntent(e: EnemyC, defender: Pick<Fighter, 'statuses'>, asc = 0, act = 1): Intent | null {
   if (!e.intent) return null
   const move = ENEMIES[e.defId]?.moves.find((m) => m.id === e.intent?.moveId)
-  return move ? intentFor(move, e, defender, asc) : e.intent
+  return move ? intentFor(move, e, defender, asc, act) : e.intent
 }

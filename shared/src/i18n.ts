@@ -7,6 +7,7 @@
  */
 import { STATUS_INFO, type StatusId } from './types'
 import { STATUS_ZH } from './locale-zh'
+import { OVERHEAT_BASE } from './core'
 
 export type Locale = 'en' | 'zh'
 
@@ -30,7 +31,7 @@ export function statusName(id: StatusId): string {
 
 /** Tooltip template with {n} placeholder. */
 export function statusDesc(id: StatusId): string {
-  return isZh() ? STATUS_ZH[id].desc : STATUS_INFO[id].desc
+  return (isZh() ? STATUS_ZH[id].desc : STATUS_INFO[id].desc).replaceAll('{base}', String(OVERHEAT_BASE))
 }
 
 /** Full rules text for "gain N of this status" on power cards. */

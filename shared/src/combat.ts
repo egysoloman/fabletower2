@@ -10,7 +10,7 @@ import type {
 } from './types'
 import { DEBUFFS } from './types'
 import { CARDS, cardCost } from './cards'
-import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
+import { ENEMIES, MAX_ALIVE_ENEMIES, actEnemyScale, ascAtk, chooseMove, intentFor } from './enemies'
 import { POTIONS } from './potions'
 import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
@@ -43,6 +43,8 @@ export interface StartCombatOpts {
   /** Ascension level (0-5): scales enemy HP/damage, elites/bosses get str. */
   asc?: number
   kind?: 'normal' | 'elite' | 'boss'
+  /** Act (1-4): multiplies enemy HP/damage via actEnemyScale. */
+  act?: number
 }
 
 export function startCombat(o: StartCombatOpts): CombatState {
@@ -70,9 +72,10 @@ export function startCombat(o: StartCombatOpts): CombatState {
   }
 
   const asc = o.asc ?? 0
+  const act = o.act ?? 1
   const enemies: EnemyC[] = o.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc))
+    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.06 * asc) * actEnemyScale(act))
     if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
     if (asc >= 16) hp = Math.round(hp * 1.1)
     const statuses = { ...(def.traits ?? {}) }
@@ -110,6 +113,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
     uid: o.uidStart,
     encounterId: o.encounterId,
     asc,
+    act,
   }
 
   rollIntents(cs)
@@ -159,7 +163,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
       case 'atk': {
         for (let t = 0; t < (eff.times ?? 1); t++) {
           if (cs.player.hp <= 0) break
-          attack(e, cs.player, ascAtk(eff.n, cs.asc), who, 'p', evs)
+          attack(e, cs.player, ascAtk(eff.n, cs.asc, cs.act), who, 'p', evs)
         }
         break
       }
@@ -191,10 +195,10 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
       case 'summon': {
         for (let s = 0; s < (eff.n ?? 1); s++) {
           const alive = cs.enemies.filter((x) => !x.dead).length
-          if (alive >= 5 || cs.enemies.length >= 8) break
+          if (alive >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
           const def2 = ENEMIES[eff.id]
           if (!def2) break
-          const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc))
+          const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.06 * cs.asc) * actEnemyScale(cs.act))
           cs.enemies.push({
             defId: eff.id,
             name: def2.name,
@@ -207,6 +211,7 @@ function executeMove(cs: CombatState, idx: number, evs: GameEvent[]) {
             intent: null,
             lastMoves: [],
             usedOn: {},
+            summoned: true,
             dead: false,
           })
           evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })

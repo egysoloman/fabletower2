@@ -608,6 +608,28 @@ EVENTS.push(
       { label: 'BACK AWAY', detail: 'Nothing happens.', outcomes: [] },
     ],
   },
+  {
+    id: 'datavault',
+    name: 'The Data Vault',
+    glyph: '◫',
+    text: 'A bank vault that has been offline for decades. The terminal still shows a withdrawal screen — balance: 0. The tumblers hum when you approach.',
+    choices: [
+      { label: 'FORGE THE LEDGER', detail: 'Gain 120¤. A Glitch is added to your deck.', outcomes: [{ k: 'gold', n: 120 }, { k: 'cardGlitch' }] },
+      { label: 'CRACK THE TUMBLERS', detail: 'Gain a random relic. Take 10 damage.', outcomes: [{ k: 'relic' }, { k: 'damage', n: 10 }] },
+      { label: 'LOG OFF', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
+  {
+    id: 'recyclebin',
+    name: 'The Recycle Bin',
+    glyph: '♻',
+    text: 'A recycle bin the size of a room. Deleted files drift inside it like fish in a dark tank — some still readable, most just scraps.',
+    choices: [
+      { label: 'RESTORE A FILE', detail: 'Heal 18 HP.', outcomes: [{ k: 'heal', n: 18 }] },
+      { label: 'PURGE PERMANENTLY', detail: 'Remove a card from your deck. Gain 45¤.', outcomes: [{ k: 'removeChoose' }, { k: 'gold', n: 45 }] },
+      { label: 'WALK AWAY', detail: 'Nothing happens.', outcomes: [] },
+    ],
+  },
 )
 
 /** Run-start bonus choice (Neow-style). Not part of the random event pool. */

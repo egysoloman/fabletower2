@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'preact/hooks'
 import { CARDS, MINIONS, cardName, previewCard, type CharId, type PvpAction } from '@neonspire/engine'
-import { BlockChip, HpBar, StatusRow } from '../components'
+import { BlockChip, HpBar, MinionCard, StatusRow } from '../components'
 import {
   anchorCenter,
   defeatFx,
@@ -137,12 +137,7 @@ export function ClimbScreen() {
             {me.minions.length > 0 && (
               <div class="minionrow">
                 {me.minions.map((m, i) => (
-                  <div key={i} class="minion">
-                    <span class="msym">{MINIONS[m.defId]?.sym}</span>
-                    <span class="mhp">
-                      {m.hp}/{m.maxHp}
-                    </span>
-                  </div>
+                  <MinionCard key={i} m={m} />
                 ))}
               </div>
             )}
@@ -165,12 +160,7 @@ export function ClimbScreen() {
             {them.minions.length > 0 && (
               <div class="minionrow">
                 {them.minions.map((m, i) => (
-                  <div key={i} class="minion">
-                    <span class="msym">{MINIONS[m.defId]?.sym}</span>
-                    <span class="mhp">
-                      {m.hp}/{m.maxHp}
-                    </span>
-                  </div>
+                  <MinionCard key={i} m={m} />
                 ))}
               </div>
             )}

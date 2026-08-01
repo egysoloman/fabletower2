@@ -62,7 +62,7 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   kernel: { name: 'Kernel', sym: '☲', bad: false, desc: 'When a card grants Block, deals {n} damage to a random enemy.', powerText: 'Whenever a card grants you Block, deal {n} damage to a random enemy.' },
   hyper: { name: 'Hyperthread', sym: '⋙', bad: false, desc: 'Draws {n} card(s) when a 0-cost card is played.', powerText: 'Whenever you play a 0-cost card, draw {n} card(s).' },
   chronic: { name: 'Chronic', sym: '∞', bad: false, desc: 'Corrupt on enemies no longer wears off.', powerText: 'Corrupt on enemies no longer wears off.' },
-  heat: { name: 'Heat', sym: '♨', bad: false, desc: 'Attacks deal +{n}. At the start of your turn, Heat at or past your threshold (8) burns you for {n} and resets.' },
+  heat: { name: 'Heat', sym: '♨', bad: false, desc: 'Attacks deal +{n}. At the start of your turn, Heat at or past your threshold ({base}) burns you for {n} and resets.' },
   coolant: { name: 'Coolant', sym: '❄', bad: false, desc: 'Overheat threshold raised by {n}.', powerText: 'Raise your overheat threshold by {n}.' },
   ignition: { name: 'Ignition', sym: 'Δ', bad: false, desc: 'Gains {n} Heat at end of turn.', powerText: 'At the end of your turn, gain {n} Heat.' },
   reactor: { name: 'Reactor', sym: '☢', bad: false, desc: 'Overheating damages ALL enemies instead of you.', powerText: 'Overheating no longer hurts you — it deals the damage to ALL enemies instead.' },
@@ -251,6 +251,8 @@ export interface EnemyC extends Fighter {
   usedOn: Record<string, number>
   /** Co-op only: party member this intent is currently aimed at. */
   focus?: number
+  /** True when this fighter was summoned mid-combat (renders as a mini card). */
+  summoned?: boolean
   dead: boolean
 }
 
@@ -271,6 +273,8 @@ export interface CombatState {
   encounterId: string
   /** Ascension level the combat was started at (0 = base difficulty). */
   asc: number
+  /** Act this combat is in (1-4); ramps enemy stats via actEnemyScale. */
+  act: number
 }
 
 export type CombatAction = { t: 'play'; hand: number; target?: number } | { t: 'end' }

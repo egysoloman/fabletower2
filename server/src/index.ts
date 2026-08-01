@@ -608,6 +608,7 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
     encounterId: enc.join(','),
     seed: randInt(room.rng, 1, 0x7fffffff),
     uidStart: room.uid,
+    act: room.act,
   })
   touchCoop(room)
   coopBroadcast(room, (i) => ({ t: 'coopcombat', you: i, view: coopViewFor(room.combat!), belt: room.players[i].potions, mode: getMpMode() }))

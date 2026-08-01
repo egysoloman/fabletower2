@@ -9,6 +9,7 @@ import {
   bossRelicChoices,
   combatFor,
   combatReduce,
+  detectDeckArchetype,
   genShop,
   goldReward,
   moveTo,
@@ -33,6 +34,7 @@ import {
   drawCards,
   firstAliveEnemy,
   type CombatAction,
+  type ArchetypeId,
   type CombatState,
 } from '@neonspire/engine'
 import {
@@ -45,6 +47,7 @@ import {
   combatKind,
   currentEvent,
   eventLines,
+  eventRelic,
   picker,
   restUsed,
   reward,
@@ -59,7 +62,7 @@ import { climbActive, climbBossKill, climbContinueRound, climbDied, climbLeave, 
 import { checkCombat, checkRun, discoverEnemies, discoverEvent, discoverRun, recordDaily, dailyRank } from './meta'
 import { sfx } from './sfx'
 import { t, tf } from './i18n'
-import { cheatsEnabled } from './account'
+import { cheatsEnabled, schedulePush } from './account'
 
 // --- Ascension unlock + run history (device-local meta-progression) ---------
 
@@ -90,6 +93,13 @@ export interface RunRecord {
   win: boolean
   sc?: number
   ch?: import('@neonspire/engine').CharId
+  /** Effect-derived build identity; absent on records made before telemetry v2. */
+  arch?: ArchetypeId
+  deck?: number
+  up?: number
+  relics?: number
+  hp?: number
+  maxHp?: number
 }
 
 export function runHistory(): RunRecord[] {
@@ -114,9 +124,18 @@ function recordRun(win: boolean) {
       win,
       sc: scoreRun(r, win).total,
       ch: r.char,
+      arch: detectDeckArchetype(r.char, r.deck) ?? undefined,
+      deck: r.deck.length,
+      up: r.deck.filter((c) => c.up).length,
+      relics: r.relics.length,
+      hp: r.hp,
+      maxHp: r.maxHp,
     }
     list.unshift(rec)
-    localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 10)))
+    // 100 compact records stay well below the cloud blob limit while making
+    // per-character/archetype percentiles useful instead of anecdotal.
+    localStorage.setItem('ns-history', JSON.stringify(list.slice(0, 100)))
+    schedulePush()
     checkRun(rec, r, dailySeed())
     if (r.seed === dailySeed()) {
       recordDaily({ score: rec.sc ?? 0, ch: r.char, win, d: Date.now() })
@@ -672,8 +691,10 @@ export function chooseEventOption(idx: number) {
   if (!ev || !r || eventLines.value) return
   const choice = ev.choices[idx]
   if (!choice || (choice.needGold && r.gold < choice.needGold)) return
+  const relicBefore = r.relics.length
   const { lines, removeChoose } = applyOutcomes(r, choice.outcomes)
   eventLines.value = lines.length > 0 ? lines : [t('nothingHappened')]
+  if (r.relics.length > relicBefore) eventRelic.value = r.relics[r.relics.length - 1]
   if (removeChoose) {
     picker.value = {
       title: t('removeTitle'),
@@ -699,6 +720,7 @@ export function leaveNode() {
   shop.value = null
   currentEvent.value = null
   eventLines.value = null
+  eventRelic.value = null
   completedNode.value = run.value?.pos ?? null
   screen.value = 'map'
   saveGame()
@@ -782,6 +804,43 @@ export function cheatUpgradeAll() {
   })
   sfx.buy()
   touch()
+  saveGame()
+}
+
+/**
+ * Cheat: play any card immediately, auto-targeting the first living foe.
+ * Works mid-combat only — the chosen card resolves through the real engine.
+ */
+export function cheatPlayCard(id: string) {
+  if (!canCheat()) return
+  const cs = combat.value
+  if (!cs || cs.over) return
+  const def = CARDS[id]
+  if (!def || def.unplayable) return
+  // Append a temporary upgraded copy to the hand so the normal play path
+  // (validation, cost, events, discard) runs untouched.
+  const handIdx = cs.player.hand.length
+  cs.player.hand.push({ uid: cs.uid++, id, up: true })
+  let target: number | undefined
+  if (def.target === 'enemy') {
+    const alive = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
+    target = alive[0]
+    if (target === undefined) {
+      cs.player.hand.pop()
+      sfx.click()
+      return
+    }
+  }
+  const res = combatReduce(cs, { t: 'play', hand: handIdx, target })
+  if (res.error) {
+    cs.player.hand.pop()
+    sfx.click()
+    return
+  }
+  sfx.play()
+  combat.value = res.state
+  checkCombat(res.state)
+  processEvents(res.events, {})
   saveGame()
 }
 

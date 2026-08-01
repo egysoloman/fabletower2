@@ -423,7 +423,7 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   kernel: { name: '内核', desc: '卡牌提供格挡时，对随机敌人造成 {n} 点伤害。', powerText: '每当卡牌为你提供格挡，对一名随机敌人造成 {n} 点伤害。' },
   hyper: { name: '超线程', desc: '打出 0 费牌时抽 {n} 张牌。', powerText: '每当你打出一张 0 费牌，抽 {n} 张牌。' },
   chronic: { name: '慢性', desc: '敌人身上的侵蚀不再消退。', powerText: '敌人身上的侵蚀不再消退。' },
-  heat: { name: '高热', desc: '攻击伤害 +{n}。你的回合开始时，高热达到阈值（8）会灼烧你 {n} 点并清零。' },
+  heat: { name: '高热', desc: '攻击伤害 +{n}。你的回合开始时，高热达到阈值（{base}）会灼烧你 {n} 点并清零。' },
   coolant: { name: '冷却液', desc: '过热阈值提高 {n}。', powerText: '你的过热阈值提高 {n}。' },
   ignition: { name: '点火', desc: '回合结束时获得 {n} 点高热。', powerText: '你的回合结束时，获得 {n} 点高热。' },
   reactor: { name: '反应堆', desc: '过热不再伤害你，而是对所有敌人造成该伤害。', powerText: '过热不再伤害你——改为对所有敌人造成该伤害。' },
@@ -694,6 +694,9 @@ export const ENEMY_ZH: Record<string, { name: string; moves: Record<string, stri
   tapeworm: { name: '磁带蠕虫', moves: { coil: '盘绕', constrict: '绞缠', rewind: '倒带' } },
   keylogger: { name: '键盘记录器', moves: { record: '记录', playback: '回放' } },
   cryptomite: { name: '挖矿螨', moves: { mine2: '挖矿', hashsmash: '哈希重击' } },
+  hashrig: { name: '哈希矿机', moves: { difficultyspike: '难度飙升', proofofwork: '工作量证明', doublespend: '双重支付' } },
+  autosave: { name: '自动保存守护进程', moves: { checkpoint: '写入存档', restore: '还原', forcequit: '强制退出' } },
+  pixelmoth: { name: '像素蛾', moves: { flutter: '振翅', nibble: '啃食', dust: '落粉' } },
   junkgolem: { name: '废铁魔像', moves: { scrapfist: '废铁之拳', reassemble: '重组' } },
   sirenode: { name: '塞壬节点', moves: { song: '同步之歌', screech: '尖鸣' } },
   hexbat: { name: '十六进制蝠', moves: { divebomb: '俯冲轰炸', hexdust: '咒尘' } },
@@ -1172,6 +1175,24 @@ export const EVENT_ZH: Record<string, { name: string; text: string; choices: { l
       { label: '领养幼雏', detail: '将 2 张「租赁无人机」加入牌组。过程中受到 6 点伤害。' },
       { label: '收割巢穴', detail: '获得一瓶随机药剂。' },
       { label: '缓缓退开', detail: '什么都不会发生。' },
+    ],
+  },
+  datavault: {
+    name: '数据金库',
+    text: '一座断网数十年的银行金库。终端仍停留在取款界面——余额：0。你靠近时，密码锁在低鸣。',
+    choices: [
+      { label: '伪造账本', detail: '获得 120¤。一张「故障」加入你的牌组。' },
+      { label: '撬开密码锁', detail: '获得一件随机遗物。受到 10 点伤害。' },
+      { label: '登出', detail: '什么都不会发生。' },
+    ],
+  },
+  recyclebin: {
+    name: '回收站',
+    text: '一间屋子那么大的回收站。已删除的文件像暗缸里的鱼一样在其中漂游——有些还能读出内容，大多是碎片。',
+    choices: [
+      { label: '还原文件', detail: '回复 18 点生命。' },
+      { label: '彻底删除', detail: '从牌组中移除一张牌。获得 45¤。' },
+      { label: '转身离开', detail: '什么都不会发生。' },
     ],
   },
   boot: {

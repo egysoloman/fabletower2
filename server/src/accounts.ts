@@ -31,6 +31,20 @@ interface DailyScore {
   at: number
 }
 
+interface TelemetryRun {
+  d: number
+  asc: number
+  act: number
+  floor: number
+  win: boolean
+  sc: number
+  ch: 'runner' | 'vector' | 'ghost' | 'array'
+  arch: string | null
+  deck: number | null
+  up: number | null
+  relics: number | null
+}
+
 interface Db {
   accounts: Record<string, Account>
   registrationsOpen: boolean
@@ -130,6 +144,78 @@ function revokeSessions(user: string) {
 
 function isAdmin(req: IncomingMessage): boolean {
   return ADMIN_KEY.length >= 8 && String(req.headers['x-admin-key'] ?? '') === ADMIN_KEY
+}
+
+function accountRuns(account: Account): TelemetryRun[] {
+  if (!account.blob) return []
+  try {
+    const keys = JSON.parse(account.blob)?.keys
+    const history = JSON.parse(keys?.['ns-history'] ?? '[]')
+    if (!Array.isArray(history)) return []
+    return history.slice(0, 100).flatMap((run): TelemetryRun[] => {
+      const ch = run?.ch ?? 'runner'
+      if (!['runner', 'vector', 'ghost', 'array'].includes(ch)) return []
+      const d = Number(run?.d)
+      const floor = Number(run?.floor)
+      const act = Number(run?.act)
+      const asc = Number(run?.asc)
+      if (![d, floor, act, asc].every(Number.isFinite) || floor < 0 || act < 1 || asc < 0) return []
+      const optional = (v: unknown) => Number.isFinite(Number(v)) ? Number(v) : null
+      return [{
+        d, floor, act, asc, ch, win: run?.win === true,
+        sc: Number.isFinite(Number(run?.sc)) ? Number(run.sc) : 0,
+        arch: typeof run?.arch === 'string' ? run.arch.slice(0, 40) : null,
+        deck: optional(run?.deck), up: optional(run?.up), relics: optional(run?.relics),
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
+function telemetrySummary(runs: TelemetryRun[]) {
+  const floors = runs.map((r) => r.floor).sort((a, b) => a - b)
+  const avg = (values: number[]) => values.length ? Number((values.reduce((a, b) => a + b, 0) / values.length).toFixed(1)) : 0
+  const percentile = (p: number) => {
+    if (!floors.length) return 0
+    const index = Math.round((floors.length - 1) * p)
+    return floors[index]
+  }
+  const wins = runs.filter((r) => r.win).length
+  return {
+    runs: runs.length,
+    wins,
+    winRate: runs.length ? Number((wins / runs.length * 100).toFixed(1)) : 0,
+    avgFloor: avg(floors),
+    p25Floor: percentile(0.25),
+    medianFloor: percentile(0.5),
+    p75Floor: percentile(0.75),
+    avgScore: avg(runs.map((r) => r.sc)),
+    avgDeck: avg(runs.flatMap((r) => r.deck === null ? [] : [r.deck])),
+    avgUpgrades: avg(runs.flatMap((r) => r.up === null ? [] : [r.up])),
+    avgRelics: avg(runs.flatMap((r) => r.relics === null ? [] : [r.relics])),
+    deathByAct: Object.fromEntries([1, 2, 3, 4].map((act) => [act, runs.filter((r) => !r.win && r.act === act).length])),
+  }
+}
+
+function balanceTelemetry() {
+  const accounts = Object.values(db.accounts)
+  const perAccount = accounts.map((account) => accountRuns(account))
+  const runs = perAccount.flat()
+  const group = <K extends string | number>(key: (run: TelemetryRun) => K) => {
+    const grouped = new Map<K, TelemetryRun[]>()
+    for (const run of runs) grouped.set(key(run), [...(grouped.get(key(run)) ?? []), run])
+    return [...grouped.entries()].map(([id, list]) => ({ id, ...telemetrySummary(list) }))
+  }
+  return {
+    generatedAt: Date.now(),
+    accountsWithHistory: perAccount.filter((list) => list.length > 0).length,
+    ...telemetrySummary(runs),
+    recent30d: telemetrySummary(runs.filter((r) => r.d >= Date.now() - 30 * 864e5)),
+    byChar: group((r) => r.ch).sort((a, b) => String(a.id).localeCompare(String(b.id))),
+    byArchetype: group((r) => r.arch ?? 'unclassified').sort((a, b) => b.runs - a.runs),
+    byAscension: group((r) => r.asc).sort((a, b) => Number(a.id) - Number(b.id)),
+  }
 }
 
 /** Returns true if the request was handled as an API route. */
@@ -262,6 +348,9 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
   if (url.startsWith(ADMIN_API_PATH + '/')) {
     const sub = url.slice(ADMIN_API_PATH.length)
     if (!isAdmin(req)) return json(res, 403, { err: 'admin key required' }), true
+    if (sub === '/balance' && req.method === 'GET') {
+      return json(res, 200, balanceTelemetry()), true
+    }
     if (sub === '/accounts' && req.method === 'GET') {
       const list = Object.values(db.accounts).map((a) => ({
         user: a.user, name: a.name, created: a.created, banned: !!a.banned,

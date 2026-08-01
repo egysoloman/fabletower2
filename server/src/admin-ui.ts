@@ -32,6 +32,14 @@ tr.banned td{color:var(--red);opacity:.75}
 .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;border:1px solid currentColor}
 .on{color:var(--green)}.off{color:var(--red)}
 td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
+.analytics{border:1px solid rgba(0,229,255,.22);background:rgba(0,229,255,.025);border-radius:7px;padding:12px;margin:8px 0 16px;overflow:auto}
+.bounds{display:flex;flex-direction:column;gap:8px;min-width:620px;margin:8px 0 14px}
+.bound{display:grid;grid-template-columns:70px 1fr 95px 180px;gap:10px;align-items:center;font-size:12px}
+.track{height:8px;border-radius:8px;background:rgba(143,134,184,.2);position:relative}
+.track i{position:absolute;width:10px;height:10px;border-radius:50%;top:50%;transform:translate(-50%,-50%);z-index:2}
+.track .lo{background:var(--red);box-shadow:0 0 7px var(--red)}.track .hi{background:var(--green);box-shadow:0 0 7px var(--green)}
+.track span{position:absolute;height:4px;top:2px;background:var(--gold)}
+.muted{color:var(--dim);font-size:11px}.analytics h3{font-size:11px;color:var(--gold);letter-spacing:.12em;margin:12px 0 4px}
 </style></head><body>
 <h1>NEON<span>SPIRE</span> · ADMIN</h1>
 <div class="row">
@@ -47,7 +55,11 @@ td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
     <div class="card"><b id="c-banned">–</b><small>BANNED</small></div>
     <div class="card"><b id="c-scores">–</b><small>DAILY SCORES</small></div>
     <div class="card"><b id="c-mode">–</b><small>MP MODE</small></div>
+    <div class="card"><b id="c-runs">–</b><small>RECORDED RUNS</small></div>
+    <div class="card"><b id="c-winrate">–</b><small>PLAYER WIN RATE</small></div>
   </div>
+  <h2>BALANCE ANALYTICS</h2>
+  <div id="balance" class="analytics"></div>
   <h2>ACCOUNTS</h2>
   <div class="row"><input id="search" placeholder="search…" oninput="render()">
     <button onclick="toggleReg()" id="regbtn">TOGGLE REGISTRATIONS</button>
@@ -63,8 +75,11 @@ td .mini{padding:4px 8px;font-size:11px;margin-right:4px}
 const API = '${apiBase}'
 let KEY = sessionStorage.getItem('ns-admin-key') || ''
 let DATA = null
+let BALANCE = null
+let BENCH = null
 const $ = (id) => document.getElementById(id)
 const msg = (t, err) => { $('msg').textContent = t; $('msg').className = err ? 'err' : '' }
+const esc = (v) => String(v).replace(/[&<>\"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))
 async function api(path, method, body) {
   const res = await fetch(path, { method: method || 'GET',
     headers: { 'content-type': 'application/json', 'x-admin-key': KEY },
@@ -76,8 +91,12 @@ async function api(path, method, body) {
 function saveKey() { KEY = $('key').value.trim(); sessionStorage.setItem('ns-admin-key', KEY); load() }
 async function load() {
   try {
-    DATA = await api(API + '/accounts')
-    const board = await fetch('/api/daily/leaderboard').then((r) => r.json()).catch(() => ({ top: [] }))
+    const loaded = await Promise.all([
+      api(API + '/accounts'), api(API + '/balance'),
+      fetch('/api/daily/leaderboard').then((r) => r.json()).catch(() => ({ top: [] })),
+      fetch('/balance/latest.json').then((r) => r.ok ? r.json() : null).catch(() => null)
+    ])
+    DATA = loaded[0]; BALANCE = loaded[1]; const board = loaded[2]; BENCH = loaded[3]
     $('app').style.display = ''
     msg('connected ✓')
     const dayAgo = Date.now() - 864e5
@@ -86,11 +105,26 @@ async function load() {
     $('c-banned').textContent = DATA.accounts.filter((a) => a.banned).length
     $('c-scores').textContent = board.top.length
     $('c-mode').textContent = DATA.mpMode.toUpperCase() + (DATA.mpEnvLocked ? ' (env)' : '')
+    $('c-runs').textContent = BALANCE.runs
+    $('c-winrate').textContent = BALANCE.winRate + '%'
     $('modebtn').disabled = !!DATA.mpEnvLocked
     $('regstate').innerHTML = DATA.registrationsOpen
       ? '<span class="pill on">registrations OPEN</span>' : '<span class="pill off">registrations CLOSED</span>'
-    render()
+    renderBalance(); render()
   } catch (e) { $('app').style.display = 'none'; msg(String(e.message), true) }
+}
+function renderBalance() {
+  const actualRows = (BALANCE.byChar || []).map((r) => '<tr><td>' + esc(String(r.id).toUpperCase()) + '</td><td>' + r.runs + '</td><td>' + r.winRate + '%</td><td>' + r.avgFloor + '</td><td>' + r.p25Floor + '/' + r.medianFloor + '/' + r.p75Floor + '</td><td>' + Object.values(r.deathByAct).join('/') + '</td><td>' + r.avgDeck + '/' + r.avgUpgrades + '/' + r.avgRelics + '</td></tr>').join('')
+  const archRows = (BALANCE.byArchetype || []).slice(0, 12).map((r) => '<tr><td>' + esc(r.id) + '</td><td>' + r.runs + '</td><td>' + r.winRate + '%</td><td>' + r.avgFloor + '</td><td>' + r.p25Floor + '/' + r.medianFloor + '/' + r.p75Floor + '</td><td>' + r.avgScore + '</td></tr>').join('')
+  let benchmark = '<div class="muted">No committed bot benchmark available.</div>'
+  if (BENCH) {
+    const bounds = BENCH.comparison.map((r) => {
+      const lo = Math.max(0, Math.min(100, r.lowerMean / 24 * 100)); const hi = Math.max(0, Math.min(100, r.upperMean / 24 * 100))
+      return '<div class="bound"><b>' + esc(r.char.toUpperCase()) + '</b><div class="track"><span style="left:' + lo + '%;width:' + Math.max(0, hi-lo) + '%"></span><i class="lo" style="left:' + lo + '%"></i><i class="hi" style="left:' + hi + '%"></i></div><strong>' + r.lowerMean + ' → ' + r.upperMean + '</strong><small>' + esc(r.bestArchetype) + '</small></div>'
+    }).join('')
+    benchmark = '<div class="muted">BOT BOUNDS · A' + BENCH.ascension + ' · ' + BENCH.seeds + ' seeds/profile · ' + esc(BENCH.generatedAt.slice(0,10)) + ' · red=floor / green=ceiling envelope</div><div class="bounds">' + bounds + '</div>'
+  }
+  $('balance').innerHTML = benchmark + '<h3>ANONYMIZED PLAYER RUNS</h3><div class="muted">' + BALANCE.accountsWithHistory + ' accounts with history · latest 100 runs/account · 30d ' + BALANCE.recent30d.runs + ' runs / ' + BALANCE.recent30d.winRate + '% wins</div><table><thead><tr><th>CHAR</th><th>RUNS</th><th>WIN</th><th>AVG FLOOR</th><th>P25/P50/P75</th><th>DEATH A1/A2/A3/A4</th><th>DECK/UP/RELIC</th></tr></thead><tbody>' + actualRows + '</tbody></table><h3>PLAYER ARCHETYPES</h3><table><thead><tr><th>ARCHETYPE</th><th>RUNS</th><th>WIN</th><th>AVG FLOOR</th><th>P25/P50/P75</th><th>AVG SCORE</th></tr></thead><tbody>' + archRows + '</tbody></table>'
 }
 function render() {
   const q = $('search').value.toLowerCase()

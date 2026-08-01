@@ -355,6 +355,9 @@ const ART: Record<string, JSX.Element> = {
   tapeworm: (<><path d="M10 40 Q18 30 26 38 Q34 46 42 38 Q50 30 56 36" stroke-width="2.4" />{dot(10, 40, 2.2)}</>),
   keylogger: (<><rect x="12" y="22" width="40" height="22" rx="3" /><path d="M18 28 H22 M26 28 H30 M34 28 H38 M42 28 H46 M18 36 H46" stroke-width="1.4" /></>),
   cryptomite: (<><circle cx="32" cy="34" r="14" /><path d="M28 26 V42 M36 26 V42 M24 30 H42 M24 38 H42" stroke-width="1.4" /></>),
+  hashrig: (<><rect x="12" y="28" width="28" height="20" rx="2" /><rect x="42" y="20" width="10" height="26" rx="1" /><path d="M47 20 V14 M47 46 V52" stroke-width="1.6" /><path d="M22 24 Q28 10 44 12" stroke-width="1.4" />{dot(44, 12, 1.8)}</>),
+  autosave: (<><rect x="16" y="16" width="32" height="32" rx="4" /><circle cx="32" cy="32" r="8" /><path d="M32 28 V32 L36 35" stroke-width="1.6" /><path d="M10 22 H16 M10 42 H16 M54 22 H48 M54 42 H48" stroke-width="1.4" /></>),
+  pixelmoth: (<><path d="M32 34 L20 18 Q8 22 18 34 Z M32 34 L44 18 Q56 22 46 34 Z" /><path d="M32 34 V46" stroke-width="2" />{dot(32, 50, 1.8)}{dot(24, 12, 1.4)}{dot(40, 12, 1.4)}</>),
   junkgolem: (<><rect x="18" y="28" width="28" height="24" rx="2" /><rect x="24" y="14" width="16" height="12" rx="2" /><path d="M18 36 L8 30 M46 36 L56 30" stroke-width="2" /></>),
   sirenode: (<><circle cx="32" cy="30" r="10" /><path d="M32 40 V52 M24 46 Q32 54 40 46" stroke-width="1.6" /><path d="M18 22 Q14 30 18 38 M46 22 Q50 30 46 38" stroke-width="1.2" /></>),
   hexbat: (<><path d="M32 30 L14 18 Q8 30 20 36 Z M32 30 L50 18 Q56 30 44 36 Z" /><circle cx="32" cy="34" r="5" /></>),
@@ -604,6 +607,8 @@ const ART: Record<string, JSX.Element> = {
       <path d="M18 48 L14 56 M46 48 L50 56" stroke-width="1.6" />
     </>
   ),
+  'ev-datavault': (<><rect x="14" y="18" width="36" height="32" rx="3" /><circle cx="46" cy="34" r="6" /><path d="M46 29 V31 M46 37 V39" stroke-width="1.4" /><path d="M20 42 H40" stroke-width="1.2" /></>),
+  'ev-recyclebin': (<><rect x="18" y="26" width="28" height="24" rx="2" /><path d="M14 26 H50 M22 26 L24 18 H40 L42 26" stroke-width="1.6" /><path d="M28 32 V44 M36 32 V44" stroke-width="1.4" /></>),
   'ev-arcade': (
     <>
       <path d="M18 56 V24 A14 14 0 0 1 46 24 V56 Z" />

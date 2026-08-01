@@ -52,6 +52,8 @@ export const reward = signal<RewardBundle | null>(null)
 export const shop = signal<ShopStock | null>(null)
 export const currentEvent = signal<EventDef | null>(null)
 export const eventLines = signal<string[] | null>(null)
+/** Relic just granted by an event outcome (boot sequence etc.). */
+export const eventRelic = signal<string | null>(null)
 export const restUsed = signal(false)
 export const picker = signal<PickerRequest | null>(null)
 export const pileView = signal<{ title: string; cards: CardInst[] } | null>(null)

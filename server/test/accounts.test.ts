@@ -47,6 +47,22 @@ test('cheats default off, require an admin grant, and sessions can be validated'
     const updatedSession = await request('/api/session', { headers: auth })
     assert.equal(updatedSession.body.cheatsEnabled, true)
 
+    const history = [
+      { d: Date.now(), seed: 11, asc: 0, act: 2, floor: 12, win: false, sc: 220, ch: 'runner', arch: 'runner-tempo', deck: 16, up: 3, relics: 2 },
+      { d: Date.now() - 1000, seed: 12, asc: 1, act: 3, floor: 24, win: true, sc: 620, ch: 'vector', arch: 'vector-vent', deck: 18, up: 5, relics: 4 },
+    ]
+    const cloudBlob = JSON.stringify({ savedAt: Date.now(), keys: { 'ns-history': JSON.stringify(history) } })
+    assert.equal((await request('/api/sync', {
+      method: 'PUT', headers: auth, body: JSON.stringify({ blob: cloudBlob }),
+    })).status, 200)
+    const balance = await request('/api/admin/balance', { headers: { 'x-admin-key': 'test-admin-key' } })
+    assert.equal(balance.status, 200)
+    assert.equal(balance.body.runs, 2)
+    assert.equal(balance.body.winRate, 50)
+    assert.equal(balance.body.accountsWithHistory, 1)
+    assert.deepEqual(balance.body.byChar.map((r: any) => [r.id, r.runs]), [['runner', 1], ['vector', 1]])
+    assert.equal(balance.body.byArchetype[0].runs, 1)
+
     await request('/api/admin/reset', {
       method: 'POST',
       headers: { 'x-admin-key': 'test-admin-key' },

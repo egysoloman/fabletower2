@@ -482,6 +482,16 @@ reg(E({ id: 'keylogger', name: 'Keylogger', glyph: '⌨', hp: [36, 42], moves: [
   { id: 'record', name: 'Record', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
   { id: 'playback', name: 'Playback', weight: 3, effects: [{ k: 'atk', n: 9 }] },
 ] }))
+reg(E({ id: 'pixelmoth', name: 'Pixel Moth', glyph: '✸', hp: [24, 30], moves: [
+  { id: 'flutter', name: 'Flutter', weight: 2, effects: [{ k: 'block', n: 5 }] },
+  { id: 'nibble', name: 'Nibble', weight: 3, effects: [{ k: 'atk', n: 6 }] },
+  { id: 'dust', name: 'Dust', weight: 1, maxRepeat: 1, effects: [{ k: 'debuff', id: 'weak', n: 1 }] },
+] }))
+reg(E({ id: 'hashrig', name: 'Hash Rig', glyph: '⛏', hp: [48, 56], moves: [
+  { id: 'difficultyspike', name: 'Difficulty Spike', weight: 1, maxRepeat: 1, effects: [{ k: 'buff', id: 'str', n: 2 }] },
+  { id: 'proofofwork', name: 'Proof of Work', weight: 3, effects: [{ k: 'atk', n: 11 }] },
+  { id: 'doublespend', name: 'Double Spend', weight: 2, cooldown: 1, effects: [{ k: 'atk', n: 6, times: 2 }] },
+] }))
 reg(E({ id: 'cryptomite', name: 'Cryptomite', glyph: '₿', hp: [30, 36], moves: [
   { id: 'mine2', name: 'Mine', weight: 2, maxRepeat: 1, effects: [{ k: 'buff', id: 'plating', n: 2 }] },
   { id: 'hashsmash', name: 'Hash Smash', weight: 3, effects: [{ k: 'atk', n: 8 }] },
@@ -514,6 +524,11 @@ reg(E({ id: 'brokerimp', name: 'Broker Imp', glyph: '¥', hp: [38, 44], moves: [
 reg(E({ id: 'chainhound', name: 'Chain Hound', glyph: '⛓', hp: [56, 64], moves: [
   { id: 'linkbite', name: 'Link Bite', weight: 3, effects: [{ k: 'atk', n: 7, times: 2 }] },
   { id: 'shackle', name: 'Shackle', weight: 2, cooldown: 1, effects: [{ k: 'debuff', id: 'weak', n: 2 }] },
+] }))
+reg(E({ id: 'autosave', name: 'Auto-Save Daemon', glyph: '⤾', hp: [52, 60], moves: [
+  { id: 'checkpoint', name: 'Checkpoint', weight: 2, effects: [{ k: 'block', n: 9 }] },
+  { id: 'restore', name: 'Restore', weight: 2, maxRepeat: 1, cond: { hpBelow: 0.6 }, effects: [{ k: 'heal', n: 12 }, { k: 'buff', id: 'str', n: 1 }] },
+  { id: 'forcequit', name: 'Force Quit', weight: 3, effects: [{ k: 'atk', n: 13 }] },
 ] }))
 reg(E({ id: 'vaultmimic', name: 'Vault Mimic', glyph: '▣', hp: [62, 70], traits: { artifact: 1 }, moves: [
   { id: 'lidslam', name: 'Lid Slam', weight: 3, effects: [{ k: 'atk', n: 13 }] },
@@ -639,6 +654,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['kiddie', 'spambot'],
       ['bitrat', 'bitrat', 'adfly'],
       ['cursorghoul'],
+      ['pixelmoth'],
       ['staticjelly'],
       ['packmule'],
       ['popupspawner', 'bitrat'],
@@ -660,6 +676,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['proxyshark'],
       ['tokenthief', 'voltmoth'],
       ['coldstorage'],
+      ['hashrig'],
       ['quicksort', 'quicksort'],
       ['stackghast'],
       ['tapeworm', 'hexbat'],
@@ -686,6 +703,7 @@ export const ENCOUNTERS: Record<number, EncounterTable> = {
       ['nullhound'],
       ['panicdaemon', 'forkbomblet'],
       ['memleech'],
+      ['autosave'],
       ['forkbomb'],
       ['ossifier'],
       ['brokerimp', 'chainhound'],
@@ -754,6 +772,9 @@ function isLegal(m: MoveDef, e: EnemyC, turn: number): boolean {
   return true
 }
 
+/** Max living foes at once — stops summoners from flooding the arena. */
+export const MAX_ALIVE_ENEMIES = 4
+
 /**
  * Heuristic enemy AI. Enemies react to the board instead of rolling a fixed
  * script: they go for lethal, turtle when hurt, punish Vulnerability, and
@@ -763,7 +784,7 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   const def = ENEMIES[e.defId]
   // No summoning into a full arena.
   const aliveCount = cs.enemies.filter((x) => !x.dead).length
-  const noSummon = (m: MoveDef) => !(aliveCount >= 4 && m.effects.some((x) => x.k === 'summon'))
+  const noSummon = (m: MoveDef) => !(aliveCount >= MAX_ALIVE_ENEMIES && m.effects.some((x) => x.k === 'summon'))
   let legal = def.moves.filter((m) => isLegal(m, e, cs.turn) && noSummon(m))
   if (legal.length === 0) legal = def.moves.filter(noSummon)
   if (legal.length === 0) legal = def.moves
@@ -793,17 +814,23 @@ export function chooseMove(e: EnemyC, cs: CombatState, rng: Rng): MoveDef {
   return weightedPick(rng, legal, score)
 }
 
-/** Ascension damage scaling for enemy attacks (+4% per level, rounded). */
-export function ascAtk(n: number, asc: number): number {
-  return asc > 0 ? Math.round(n * (1 + 0.04 * asc)) : n
+/** Act difficulty ramp: act 1 is gentle (players build their deck), then
+ * +10% enemy HP/damage per act (2/3/4). Multiplies with ascension scaling. */
+export function actEnemyScale(act: number): number {
+  return 1 + Math.max(0, act - 1) * 0.1
 }
 
-export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0): Intent {
+/** Ascension damage scaling for enemy attacks (+3% per level) × act ramp. */
+export function ascAtk(n: number, asc: number, act = 1): number {
+  return asc > 0 ? Math.round(n * (1 + 0.03 * asc) * actEnemyScale(act)) : Math.round(n * actEnemyScale(act))
+}
+
+export function intentFor(m: MoveDef, e: EnemyC, player: { statuses: { vuln?: number } }, asc = 0, act = 1): Intent {
   const kind = moveIntentKind(m)
   const atk = m.effects.find((x) => x.k === 'atk')
   const intent: Intent = { moveId: m.id, name: m.name, kind }
   if (atk && atk.k === 'atk') {
-    intent.dmg = modifiedDamage(ascAtk(atk.n, asc), e, player)
+    intent.dmg = modifiedDamage(ascAtk(atk.n, asc, act), e, player)
     if (atk.times && atk.times > 1) intent.times = atk.times
   }
   return intent

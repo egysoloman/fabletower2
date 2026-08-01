@@ -239,6 +239,12 @@ export function SettingsScreen() {
           </button>
         </label>
         <label class="setrow">
+          <span>{t('setColorblind')}</span>
+          <button class="btn ghost" onClick={() => (setSetting('colorblind', !st.colorblind), sfx.click())}>
+            {st.colorblind ? t('on') : t('off')}
+          </button>
+        </label>
+        <label class="setrow">
           <span>{t('setLang')}</span>
           <button class="btn ghost" onClick={toggleLang}>
             {lang.value === 'zh' ? 'EN' : '中文'}

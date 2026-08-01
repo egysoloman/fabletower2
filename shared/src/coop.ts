@@ -9,7 +9,7 @@ import type { CardInst, CombatState, DeckSide, EnemyC, GameEvent, MoveEffect, St
 import { DEBUFFS } from './types'
 import { CARDS } from './cards'
 import { POTIONS } from './potions'
-import { ENEMIES, ascAtk, chooseMove, intentFor } from './enemies'
+import { ENEMIES, MAX_ALIVE_ENEMIES, actEnemyScale, ascAtk, chooseMove, intentFor } from './enemies'
 import { RELICS } from './relics'
 import {
   applyEffects,
@@ -61,6 +61,7 @@ export interface CoopState {
   active: number
   over: 'win' | 'lose' | null
   firstCardFree?: boolean
+  act?: number
 }
 
 export type CoopAction = { t: 'play'; hand: number; target?: number; ally?: number } | { t: 'end' }
@@ -88,11 +89,13 @@ export function startCoopCombat(opts: {
   uidStart: number
   asc?: number
   kind?: 'normal' | 'elite' | 'boss'
+  act?: number
 }): CoopState {
   const rng = rngFromSeed(opts.seed)
   const n = Math.max(1, Math.min(MAX_PARTY, opts.players.length))
   const scale = coopScale(n)
   const asc = opts.asc ?? 0
+  const act = opts.act ?? 1
 
   const players = opts.players.map((p) => makeSide(p.name, p.hp, p.maxHp, p.deck.map((c) => ({ ...c })), rng))
   const playerRelics = opts.players.map((p) => [...p.relics])
@@ -123,7 +126,7 @@ export function startCoopCombat(opts: {
 
   const enemies: EnemyC[] = opts.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.08 * asc) * scale.hp)
+    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.06 * asc) * actEnemyScale(act) * scale.hp)
     if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
     const statuses = { ...(def.traits ?? {}) }
     for (const [k, v] of Object.entries(enemyStart)) {
@@ -138,7 +141,7 @@ export function startCoopCombat(opts: {
   const cs: CoopState = {
     rng, turn: 1, uid: opts.uidStart, encounterId: opts.encounterId,
     partySize: n, asc, players, playerRelics, relics: playerRelics[0],
-    downed: players.map(() => false), enemies, active: 0, over: null,
+    downed: players.map(() => false), enemies, active: 0, over: null, act,
   }
   rollIntents(cs)
   const evs: GameEvent[] = []
@@ -212,7 +215,7 @@ function enemyPhase(cs: CoopState, evs: GameEvent[]) {
         case 'atk': {
           for (let t = 0; t < (eff.times ?? 1); t++) {
             if (target.hp <= 0) break
-            attack(e, target, Math.round(ascAtk(eff.n, cs.asc) * coopScale(cs.partySize).atk), who, whoT, evs)
+            attack(e, target, Math.round(ascAtk(eff.n, cs.asc, cs.act ?? 1) * coopScale(cs.partySize).atk), who, whoT, evs)
           }
           break
         }
@@ -241,13 +244,13 @@ function enemyPhase(cs: CoopState, evs: GameEvent[]) {
         case 'summon': {
           for (let s = 0; s < (eff.n ?? 1); s++) {
             const aliveE = cs.enemies.filter((x) => !x.dead).length
-            if (aliveE >= 5 || cs.enemies.length >= 8) break
+            if (aliveE >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
             const def2 = ENEMIES[eff.id]
             if (!def2) break
-            const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.08 * cs.asc) * coopScale(cs.partySize).hp)
+            const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.06 * cs.asc) * actEnemyScale(cs.act ?? 1) * coopScale(cs.partySize).hp)
             cs.enemies.push({
               defId: eff.id, name: def2.name, glyph: def2.glyph, hp, maxHp: hp, block: 0,
-              statuses: { ...(def2.traits ?? {}) }, intent: null, lastMoves: [], usedOn: {}, dead: false,
+              statuses: { ...(def2.traits ?? {}) }, intent: null, lastMoves: [], usedOn: {}, summoned: true, dead: false,
             })
             evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })
           }

@@ -8,9 +8,11 @@ export interface Settings {
   shake: boolean
   /** Lock browser zoom (pinch / double-tap) — handy on touch screens. */
   zoomLock: boolean
+  /** Colorblind-friendly presentation: shapes + shifted hues, not just color. */
+  colorblind: boolean
 }
 
-const DEFAULTS: Settings = { master: 1, sfx: 1, quality: 'high', shake: true, zoomLock: true }
+const DEFAULTS: Settings = { master: 1, sfx: 1, quality: 'high', shake: true, zoomLock: true, colorblind: false }
 
 function load(): Settings {
   try {
@@ -30,7 +32,17 @@ export function setSetting<K extends keyof Settings>(k: K, v: Settings[K]) {
     /* best-effort */
   }
   if (k === 'zoomLock') applyZoomLock()
+  if (k === 'colorblind') applyColorblind()
 }
+
+/** Toggle the colorblind presentation class on <html>. */
+export function applyColorblind() {
+  document.documentElement.classList.toggle('cb', settings.value.colorblind)
+}
+
+// Apply persisted settings on startup.
+applyZoomLock()
+applyColorblind()
 
 /**
  * Apply the zoom-lock setting: rewrite the viewport meta (mobile browsers)
