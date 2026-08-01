@@ -53,6 +53,21 @@ export interface MapTravel {
   tx: number
   ty: number
   go: boolean
+  /** Stable animation epoch used to join rotating and travelling formations. */
+  at?: number
+  /** Optional formation radii when travelling between differently sized nodes. */
+  fr?: number
+  tr?: number
+}
+
+const PARTY_ORBIT_MS = 3_600
+const PARTY_TRAVEL_MS = 620
+const PARTY_TRAVEL_STAGGER_MS = 70
+/** Matches the server's co-op travel window (up to four staggered motes). */
+const PARTY_TRAVEL_WINDOW_MS = 900
+
+function partyAngle(index: number, count: number, at: number): number {
+  return (Math.PI * 2 * index) / count - Math.PI / 2 + ((at % PARTY_ORBIT_MS) / PARTY_ORBIT_MS) * Math.PI * 2
 }
 
 export function MapView(props: {
@@ -86,6 +101,7 @@ export function MapView(props: {
   const rings = props.ringColors && props.ringColors.length > 0 ? props.ringColors : [props.pc, props.pc]
   const cur = pos ? byId.get(pos) : null
   const rival = props.rival ? byId.get(props.rival.pos) : null
+  const orbitAt = Date.now()
 
   return (
     <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={props.svgRef} style={{ '--pc': props.pc } as never}>
@@ -152,20 +168,25 @@ export function MapView(props: {
         ))}
       {cur && !props.travel && props.markerColors && props.markerColors.length > 0 && (
         <g class="party-marker" transform={`translate(${cx(cur)} ${cy(cur)})`}>
-          {props.markerColors.map((color, i) => {
-            const angle = (Math.PI * 2 * i) / props.markerColors!.length - Math.PI / 2
-            const radius = cur.type === 'boss' ? 33 : 23
-            return (
-              <circle
-                key={i}
-                class="party-marker-dot"
-                cx={Math.cos(angle) * radius}
-                cy={Math.sin(angle) * radius}
-                r={5}
-                style={{ '--tc': color, '--mote-delay': `${(-0.58 * i) / props.markerColors!.length}s` } as never}
-              />
-            )
-          })}
+          <g
+            class="party-marker-orbit"
+            style={{ animationDelay: `${-(orbitAt % PARTY_ORBIT_MS)}ms` }}
+          >
+            {props.markerColors.map((color, i) => {
+              const angle = (Math.PI * 2 * i) / props.markerColors!.length - Math.PI / 2
+              const radius = cur.type === 'boss' ? 33 : 23
+              return (
+                <circle
+                  key={i}
+                  class="party-marker-dot"
+                  cx={Math.cos(angle) * radius}
+                  cy={Math.sin(angle) * radius}
+                  r={5}
+                  style={{ '--tc': color, '--mote-delay': `${(-0.58 * i) / props.markerColors!.length}s` } as never}
+                />
+              )
+            })}
+          </g>
         </g>
       )}
       {rival && props.rival && (
@@ -173,7 +194,9 @@ export function MapView(props: {
           class="rival-marker"
           style={{
             '--rival-color': props.rival.color,
-            transform: `translate(${cx(rival) + 23}px, ${cy(rival) - 23}px)`,
+            // Keep the marker anchored to the exact authoritative node.
+            // The old diagonal offset made synchronized maps look misaligned.
+            transform: `translate(${cx(rival)}px, ${cy(rival)}px)`,
           } as never}
         >
           <title>{props.rival.label}</title>
@@ -182,24 +205,56 @@ export function MapView(props: {
         </g>
       )}
       {props.travel && props.travelColors && props.travelColors.length > 0 ? (
-        <g
-          class="travel-party"
-          style={{
-            transform: `translate(${props.travel.go ? props.travel.tx : props.travel.fx}px, ${props.travel.go ? props.travel.ty : props.travel.fy}px)`,
-          }}
-        >
+        <g class="travel-party">
           {props.travelColors.map((color, i) => {
-            const angle = (Math.PI * 2 * i) / props.travelColors!.length - Math.PI / 2
-            const radius = props.travelColors!.length > 1 ? 7 : 0
+            const count = props.travelColors!.length
+            const startedAt = props.travel!.at ?? orbitAt
+            const startRadius = props.travel!.fr ?? (cur?.type === 'boss' ? 33 : 23)
+            const endRadius = props.travel!.tr ?? startRadius
+            const startAngle = partyAngle(i, count, startedAt)
+            const endAngle = partyAngle(i, count, startedAt + PARTY_TRAVEL_WINDOW_MS)
+            const sx = props.travel!.fx + Math.cos(startAngle) * startRadius
+            const sy = props.travel!.fy + Math.sin(startAngle) * startRadius
+            const ex = props.travel!.tx + Math.cos(endAngle) * endRadius
+            const ey = props.travel!.ty + Math.sin(endAngle) * endRadius
+            // Relative motion path: each mote gathers into the same node,
+            // follows the actual curved edge, then fans back into the orbit.
+            const path = [
+              'M 0 0',
+              `Q ${(props.travel!.fx - sx) * 0.55} ${(props.travel!.fy - sy) * 0.55} ${props.travel!.fx - sx} ${props.travel!.fy - sy}`,
+              `C ${props.travel!.fx - sx} ${props.travel!.fy - rowH / 2 - sy}, ${props.travel!.tx - sx} ${props.travel!.ty + rowH / 2 - sy}, ${props.travel!.tx - sx} ${props.travel!.ty - sy}`,
+              `Q ${((props.travel!.tx + ex) / 2) - sx} ${((props.travel!.ty + ey) / 2) - sy} ${ex - sx} ${ey - sy}`,
+            ].join(' ')
+            const pathId = `party-travel-path-${i}`
             return (
-              <circle
-                key={i}
-                class="travel-party-dot"
-                r={5}
-                cx={Math.cos(angle) * radius}
-                cy={Math.sin(angle) * radius}
-                style={{ '--tc': color } as never}
-              />
+              <g key={i}>
+                <path id={pathId} d={path} fill="none" stroke="none" />
+                <circle
+                  class="travel-party-dot"
+                  r={5}
+                  cx={sx}
+                  cy={sy}
+                  style={{ '--tc': color, '--mote-delay': `${(-0.58 * i) / count}s` } as never}
+                >
+                  {props.travel!.go && (
+                    <animateMotion
+                      begin="indefinite"
+                      dur={`${PARTY_TRAVEL_MS}ms`}
+                      calcMode="paced"
+                      fill="freeze"
+                      ref={(animation) => {
+                        if (!animation || animation.dataset.started) return
+                        animation.dataset.started = 'true'
+                        window.setTimeout(() => {
+                          if (animation.isConnected) animation.beginElement()
+                        }, i * PARTY_TRAVEL_STAGGER_MS)
+                      }}
+                    >
+                      <mpath href={`#${pathId}`} />
+                    </animateMotion>
+                  )}
+                </circle>
+              </g>
             )
           })}
         </g>

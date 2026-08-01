@@ -171,6 +171,8 @@ const seats = new Map<string, Client>()
 const MATCH_RECONNECT_GRACE_MS = 15 * 60 * 1000
 /** Durable co-op seats expire after a week without room activity. */
 const COOP_RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000
+/** Allows four staggered party motes to gather, follow the edge and disperse. */
+const COOP_TRAVEL_MS = 900
 /** The first player leaving a shop starts a short party-wide close window. */
 const COOP_SHOP_CLOSE_GRACE_MS = Math.max(1_000, Number(process.env.COOP_SHOP_CLOSE_GRACE_MS) || 15_000)
 
@@ -1156,7 +1158,7 @@ wss.on('connection', (ws) => {
         room.pendingNode = id
         touchCoop(room)
         coopBroadcast(room, () => ({ t: 'cooptravel', id }))
-        setTimeout(() => completeCoopTravel(room, id), 560)
+        setTimeout(() => completeCoopTravel(room, id), COOP_TRAVEL_MS)
         break
       }
       case 'coopaction': {

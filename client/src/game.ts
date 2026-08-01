@@ -169,6 +169,9 @@ export function backToMenu() {
 }
 
 export function abandonRun() {
+  // Notify the race server before discarding the local run. Closing the
+  // socket alone is treated as a recoverable disconnect.
+  if (climbActive()) climbLeave()
   run.value = null
   combat.value = null
   clearSave()

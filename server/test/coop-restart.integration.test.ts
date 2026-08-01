@@ -195,3 +195,25 @@ test('checkpoint duels award points and keep both racers for the next act', { ti
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('a deliberate climb leave immediately awards the rival a forfeit win', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'neonspire-climb-leave-'))
+  const port = await freePort()
+  const server = await startServer(port, join(dir, 'coop.json'))
+  const a = await connect(port)
+  const b = await connect(port)
+  try {
+    a.ws.send(JSON.stringify({ t: 'queue', name: 'alpha', char: 'runner', mode: 'climb', modsKey: 'vanilla' }))
+    b.ws.send(JSON.stringify({ t: 'queue', name: 'beta', char: 'vector', mode: 'climb', modsKey: 'vanilla' }))
+    await Promise.all([a.next('climbstart'), b.next('climbstart')])
+
+    a.ws.send(JSON.stringify({ t: 'leave' }))
+    const won = await b.next('climbwin')
+    assert.match(String(won.reason), /alpha left/)
+  } finally {
+    a.ws.close()
+    b.ws.close()
+    await stopServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

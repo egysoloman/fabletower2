@@ -324,7 +324,6 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   pointer-events: none;
 }
 .travel-party {
-  transition: transform 0.5s cubic-bezier(0.32, 0, 0.25, 1);
   pointer-events: none;
 }
 .travel-party-dot {
@@ -332,14 +331,22 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   stroke: rgba(255, 255, 255, 0.85);
   stroke-width: 0.8;
   filter: drop-shadow(0 0 5px var(--tc, var(--cyan))) drop-shadow(0 0 12px var(--tc, var(--cyan)));
-  animation: partyMote 0.58s ease-in-out infinite alternate;
+  animation: partyMote 0.58s var(--mote-delay, 0s) ease-in-out infinite alternate;
 }
-.travel-party-dot:nth-child(even) { animation-delay: -0.29s; }
 @keyframes partyMote {
   from { r: 4px; opacity: 0.72; }
   to { r: 5.6px; opacity: 1; }
 }
 .party-marker { pointer-events: none; }
+.party-marker-orbit {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: partyOrbit 3.6s linear infinite;
+}
+@keyframes partyOrbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 .party-marker-dot {
   fill: var(--tc, var(--cyan));
   stroke: rgba(255, 255, 255, 0.9);

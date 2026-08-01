@@ -256,6 +256,12 @@ function closeSocket() {
 
 /** Abandon / reset the whole climb session. */
 export function climbLeave() {
+  // A deliberate exit must be distinguishable from a dropped connection.
+  // Otherwise the server holds the seat for the reconnect grace period and
+  // the rival can keep climbing without being awarded the forfeit.
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ t: 'leave' }))
+  }
   closeSocket()
   onMatched = null
   climbPhase.value = 'idle'

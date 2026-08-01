@@ -189,6 +189,9 @@ export function CoopScreen() {
       tx: g.cx(target),
       ty: g.cy(target),
       go: false,
+      at: Date.now(),
+      fr: from?.type === 'boss' ? 33 : 23,
+      tr: target.type === 'boss' ? 33 : 23,
     }
     setMapTravel(tr)
     sfx.whoosh()
