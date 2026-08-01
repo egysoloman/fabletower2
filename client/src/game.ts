@@ -670,6 +670,7 @@ export function restUpgrade() {
   picker.value = {
     title: t('upgradeTitle'),
     cancellable: true,
+    showUpgradeDiff: true,
     filter: (c) => !c.up && CARDS[c.id].rarity !== 'special',
     onPick: (uid) => {
       if (upgradeCard(r, uid)) {

@@ -255,12 +255,7 @@ export function ShopScreen() {
                   shopBuyCard(i)
                 }}
               >
-                <div class="cardpick">
-                  <CardById id={item.id} />
-                  <div class="cardpick-up">
-                    <CardById id={item.id} up />
-                  </div>
-                </div>
+                <CardById id={item.id} />
                 <div class="pricetag" style={r.gold < item.price ? { color: 'var(--red)' } : {}}>
                   {item.sold ? t('sold') : `${item.price}¤`}
                 </div>

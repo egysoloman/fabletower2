@@ -364,19 +364,9 @@ export function PileModal() {
         <h2>{view.title}</h2>
         <DeckSummary deck={view.cards} />
         <div class="gridcards fan">
-          {view.cards.map((c, i) => {
-            const upDef = CARDS[c.id]?.upEffects
-            return (
-              <div key={c.uid} class={!c.up && upDef && upDef.length > 0 ? 'cardpick preview-on-tap' : ''}>
-                <CardView card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
-                {!c.up && upDef && upDef.length > 0 && (
-                  <div class="cardpick-up">
-                    <CardView card={{ ...c, up: true }} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {view.cards.map((c, i) => (
+            <CardView key={c.uid} card={c} style={{ '--fanidx': i, '--fan': Math.min(i, 14) } as never} />
+          ))}
           {view.cards.length === 0 && <div class="sub">{t('empty')}</div>}
         </div>
         <button class="btn ghost" onClick={() => (pileView.value = null)}>
@@ -397,20 +387,44 @@ export function PickerModal() {
     <div class="overlay">
       <div class="panel">
         <h2 class="pink">{req.title}</h2>
-        <div class="gridcards fan">
-          {cards.map((c, i) => (
-            <div
-              key={c.uid}
-              style={{ '--fan': Math.min(i, 14) } as never}
-              onClick={(e) => {
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                burst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#ffd166', 16, 3.2)
-                req.onPick(c.uid)
-              }}
-            >
-              <CardView card={c} />
-            </div>
-          ))}
+        <div class={`gridcards fan ${req.showUpgradeDiff ? 'upgrade-grid' : ''}`}>
+          {cards.map((c, i) => {
+            const upgraded = { ...c, up: true }
+            const before = describeCard(c)
+            const after = describeCard(upgraded)
+            const beforeCost = cardCost(c)
+            const afterCost = cardCost(upgraded)
+            return (
+              <div
+                key={c.uid}
+                class={`picker-card ${req.showUpgradeDiff ? 'upgrade-choice' : ''}`}
+                style={{ '--fan': Math.min(i, 14) } as never}
+                onClick={(e) => {
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                  burst(rect.left + rect.width / 2, rect.top + rect.height / 2, '#ffd166', 16, 3.2)
+                  req.onPick(c.uid)
+                }}
+              >
+                <CardView card={c} />
+                {req.showUpgradeDiff && (
+                  <div class="upgrade-diff">
+                    {beforeCost !== afterCost && (
+                      <div class="upgrade-cost-diff">
+                        <span>{beforeCost}</span><b>→</b><span>{afterCost}</span>
+                      </div>
+                    )}
+                    {before !== after && (
+                      <div class="upgrade-rules-diff">
+                        <span class="before">{before}</span>
+                        <b>↓</b>
+                        <span class="after">{after}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
           {cards.length === 0 && <div class="sub">{t('noEligible')}</div>}
         </div>
         {req.cancellable && (
