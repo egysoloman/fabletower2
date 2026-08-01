@@ -8,6 +8,12 @@ import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypt
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import {
+  initializePostgres,
+  loadState,
+  persistenceBackend,
+  saveState,
+} from './postgres-store'
 
 interface Account {
   user: string
@@ -74,23 +80,87 @@ const MAX_BLOB = 128 * 1024
 
 let db: Db = { accounts: {}, registrationsOpen: true, dailyScores: {} }
 try {
-  db = { registrationsOpen: true, dailyScores: {}, ...JSON.parse(readFileSync(DATA_FILE, 'utf8')) }
+  db = normalizeDb(JSON.parse(readFileSync(DATA_FILE, 'utf8')))
 } catch {
   /* fresh store */
 }
 
 let saveTimer: NodeJS.Timeout | null = null
+let stateRevision = 0
+let persistedRevision = 0
+let accountWriteChain: Promise<void> = Promise.resolve()
+
+function normalizeDb(value: Partial<Db> | null | undefined): Db {
+  return {
+    accounts: value?.accounts && typeof value.accounts === 'object' ? value.accounts : {},
+    registrationsOpen: value?.registrationsOpen !== false,
+    dailyScores: value?.dailyScores && typeof value.dailyScores === 'object' ? value.dailyScores : {},
+    ...(value?.mpMode === 'strict' || value?.mpMode === 'hybrid' ? { mpMode: value.mpMode } : {}),
+  }
+}
+
+function writeAccountFile() {
+  mkdirSync(dirname(DATA_FILE), { recursive: true })
+  writeFileSync(DATA_FILE, JSON.stringify(db))
+  persistedRevision = stateRevision
+}
+
+function queuePostgresWrite(): Promise<void> {
+  const revision = stateRevision
+  const snapshot = structuredClone(db)
+  const operation = accountWriteChain.then(async () => {
+    await saveState('accounts', snapshot)
+    persistedRevision = Math.max(persistedRevision, revision)
+  })
+  accountWriteChain = operation.catch((error) => {
+    console.error('account store write failed:', error)
+  })
+  return operation
+}
+
 function persist() {
+  stateRevision++
   if (saveTimer) return
   saveTimer = setTimeout(() => {
     saveTimer = null
-    try {
-      mkdirSync(dirname(DATA_FILE), { recursive: true })
-      writeFileSync(DATA_FILE, JSON.stringify(db))
-    } catch (e) {
-      console.error('account store write failed:', e)
+    if (persistenceBackend === 'postgres') {
+      void queuePostgresWrite().catch(() => undefined)
+    } else {
+      try {
+        writeAccountFile()
+      } catch (e) {
+        console.error('account store write failed:', e)
+      }
     }
   }, 250)
+}
+
+/** Load the configured durable store before accepting any API traffic. */
+export async function initializeAccounts(): Promise<void> {
+  if (persistenceBackend === 'file') return
+  await initializePostgres()
+  const stored = await loadState<Db>('accounts')
+  if (stored) {
+    db = normalizeDb(stored)
+  } else {
+    await saveState('accounts', db)
+  }
+  stateRevision = 0
+  persistedRevision = 0
+}
+
+/** Test/shutdown hook: make the latest account mutation durable immediately. */
+export async function flushAccounts(): Promise<void> {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  if (persistenceBackend === 'file') {
+    if (persistedRevision < stateRevision) writeAccountFile()
+    return
+  }
+  await accountWriteChain
+  while (persistedRevision < stateRevision) await queuePostgresWrite()
 }
 
 const sessions = new Map<string, string>() // token -> user key
@@ -424,7 +494,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (sub === '/import' && req.method === 'POST') {
       const b = await readBody(req)
       if (!b || typeof b.accounts !== 'object') return json(res, 400, { err: 'bad import payload' }), true
-      db = { registrationsOpen: b.registrationsOpen !== false, accounts: b.accounts, dailyScores: b.dailyScores ?? {} }
+      db = normalizeDb(b)
       sessions.clear()
       persist()
       return json(res, 200, { ok: true, count: Object.keys(db.accounts).length }), true

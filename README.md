@@ -159,15 +159,16 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
     revived at 30% after victory, and everyone drafts their own rewards.
     Every accepted room change is revisioned, broadcast to all clients and
     atomically snapshotted server-side, so the party can resume even after a
-    server restart. Mount the data directory in production, or point
-    `NS_COOP_DATA_FILE` at a persistent volume; inactive snapshots expire
-    after seven days.
+    server restart. Mount the data directory in production, point
+    `NS_COOP_DATA_FILE` at a persistent volume, or enable the optional
+    PostgreSQL store described below; inactive snapshots expire after seven
+    days.
 
 ![pvp](docs/pvp.png)
 
 - **Optional cloud accounts** (guest mode is the default): register/log
   in from Settings to sync feats, codex, palettes and unlocks across
-  devices — JSON-file store, scrypt-hashed credentials, bearer sessions,
+  devices — scrypt-hashed credentials, bearer sessions,
   and admin tools (anonymous run/archetype balance analytics, list/delete/ban accounts, password resets, open/close
   registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
   Hardening knobs: GAME_ENTRY_PASSWORD (optional server-verified entry
@@ -176,6 +177,25 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
   (strict = server computes everything, animations wait for the reply;
   hybrid = instant local prediction with server validation + desync
   correction — also toggleable live from the admin dashboard).
+
+  The server uses local JSON files by default. Hosts without persistent disks
+  can opt into PostgreSQL (including Neon) entirely through environment
+  variables; no connection string is compiled into the app:
+
+  ```env
+  PERSISTENCE_BACKEND=postgres
+  DATABASE_URL=postgresql://...
+  # Optional migration connection when DATABASE_URL is a pooled endpoint:
+  DATABASE_DIRECT_URL=postgresql://...
+  DB_POOL_MAX=3
+  DB_IDLE_CLOSE_MS=60000
+  ```
+
+  Keep `PERSISTENCE_BACKEND` unset (or set it to `file`) for the original
+  `data/accounts.json` and `data/coop-rooms.json` behavior. When PostgreSQL is
+  explicitly enabled, a missing or unreachable database stops startup instead
+  of silently falling back to an empty file store. The account/admin export
+  and import APIs work with either backend.
 
 - **Mod support**: JSON-only content packs in `client/public/mods/` —
   cards, relics, enemies, potions, events and character-loadout tweaks,
