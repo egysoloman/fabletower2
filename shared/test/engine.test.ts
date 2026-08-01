@@ -61,17 +61,18 @@ const inst = (id: string, uid: number, up = false) => ({ uid, id, up })
 const handIdx = (cs: CombatState, id: string) => cs.player.hand.findIndex((c) => c.id === id)
 
 describe('versioned production balance patches', () => {
-  it('applies production v4 exactly once and rolls back cleanly', () => {
+  it('applies production v4.1 exactly once and rolls back cleanly', () => {
     resetBalanceToBaseline()
     const baseHp = Object.fromEntries(Object.entries(ENEMIES).map(([id, enemy]) => [id, [...enemy.hp]]))
     try {
       const first = activateProductionBalance()
-      expect(first.id).toBe('production-v4-mechanics')
-      expect(first.version).toBe('2.0.0')
+      expect(first.id).toBe('production-v4.1-array-fallback')
+      expect(first.version).toBe('2.1.0')
       expect(first.patchIds).toEqual([
         'character-balance-v3@3.0.0',
         'enemy-hp-minus-5-percent@1.0.0',
         'character-mechanics-v4@4.0.0',
+        'array-fallback-pulse@1.0.0',
       ])
       expect(CARDS.strike.effects).toEqual([{ k: 'dmg', n: 8 }])
       expect(CARDS.defend.effects).toEqual([{ k: 'block', n: 7 }])
@@ -82,7 +83,22 @@ describe('versioned production balance patches', () => {
       expect(CARDS.deployturret.effects).toEqual([{ k: 'summonAlly', id: 'ferrodrone' }])
       expect(CARDS.deployplating.cost).toBe(1)
       expect(CARDS.deployplating.effects).toEqual([{ k: 'summonAlly', id: 'bulwarkpod' }])
-      expect(CARDS.relayburst.effects).toEqual([{ k: 'commandMinions' }])
+      expect(CARDS.relayburst.effects).toEqual([
+        { k: 'dmg', n: 2 },
+        { k: 'commandMinions' },
+      ])
+      expect(CARDS.relayburst.upEffects).toEqual([
+        { k: 'dmg', n: 3 },
+        { k: 'commandMinions' },
+      ])
+      expect(CARDS.chainzap.effects).toEqual([
+        { k: 'dmgAll', n: 1 },
+        { k: 'commandMinions' },
+      ])
+      expect(CARDS.chainzap.upEffects).toEqual([
+        { k: 'dmgAll', n: 2 },
+        { k: 'commandMinions' },
+      ])
       expect(RELICS.cortexlink.hooks.firstTurnDraw).toBe(2)
       expect(RELICS.phaselocket.hooks.combatStatuses?.stancewall).toBe(2)
       expect(RELICS.phaselocket.hooks.stanceSwitchEnergy).toBe(1)
@@ -137,7 +153,7 @@ describe('versioned production balance patches', () => {
     expect(getActiveBalance().id).toBe('baseline')
   })
 
-  it('promotes the reinforced-one finalist without changing its resolved mechanics', () => {
+  it('keeps Patch 2.0.0 aligned with the reinforced-one finalist as a rollback target', () => {
     const snapshot = () => ({
       arrayCards: Object.fromEntries(
         Object.values(CARDS)
@@ -151,8 +167,41 @@ describe('versioned production balance patches', () => {
     try {
       activateBalanceStack('candidate-mechanics-relic-reinforced-one-shared4')
       const finalist = snapshot()
-      activateProductionBalance()
+      activateBalanceStack('production-v4-mechanics')
       expect(snapshot()).toEqual(finalist)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('keeps ARRAY playable without summons while summons remain its primary damage', () => {
+    activateProductionBalance()
+    try {
+      let cs = combatFor(newRun(21, 0, 'array'), 'normal')
+      cs.player.hand = [inst('pulsebolt', 20_001)]
+      cs.player.energy = 20
+      const emptyHp = cs.enemies.reduce((sum, enemy) => sum + enemy.hp, 0)
+      cs = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+      expect(emptyHp - cs.enemies.reduce((sum, enemy) => sum + enemy.hp, 0)).toBe(2)
+
+      cs = combatFor(newRun(22, 0, 'array'), 'normal')
+      cs.player.hand = [inst('deployturret', 20_002), inst('pulsebolt', 20_003)]
+      cs.player.energy = 20
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 7, maxHp: 7, stacks: 1 },
+      ])
+      const summonedHp = cs.enemies.reduce((sum, enemy) => sum + enemy.hp, 0)
+      cs = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+      expect(summonedHp - cs.enemies.reduce((sum, enemy) => sum + enemy.hp, 0)).toBe(6)
+
+      let aoe = fixedCombat(['chainzap'], ['drone', 'spambot'])
+      aoe.player.char = 'array'
+      aoe.player.hand = [inst('chainzap', 20_004)]
+      aoe.player.energy = 20
+      const aoeHp = aoe.enemies.map((enemy) => enemy.hp)
+      aoe = combatReduce(aoe, { t: 'play', hand: 0 }).state
+      expect(aoe.enemies.map((enemy, i) => aoeHp[i] - enemy.hp)).toEqual([1, 1])
     } finally {
       resetBalanceToBaseline()
     }

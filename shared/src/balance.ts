@@ -466,6 +466,30 @@ const ARRAY_COMMAND_CARD_PATCHES: Record<string, Partial<CardDef>> = Object.from
     }]),
 )
 
+function commandWithFallbackDamage(card: CardDef, effects: Effect[], upgraded: boolean): Effect[] {
+  const commanded = commandInsteadOfDamage(effects)
+  const commandIndex = commanded.findIndex((effect) => effect.k === 'commandMinions')
+  if (commandIndex < 0) return commanded
+  const fallback: Effect = card.target === 'none'
+    ? { k: 'dmgAll', n: upgraded ? 2 : 1 }
+    : { k: 'dmg', n: upgraded ? 3 : 2 }
+  commanded.splice(commandIndex, 0, fallback)
+  return commanded
+}
+
+const ARRAY_FALLBACK_PULSE_CARD_PATCHES: Record<string, Partial<CardDef>> = Object.fromEntries(
+  Object.values(BASE_CARDS)
+    .filter((card) => (
+      card.char === 'array' &&
+      card.type === 'attack' &&
+      card.effects.some((effect) => ACTIVE_DAMAGE_EFFECTS.has(effect.k))
+    ))
+    .map((card) => [card.id, {
+      effects: commandWithFallbackDamage(card, card.effects, false),
+      upEffects: commandWithFallbackDamage(card, card.upEffects, true),
+    }]),
+)
+
 export const ARRAY_SUMMON_CORE: BalancePatch = {
   schemaVersion: 1,
   id: 'array-summon-core',
@@ -674,13 +698,34 @@ export const CHARACTER_MECHANICS_V4: BalancePatch = {
   },
 }
 
-export const PRODUCTION_BALANCE_STACK: BalanceStack = {
+/** Small body damage prevents ARRAY Attacks becoming blank when every summon is down. */
+export const ARRAY_FALLBACK_PULSE: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-fallback-pulse',
+  version: '1.0.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'ARRAY Attacks retain a small chassis pulse before commanding living summons.',
+  cardPatches: ARRAY_FALLBACK_PULSE_CARD_PATCHES,
+}
+
+/** Exact Patch 2.0.0 rollback target. */
+export const PRODUCTION_V4_BALANCE_STACK: BalanceStack = {
   id: 'production-v4-mechanics',
   version: '2.0.0',
   description: 'Production v3 numbers plus the promoted GHOST and ARRAY mechanics.',
   patches: [
     ...PRODUCTION_V3_BALANCE_STACK.patches,
     CHARACTER_MECHANICS_V4,
+  ],
+}
+
+export const PRODUCTION_BALANCE_STACK: BalanceStack = {
+  id: 'production-v4.1-array-fallback',
+  version: '2.1.0',
+  description: 'Patch 2.0.0 plus a small ARRAY fallback pulse that preserves summon-led damage.',
+  patches: [
+    ...PRODUCTION_V4_BALANCE_STACK.patches,
+    ARRAY_FALLBACK_PULSE,
   ],
 }
 
@@ -817,6 +862,7 @@ export const MECHANICS_RELIC_REINFORCED_ONE_SHARED_FOUR_STACK: BalanceStack = {
 export const BUILTIN_BALANCE_STACKS: Readonly<Record<string, BalanceStack>> = {
   [BASELINE_BALANCE_STACK.id]: BASELINE_BALANCE_STACK,
   [PRODUCTION_V3_BALANCE_STACK.id]: PRODUCTION_V3_BALANCE_STACK,
+  [PRODUCTION_V4_BALANCE_STACK.id]: PRODUCTION_V4_BALANCE_STACK,
   [PRODUCTION_BALANCE_STACK.id]: PRODUCTION_BALANCE_STACK,
   [GHOST_STABLE_EXIT_STACK.id]: GHOST_STABLE_EXIT_STACK,
   [GHOST_EVERY_SWITCH_STACK.id]: GHOST_EVERY_SWITCH_STACK,
