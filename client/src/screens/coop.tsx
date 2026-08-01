@@ -23,6 +23,7 @@ import {
 import {
   coopExit,
   coopActionQueueDepth,
+  coopActionQueueCards,
   coopEnqueueHybridPlay,
   coopFlash,
   coopHost,
@@ -52,6 +53,7 @@ import {
   coopWaitingFor,
   coopTravelTarget,
   coopCompletedNode,
+  coopQueueDispatch,
 } from '../coopclient'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -62,6 +64,56 @@ import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup
 import { MapView, mapGeometry, type MapTravel } from './mapview'
 import { enemyMove, intentText } from '../intent'
 import { mpName } from '../mp'
+
+function animateQueuedCardImpact(dest: { x: number; y: number }, type: string, id: string) {
+  const ext = type === 'attack' ? '.sh' : type === 'power' ? '.sys' : '.cfg'
+  window.setTimeout(() => {
+    codeBurstPt(dest, [`> exec ${id}${ext}`, '[ok]'])
+    glyphSplash(dest.x, dest.y, type === 'attack' ? '#00e5ff' : '#7dffa8', 9)
+  }, 230)
+}
+
+function CoopActionStack() {
+  const cards = coopActionQueueCards.value
+  const dispatch = coopQueueDispatch.value
+
+  useEffect(() => {
+    if (!dispatch) return
+    const from = anchorCenter('coop-queue')
+    const who = Number.isInteger(dispatch.target)
+      ? 'e' + dispatch.target
+      : Number.isInteger(dispatch.ally)
+        ? 'c' + dispatch.ally
+        : 'c' + coopYou.value
+    const dest = anchorCenter(who)
+    if (!from || !dest) return
+    flyCard(from, dest, dispatch.cls, dispatch.label)
+    animateQueuedCardImpact(dest, dispatch.cls, dispatch.id)
+    sfx.whoosh()
+  }, [dispatch?.seq])
+
+  return (
+    <div
+      class={`coop-action-stack ${cards.length > 0 ? 'active' : ''}`}
+      ref={(el) => registerAnchor('coop-queue', el)}
+      aria-label={tf('coopQueueDepth', { n: cards.length })}
+    >
+      {cards.map((card, i) => (
+        <div
+          key={card.uid}
+          class={`coop-action-stack-card ${card.cls}`}
+          style={{
+            '--stack-x': `${Math.min(i, 5) * 2}px`,
+            '--stack-y': `${Math.min(i, 5) * 3}px`,
+            zIndex: cards.length - i,
+          } as never}
+        >
+          <span>{card.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function ShopCloseStatus() {
   const progress = coopWaitProgress.value
@@ -220,15 +272,14 @@ export function CoopScreen() {
       }
       const dest = anchorCenter(who ?? 'c' + you)
       const src = from ?? anchorCenter('c' + you)
-      if (src && dest) {
-        flyCard(src, dest, def.type, cardName(card))
+      const queueAnchor = pred ? anchorCenter('coop-queue') : null
+      const flightDest = queueAnchor
+        ? { x: queueAnchor.x + Math.min(queueDepth, 5) * 2, y: queueAnchor.y + 9 + Math.min(queueDepth, 5) * 3 }
+        : dest
+      if (src && flightDest) {
+        flyCard(src, flightDest, def.type, cardName(card), pred ? 'queue-in' : '')
         sfx.whoosh()
-        const d = dest
-        const ext = def.type === 'attack' ? '.sh' : def.type === 'power' ? '.sys' : '.cfg'
-        setTimeout(() => {
-          codeBurstPt(d, [`> exec ${card.id}${ext}`, '[ok]'])
-          glyphSplash(d.x, d.y, def.type === 'attack' ? '#00e5ff' : '#7dffa8', 9)
-        }, 230)
+        if (!pred && dest) animateQueuedCardImpact(dest, def.type, card.id)
       }
       energyRipple()
       sfx.play()
@@ -238,7 +289,14 @@ export function CoopScreen() {
         if (pred) {
           coopView.value = pred.view
           processEvents(pred.events, { delay: 200 })
-          coopEnqueueHybridPlay({ uid: card.uid, target, ally: action.ally }, v)
+          coopEnqueueHybridPlay({
+            uid: card.uid,
+            id: card.id,
+            label: cardName(card),
+            cls: def.type,
+            target,
+            ally: action.ally,
+          }, v)
           return
         }
         coopPending.value = true
@@ -275,6 +333,7 @@ export function CoopScreen() {
           <span class="spacer" />
         </div>
         <div class="arena">
+          <CoopActionStack />
           <div class="coopparty">
             {v.players.map((p: any, i: number) => (
               <div

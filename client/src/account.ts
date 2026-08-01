@@ -176,6 +176,8 @@ export async function validateSession(): Promise<boolean> {
 }
 
 export function logout() {
+  const token = account.value?.token
+  if (token) void api('/api/session', 'DELETE', undefined, token).catch(() => undefined)
   saveSession(null)
   syncMsg.value = ''
 }

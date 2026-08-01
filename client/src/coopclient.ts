@@ -40,6 +40,15 @@ export const coopNotice = signal('')
 export const coopPending = signal(false)
 /** Predicted Hybrid plays either being validated or waiting to be sent. */
 export const coopActionQueueDepth = signal(0)
+export interface CoopQueuedCardVisual {
+  uid: number
+  id: string
+  label: string
+  cls: string
+}
+/** Cards still visible in the center stack; the in-flight top card is removed. */
+export const coopActionQueueCards = signal<CoopQueuedCardVisual[]>([])
+export const coopQueueDispatch = signal<(CoopQueuedCardVisual & { seq: number; target?: number; ally?: number }) | null>(null)
 export const coopRevision = signal(0)
 export const coopWaitingFor = signal('')
 export const coopWaitProgress = signal<{ replied: number; total: number; closesAt: number | null } | null>(null)
@@ -73,6 +82,9 @@ let phaseTimer = 0
 
 interface HybridQueuedPlay {
   uid: number
+  id: string
+  label: string
+  cls: string
   target?: number
   ally?: number
 }
@@ -80,17 +92,27 @@ interface HybridQueuedPlay {
 /** Only one action is in flight; later clicks wait here in visual order. */
 const hybridPlayQueue: HybridQueuedPlay[] = []
 let hybridInFlight: HybridQueuedPlay | null = null
+let hybridStageTimer = 0
+let hybridStageView: any = null
+let hybridDispatchSeq = 0
+const HYBRID_QUEUE_STAGE_MS = 420
 
 function updateHybridQueueState() {
   const depth = hybridPlayQueue.length + (hybridInFlight ? 1 : 0)
   coopActionQueueDepth.value = depth
+  coopActionQueueCards.value = hybridPlayQueue.map(({ uid, id, label, cls }) => ({ uid, id, label, cls }))
   coopPending.value = depth > 0
 }
 
 function resetHybridQueue() {
+  clearTimeout(hybridStageTimer)
+  hybridStageTimer = 0
+  hybridStageView = null
   hybridPlayQueue.length = 0
   hybridInFlight = null
   coopActionQueueDepth.value = 0
+  coopActionQueueCards.value = []
+  coopQueueDispatch.value = null
   coopPending.value = false
 }
 
@@ -99,6 +121,15 @@ function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any): boolean
   const handIdx = hand?.findIndex((card) => card.uid === item.uid) ?? -1
   if (handIdx < 0) return false
   hybridInFlight = item
+  coopQueueDispatch.value = {
+    uid: item.uid,
+    id: item.id,
+    label: item.label,
+    cls: item.cls,
+    seq: ++hybridDispatchSeq,
+    target: item.target,
+    ally: item.ally,
+  }
   coopSend({
     t: 'coopaction',
     action: { t: 'play', hand: handIdx, target: item.target, ally: item.ally },
@@ -112,8 +143,23 @@ function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any): boolean
  * Card identity, rather than its shifting hand index, survives every rebase.
  */
 export function coopEnqueueHybridPlay(item: HybridQueuedPlay, authoritativeView: any) {
-  if (hybridInFlight) hybridPlayQueue.push(item)
-  else if (!sendHybridPlay(item, authoritativeView)) return false
+  hybridPlayQueue.push(item)
+  if (!hybridInFlight && !hybridStageTimer) {
+    hybridStageView = authoritativeView
+    hybridStageTimer = window.setTimeout(() => {
+      hybridStageTimer = 0
+      const next = hybridPlayQueue.shift()
+      const base = hybridStageView
+      hybridStageView = null
+      if (!next || !sendHybridPlay(next, base)) {
+        resetHybridQueue()
+        coopSend({ t: 'coopsync' })
+        coopFlash(t('coopQueueAdjusted'))
+        return
+      }
+      updateHybridQueueState()
+    }, HYBRID_QUEUE_STAGE_MS)
+  }
   updateHybridQueueState()
   return true
 }

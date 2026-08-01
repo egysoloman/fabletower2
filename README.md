@@ -168,7 +168,7 @@ server/   Node + ws — imports the SAME engine to validate every PvP move
 
 - **Optional cloud accounts** (guest mode is the default): register/log
   in from Settings to sync feats, codex, palettes and unlocks across
-  devices — scrypt-hashed credentials, bearer sessions,
+  devices — scrypt-hashed credentials, restart-safe bearer sessions stored only as SHA-256 token hashes,
   and admin tools (anonymous run/archetype balance analytics, list/delete/ban accounts, password resets, open/close
   registrations, full DB export/import) gated by an NS_ADMIN_KEY env key.
   Hardening knobs: GAME_ENTRY_PASSWORD (optional server-verified entry

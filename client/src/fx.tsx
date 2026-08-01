@@ -211,6 +211,8 @@ interface FlightItem {
   gone: boolean
   /** Explicit glow color (mini flights); card flights color by class. */
   color?: string
+  /** Optional stacking treatment, e.g. entering beneath the co-op queue. */
+  extraClass?: string
 }
 
 export const flights = signal<FlightItem[]>([])
@@ -222,9 +224,15 @@ const FLIGHT_COLORS: Record<string, string> = {
 }
 
 /** Send a glowing card ghost from `from` to `to` with a particle trail. */
-export function flyCard(from: { x: number; y: number }, to: { x: number; y: number }, cls: string, label = '') {
+export function flyCard(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  cls: string,
+  label = '',
+  extraClass = '',
+) {
   const id = fxId++
-  flights.value = [...flights.value, { id, x: from.x, y: from.y, cls, label, gone: false }]
+  flights.value = [...flights.value, { id, x: from.x, y: from.y, cls, label, gone: false, extraClass }]
   requestAnimationFrame(() =>
     requestAnimationFrame(() => {
       flights.value = flights.value.map((f) => (f.id === id ? { ...f, x: to.x, y: to.y, gone: true } : f))
@@ -570,7 +578,7 @@ export function FxLayer() {
       {flights.value.map((f) => (
         <div
           key={f.id}
-          class={`fx-flight ${f.cls} ${f.gone ? 'gone' : ''}`}
+          class={`fx-flight ${f.cls} ${f.extraClass ?? ''} ${f.gone ? 'gone' : ''}`}
           style={{
             ...(f.color ? { '--fc': f.color } : {}),
             transform:

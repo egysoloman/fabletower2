@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-test('cheats default off, require an admin grant, and sessions can be validated', async () => {
+test('sessions survive restart, cheats require an admin grant, and password reset revokes access', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'neonspire-accounts-'))
   process.env.NS_DATA_FILE = join(dir, 'accounts.json')
   process.env.NS_ADMIN_KEY = 'test-admin-key'
-  const { handleApi } = await import(`../src/accounts.ts?test=${Date.now()}`)
+  const { flushAccounts, handleApi } = await import(`../src/accounts.ts?test=${Date.now()}`)
   const server = createServer((req, res) => void handleApi(req, res))
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
@@ -35,6 +35,20 @@ test('cheats default off, require an admin grant, and sessions can be validated'
     const initialSession = await request('/api/session', { headers: auth })
     assert.equal(initialSession.status, 200)
     assert.equal(initialSession.body.cheatsEnabled, false)
+
+    await flushAccounts()
+    assert.equal(readFileSync(process.env.NS_DATA_FILE, 'utf8').includes(registered.body.token), false)
+    const restartedAccounts = await import(`../src/accounts.ts?restart=${Date.now()}`)
+    const restartedServer = createServer((req, res) => void restartedAccounts.handleApi(req, res))
+    try {
+      await new Promise<void>((resolve) => restartedServer.listen(0, '127.0.0.1', resolve))
+      const restartedAddress = restartedServer.address()
+      assert.ok(restartedAddress && typeof restartedAddress === 'object')
+      const restartedSession = await fetch(`http://127.0.0.1:${restartedAddress.port}/api/session`, { headers: auth })
+      assert.equal(restartedSession.status, 200)
+    } finally {
+      await new Promise<void>((resolve, reject) => restartedServer.close((err) => err ? reject(err) : resolve()))
+    }
 
     const granted = await request('/api/admin/cheats', {
       method: 'POST',

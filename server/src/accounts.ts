@@ -51,8 +51,15 @@ interface TelemetryRun {
   relics: number | null
 }
 
+interface StoredSession {
+  user: string
+  expiresAt: number
+}
+
 interface Db {
   accounts: Record<string, Account>
+  /** SHA-256(token) -> durable login session. Raw bearer tokens are never stored. */
+  sessions: Record<string, StoredSession>
   registrationsOpen: boolean
   dailyScores: Record<string, DailyScore[]>
   /** Multiplayer combat mode; env MULTIPLAYER_MODE overrides when set. */
@@ -77,8 +84,10 @@ const GATE_HASH = process.env.GAME_ENTRY_PASSWORD
   ? createHash('sha256').update(process.env.GAME_ENTRY_PASSWORD).digest('hex')
   : ''
 const MAX_BLOB = 128 * 1024
+const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000
+const MAX_SESSIONS_PER_ACCOUNT = 8
 
-let db: Db = { accounts: {}, registrationsOpen: true, dailyScores: {} }
+let db: Db = { accounts: {}, sessions: {}, registrationsOpen: true, dailyScores: {} }
 try {
   db = normalizeDb(JSON.parse(readFileSync(DATA_FILE, 'utf8')))
 } catch {
@@ -91,8 +100,20 @@ let persistedRevision = 0
 let accountWriteChain: Promise<void> = Promise.resolve()
 
 function normalizeDb(value: Partial<Db> | null | undefined): Db {
+  const accounts = value?.accounts && typeof value.accounts === 'object' ? value.accounts : {}
+  const sessions: Record<string, StoredSession> = {}
+  if (value?.sessions && typeof value.sessions === 'object') {
+    for (const [hash, session] of Object.entries(value.sessions)) {
+      if (
+        /^[a-f0-9]{64}$/.test(hash) &&
+        session && typeof session.user === 'string' && accounts[session.user] &&
+        Number.isFinite(session.expiresAt) && session.expiresAt > Date.now()
+      ) sessions[hash] = { user: session.user, expiresAt: session.expiresAt }
+    }
+  }
   return {
-    accounts: value?.accounts && typeof value.accounts === 'object' ? value.accounts : {},
+    accounts,
+    sessions,
     registrationsOpen: value?.registrationsOpen !== false,
     dailyScores: value?.dailyScores && typeof value.dailyScores === 'object' ? value.dailyScores : {},
     ...(value?.mpMode === 'strict' || value?.mpMode === 'hybrid' ? { mpMode: value.mpMode } : {}),
@@ -163,8 +184,6 @@ export async function flushAccounts(): Promise<void> {
   while (persistedRevision < stateRevision) await queuePostgresWrite()
 }
 
-const sessions = new Map<string, string>() // token -> user key
-
 function hashPass(pass: string, salt: string): string {
   return scryptSync(pass, salt, 32).toString('hex')
 }
@@ -175,6 +194,28 @@ function keyOf(user: string): string {
 
 function validName(user: string): boolean {
   return /^[\w\-]{3,16}$/.test(user)
+}
+
+function sessionHash(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function pruneSessions(now = Date.now()) {
+  for (const [hash, session] of Object.entries(db.sessions)) {
+    if (session.expiresAt <= now || !db.accounts[session.user]) delete db.sessions[hash]
+  }
+}
+
+function issueSession(user: string): string {
+  pruneSessions()
+  const mine = Object.entries(db.sessions)
+    .filter(([, session]) => session.user === user)
+    .sort((a, b) => b[1].expiresAt - a[1].expiresAt)
+  for (const [hash] of mine.slice(MAX_SESSIONS_PER_ACCOUNT - 1)) delete db.sessions[hash]
+  const token = randomBytes(32).toString('hex')
+  db.sessions[sessionHash(token)] = { user, expiresAt: Date.now() + SESSION_TTL_MS }
+  persist()
+  return token
 }
 
 function json(res: ServerResponse, code: number, body: unknown) {
@@ -199,17 +240,25 @@ function readBody(req: IncomingMessage): Promise<any> {
   })
 }
 
+function bearerSessionHash(req: IncomingMessage): string | null {
+  const m = /^Bearer ([A-Za-z0-9_-]{16,256})$/.exec(String(req.headers.authorization ?? ''))
+  return m ? sessionHash(m[1]) : null
+}
+
 function authed(req: IncomingMessage): Account | null {
-  const m = /^Bearer (\w+)$/.exec(String(req.headers.authorization ?? ''))
-  const user = m ? sessions.get(m[1]) : undefined
-  const acc = user ? db.accounts[user] : undefined
+  const hash = bearerSessionHash(req)
+  const session = hash ? db.sessions[hash] : undefined
+  if (hash && session && session.expiresAt <= Date.now()) {
+    delete db.sessions[hash]
+    persist()
+    return null
+  }
+  const acc = session ? db.accounts[session.user] : undefined
   return acc && !acc.banned ? acc : null
 }
 
 function revokeSessions(user: string) {
-  for (const [token, sessionUser] of sessions) {
-    if (sessionUser === user) sessions.delete(token)
-  }
+  for (const [hash, session] of Object.entries(db.sessions)) if (session.user === user) delete db.sessions[hash]
 }
 
 function isAdmin(req: IncomingMessage): boolean {
@@ -338,9 +387,8 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     if (db.accounts[key]) return json(res, 409, { err: 'name taken' }), true
     const salt = randomBytes(12).toString('hex')
     db.accounts[key] = { user: key, name: user, salt, hash: hashPass(pass, salt), created: Date.now() }
-    persist()
-    const token = randomBytes(16).toString('hex')
-    sessions.set(token, key)
+    const token = issueSession(key)
+    await flushAccounts()
     return json(res, 200, { token, name: user, cheatsEnabled: false }), true
   }
   if (url === '/api/login' && req.method === 'POST') {
@@ -352,8 +400,8 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       !acc.banned &&
       timingSafeEqual(Buffer.from(acc.hash, 'hex'), Buffer.from(hashPass(pass, acc.salt), 'hex'))
     if (!ok) return json(res, 401, { err: 'bad credentials' }), true
-    const token = randomBytes(16).toString('hex')
-    sessions.set(token, acc.user)
+    const token = issueSession(acc.user)
+    await flushAccounts()
     return json(res, 200, {
       token, name: acc.name, updated: acc.blobUpdated ?? 0, cheatsEnabled: !!acc.cheatsEnabled,
     }), true
@@ -362,6 +410,14 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
     const acc = authed(req)
     if (!acc) return json(res, 401, { err: 'not logged in' }), true
     return json(res, 200, { name: acc.name, cheatsEnabled: !!acc.cheatsEnabled }), true
+  }
+  if (url === '/api/session' && req.method === 'DELETE') {
+    const hash = bearerSessionHash(req)
+    if (hash && db.sessions[hash]) {
+      delete db.sessions[hash]
+      persist()
+    }
+    return json(res, 200, { ok: true }), true
   }
 
   // --- cloud save ------------------------------------------------------
@@ -495,7 +551,7 @@ export async function handleApi(req: IncomingMessage, res: ServerResponse): Prom
       const b = await readBody(req)
       if (!b || typeof b.accounts !== 'object') return json(res, 400, { err: 'bad import payload' }), true
       db = normalizeDb(b)
-      sessions.clear()
+      db.sessions = {}
       persist()
       return json(res, 200, { ok: true, count: Object.keys(db.accounts).length }), true
     }
