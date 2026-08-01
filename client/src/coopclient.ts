@@ -4,7 +4,7 @@
  * rewards — the client only renders and sends intents.
  */
 import { signal } from '@preact/signals'
-import { CARDS, EMOTES, cardName, type CharId, type GameEvent } from '@neonspire/engine'
+import { CARDS, EMOTES, cardName, coopChecksum, predictCoopPlay, type CharId, type GameEvent } from '@neonspire/engine'
 import { anchorCenter, flyCard, fxRemainingMs, processEvents, screenWipe } from './fx'
 import { emoteText, mpWsUrl, showIncomingEmote } from './mp'
 import { modsKey } from './mods'
@@ -38,6 +38,8 @@ export const coopView = signal<any>(null)
 export const coopReward = signal<any>(null)
 export const coopNotice = signal('')
 export const coopPending = signal(false)
+/** Predicted Hybrid plays either being validated or waiting to be sent. */
+export const coopActionQueueDepth = signal(0)
 export const coopRevision = signal(0)
 export const coopWaitingFor = signal('')
 export const coopWaitProgress = signal<{ replied: number; total: number; closesAt: number | null } | null>(null)
@@ -50,8 +52,6 @@ export const coopForm = signal<{ tag: string; char: string; ready: boolean }[] |
 export const coopConn = signal<'online' | 'reconnecting'>('online')
 /** Server security/performance mode, mirrored from combat messages. */
 export const coopMode = signal<'strict' | 'hybrid'>('hybrid')
-/** True while our own hybrid-predicted action awaits the server echo. */
-export const coopPredicted = { current: false }
 export const coopShop = signal<any>(null)
 export const coopEvent = signal<any>(null)
 export const coopRestDeck = signal<any[]>([])
@@ -70,6 +70,87 @@ let ws: WebSocket | null = null
 let token: string | null = null
 let retryUntil = 0
 let phaseTimer = 0
+
+interface HybridQueuedPlay {
+  uid: number
+  target?: number
+  ally?: number
+}
+
+/** Only one action is in flight; later clicks wait here in visual order. */
+const hybridPlayQueue: HybridQueuedPlay[] = []
+let hybridInFlight: HybridQueuedPlay | null = null
+
+function updateHybridQueueState() {
+  const depth = hybridPlayQueue.length + (hybridInFlight ? 1 : 0)
+  coopActionQueueDepth.value = depth
+  coopPending.value = depth > 0
+}
+
+function resetHybridQueue() {
+  hybridPlayQueue.length = 0
+  hybridInFlight = null
+  coopActionQueueDepth.value = 0
+  coopPending.value = false
+}
+
+function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any): boolean {
+  const hand = authoritativeView?.players?.[coopYou.value]?.hand as { uid: number }[] | undefined
+  const handIdx = hand?.findIndex((card) => card.uid === item.uid) ?? -1
+  if (handIdx < 0) return false
+  hybridInFlight = item
+  coopSend({
+    t: 'coopaction',
+    action: { t: 'play', hand: handIdx, target: item.target, ally: item.ally },
+    sum: coopChecksum(authoritativeView),
+  })
+  return true
+}
+
+/**
+ * Queue a play that was already applied to coopView by predictCoopPlay.
+ * Card identity, rather than its shifting hand index, survives every rebase.
+ */
+export function coopEnqueueHybridPlay(item: HybridQueuedPlay, authoritativeView: any) {
+  if (hybridInFlight) hybridPlayQueue.push(item)
+  else if (!sendHybridPlay(item, authoritativeView)) return false
+  updateHybridQueueState()
+  return true
+}
+
+/** Rebase unsent predictions on the newest server view, then dispatch one. */
+function settleHybridPlay(authoritativeView: any): { view: any; dropped: boolean } {
+  hybridInFlight = null
+  let optimisticView = authoritativeView
+  const rebased: HybridQueuedPlay[] = []
+  let dropped = false
+
+  for (const item of hybridPlayQueue) {
+    const hand = optimisticView?.players?.[coopYou.value]?.hand as { uid: number }[] | undefined
+    const handIdx = hand?.findIndex((card) => card.uid === item.uid) ?? -1
+    const predicted = handIdx >= 0
+      ? predictCoopPlay(optimisticView, coopYou.value, handIdx, item.target)
+      : null
+    if (!predicted) {
+      dropped = true
+      break
+    }
+    rebased.push(item)
+    optimisticView = predicted.view
+  }
+
+  hybridPlayQueue.length = 0
+  const next = rebased.shift()
+  hybridPlayQueue.push(...rebased)
+  if (next && !sendHybridPlay(next, authoritativeView)) {
+    hybridPlayQueue.length = 0
+    hybridInFlight = null
+    optimisticView = authoritativeView
+    dropped = true
+  }
+  updateHybridQueueState()
+  return { view: optimisticView, dropped }
+}
 
 // --- Seat persistence: a co-op run survives closing the page -----------------
 // The server holds the seat for the reconnect grace window; we keep the token
@@ -133,6 +214,7 @@ function attach(sock: WebSocket, url: string, onOpen: () => void) {
   }
   sock.onclose = () => {
     if (ws !== sock) return
+    resetHybridQueue()
     const p = coopPhase.value
     const inRun = p === 'map' || p === 'combat' || p === 'reward' || p === 'rest' || p === 'shop' || p === 'event' || p === 'connecting'
     if (token && inRun) {
@@ -228,14 +310,13 @@ function handleMsg(msg: MessageEvent, url: string) {
           break
         case 'coopcombat':
           coopTravelTarget.value = null
+          resetHybridQueue()
           if (coopPhase.value !== 'combat') screenWipe('◈', 'var(--green)')
         // fall through
         case 'coopst': {
           if (data.mode) coopMode.value = data.mode
           coopYou.value = data.you
-          coopView.value = data.view
           if (data.belt) coopBelt.value = data.belt
-          coopPending.value = false
           coopPhase.value = 'combat'
           if (data.played && data.played.who !== data.you) {
             coopFlash(`◈ ally ▸ ${data.played.card.id}${data.played.card.up ? '+' : ''}`)
@@ -254,13 +335,19 @@ function handleMsg(msg: MessageEvent, url: string) {
             }
           }
           if (data.corrected) coopFlash(t('desyncFixed'))
-          // Hybrid: our own action already animated from the local prediction —
-          // the authoritative view snaps in silently unless it was corrected.
           const mine = data.by !== undefined && data.by === data.you
-          if (data.events && !(mine && coopPredicted.current && !data.corrected)) {
+          const predictedAck = mine && hybridInFlight !== null
+          if (data.events && !(predictedAck && !data.corrected)) {
             processEvents(data.events as GameEvent[], { delay: 200, step: 120 })
           }
-          if (mine) coopPredicted.current = false
+          if (predictedAck) {
+            const settled = settleHybridPlay(data.view)
+            coopView.value = settled.view
+            if (settled.dropped) coopFlash(t('coopQueueAdjusted'))
+          } else {
+            coopView.value = data.view
+            if (mine) coopPending.value = false
+          }
           break
         }
         case 'coopreward': {
@@ -371,7 +458,11 @@ function handleMsg(msg: MessageEvent, url: string) {
           clearSeat()
           break
         case 'err':
-          coopPending.value = false
+          if (hybridInFlight || hybridPlayQueue.length > 0) {
+            resetHybridQueue()
+            coopSend({ t: 'coopsync' })
+            coopFlash(t('coopQueueAdjusted'))
+          } else coopPending.value = false
           break
       }
   }
@@ -404,6 +495,7 @@ export function coopLeave() {
   clearSeat()
   retryUntil = 0
   clearTimeout(phaseTimer)
+  resetHybridQueue()
   coopRevision.value = 0
   coopWaitingFor.value = ''
   coopWaitProgress.value = null
@@ -423,7 +515,6 @@ export function coopLeave() {
   coopMap.value = null
   coopView.value = null
   coopReward.value = null
-  coopPending.value = false
 }
 
 export function coopExit() {

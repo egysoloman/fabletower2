@@ -22,6 +22,9 @@ import {
 } from '../fx'
 import {
   coopExit,
+  coopActionQueueDepth,
+  coopEnqueueHybridPlay,
+  coopFlash,
   coopHost,
   coopMap,
   coopNotice,
@@ -40,7 +43,6 @@ import {
   coopLobby,
   coopReady,
   coopMode,
-  coopPredicted,
   coopRestDeck,
   coopResumeSaved,
   coopSavedSeat,
@@ -194,6 +196,9 @@ export function CoopScreen() {
     const me = v.players[you]
     const myTurn = v.active === you && !v.over && !v.downed[you]
     const pending = coopPending.value
+    const queueDepth = coopActionQueueDepth.value
+    const canExtendQueue = coopMode.value === 'hybrid' && queueDepth > 0
+    const inputBlocked = pending && !canExtendQueue
     const hand = me.hand as { uid: number; id: string; up: boolean }[]
     const playableSet = new Set(
       myTurn
@@ -201,11 +206,18 @@ export function CoopScreen() {
         : [],
     )
     const play = (idx: number, who: string | undefined, from?: { x: number; y: number }) => {
-      if (!myTurn || pending) return
+      if (!myTurn || inputBlocked) return
       const card = hand[idx]
       if (!card) return
       const def = CARDS[card.id]
       const target = who?.startsWith('e') ? Number(who.slice(1)) : undefined
+      const action = { t: 'play' as const, hand: idx, target, ally: def.target === 'ally' ? you : undefined }
+      const sum = coopMode.value === 'hybrid' ? coopChecksum(v) : undefined
+      const pred = coopMode.value === 'hybrid' ? predictCoopPlay(v, you, idx, target) : null
+      if (coopMode.value === 'hybrid' && pending && !pred) {
+        coopFlash(t('coopQueueWait'))
+        return
+      }
       const dest = anchorCenter(who ?? 'c' + you)
       const src = from ?? anchorCenter('c' + you)
       if (src && dest) {
@@ -220,16 +232,14 @@ export function CoopScreen() {
       }
       energyRipple()
       sfx.play()
-      const action = { t: 'play', hand: idx, target, ally: def.target === 'ally' ? you : undefined }
       // Hybrid: play the outcome instantly from a local prediction; the
-      // authoritative reply snaps in behind it. Strict: wait for the server.
+      // server validates one queued action at a time. Strict waits per card.
       if (coopMode.value === 'hybrid') {
-        const sum = coopChecksum(v)
-        const pred = predictCoopPlay(v, you, idx, target)
         if (pred) {
-          coopPredicted.current = true
           coopView.value = pred.view
           processEvents(pred.events, { delay: 200 })
+          coopEnqueueHybridPlay({ uid: card.uid, target, ally: action.ally }, v)
+          return
         }
         coopPending.value = true
         coopSend({ t: 'coopaction', action, sum })
@@ -254,6 +264,7 @@ export function CoopScreen() {
           >
             {coopMode.value.toUpperCase()}
           </span>
+          {queueDepth > 0 && <span class="coop-queue-depth">{tf('coopQueueDepth', { n: queueDepth })}</span>}
           <span class="spacer" />
           <span
             class={`turn-indicator ${myTurn ? 'you' : 'them'}`}
@@ -326,9 +337,11 @@ export function CoopScreen() {
             {coopBelt.value.map((pid, i) => (
               <div class="potionwrap" key={i}>
                 <div
-                  class={`potion ${POTIONS[pid]?.rarity ?? 'common'} usable`}
+                  class={`potion ${POTIONS[pid]?.rarity ?? 'common'} usable ${pending ? 'disabled' : ''}`}
                   data-tip={pid}
+                  aria-disabled={pending}
                   onClick={() => {
+                    if (pending) return
                     const needsTarget = POTIONS[pid]?.target === 'enemy'
                     const tgt = needsTarget ? Number((enemyTargets[0] ?? 'e0').slice(1)) : undefined
                     coopSend({ t: 'cooppotion', idx: i, target: tgt })
@@ -345,8 +358,8 @@ export function CoopScreen() {
           <DraggableHand
             cards={hand}
             playable={playableSet}
-            targets={myTurn && !pending ? enemyTargets : []}
-            disabled={!myTurn || pending}
+            targets={myTurn && !inputBlocked ? enemyTargets : []}
+            disabled={!myTurn || inputBlocked}
             previewCard={(card) =>
               previewCard(card, me, previewTargets, {
                 relics: v.playerRelics[you] ?? [],

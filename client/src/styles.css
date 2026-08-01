@@ -2054,6 +2054,19 @@ details .cheat-filters { width: min(86vw, 460px); }
 }
 .modebadge.hybrid { color: var(--green); }
 .modebadge.strict { color: var(--gold); }
+.coop-queue-depth {
+  color: var(--cyan);
+  font-family: var(--font-head);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.7);
+  animation: popIn 0.18s ease backwards;
+}
+.potion.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
 
 .map-wrap { position: relative; }
 
