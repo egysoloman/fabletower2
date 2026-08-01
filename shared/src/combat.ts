@@ -14,6 +14,7 @@ import { ENEMIES, MAX_ALIVE_ENEMIES, actEnemyScale, ascAtk, chooseMove, intentFo
 import { POTIONS } from './potions'
 import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
+import { ascensionEliteBossArtifact, ascensionEliteBossStrength, ascensionEnemyHp } from './ascension'
 import {
   applyEffects,
   applyOverheat,
@@ -75,15 +76,19 @@ export function startCombat(o: StartCombatOpts): CombatState {
   const act = o.act ?? 1
   const enemies: EnemyC[] = o.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.06 * asc) * actEnemyScale(act))
+    let hp = ascensionEnemyHp(randInt(rng, def.hp[0], def.hp[1]), asc, actEnemyScale(act))
     if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
     if (asc >= 16) hp = Math.round(hp * 1.1)
     const statuses = { ...(def.traits ?? {}) }
     for (const [k, v] of Object.entries(enemyStart)) {
       statuses[k as keyof typeof statuses] = (statuses[k as keyof typeof statuses] ?? 0) + v
     }
-    if (asc >= 4 && (def.boss || o.kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
-    if (asc >= 5 && (def.boss || o.kind === 'elite')) statuses.artifact = (statuses.artifact ?? 0) + 1
+    if (def.boss || o.kind === 'elite') {
+      const strength = ascensionEliteBossStrength(asc)
+      const artifact = ascensionEliteBossArtifact(asc)
+      if (strength) statuses.str = (statuses.str ?? 0) + strength
+      if (artifact) statuses.artifact = (statuses.artifact ?? 0) + artifact
+    }
     if (asc >= 11) statuses.str = (statuses.str ?? 0) + 1
     if (asc >= 18 && (def.boss || o.kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
     if (asc >= 20 && def.boss) statuses.artifact = (statuses.artifact ?? 0) + 1

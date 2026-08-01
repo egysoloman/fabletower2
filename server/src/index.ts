@@ -25,6 +25,7 @@ import { adminHtml } from './admin-ui'
 import {
   CARDS,
   ENCOUNTERS,
+  activateProductionBalance,
   pvpChecksum,
   coopChecksum,
   EVENTS,
@@ -55,6 +56,8 @@ import {
   type PvpState,
   type Rng,
 } from '@neonspire/engine'
+
+activateProductionBalance()
 
 const PORT = Number(process.env.PORT ?? 8787)
 const HERE = dirname(fileURLToPath(import.meta.url))

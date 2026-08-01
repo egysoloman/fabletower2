@@ -1,0 +1,28 @@
+[
+  {
+    "name": "baseline"
+  },
+  {
+    "name": "combined_character_tuning_v4",
+    "cardPatches": {
+      "strike": { "effects": [{ "k": "dmg", "n": 8 }] },
+      "defend": { "effects": [{ "k": "block", "n": 7 }] },
+      "phaseblade": { "effects": [{ "k": "dmg", "n": 7 }] },
+      "cloakfield": { "effects": [{ "k": "block", "n": 6 }] },
+      "ventblade": { "effects": [{ "k": "ventDmg", "mult": 3 }] },
+      "deployturret": {
+        "effects": [{ "k": "status", "to": "self", "id": "turret", "n": 1 }],
+        "upEffects": [{ "k": "status", "to": "self", "id": "turret", "n": 2 }]
+      },
+      "deployplating": {
+        "effects": [{ "k": "status", "to": "self", "id": "plating", "n": 1 }],
+        "upEffects": [{ "k": "status", "to": "self", "id": "plating", "n": 2 }]
+      }
+    },
+    "relicPatches": {
+      "cortexlink": { "hooks": { "firstTurnDraw": 2 } },
+      "phaselocket": { "hooks": { "combatStatuses": { "stancewall": 2 } } },
+      "dronecradle": { "hooks": { "combatStatuses": { "turret": 0 } } }
+    }
+  }
+]

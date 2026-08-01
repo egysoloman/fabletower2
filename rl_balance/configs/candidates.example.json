@@ -1,0 +1,24 @@
+[
+  {
+    "name": "baseline",
+    "enemyHpMultiplier": 1.0,
+    "enemyAttackMultiplier": 1.0
+  },
+  {
+    "name": "act_pressure_minus_5pct",
+    "enemyHpMultiplier": 0.95,
+    "enemyAttackMultiplier": 0.95
+  },
+  {
+    "name": "vent_blade_cost_test",
+    "cardPatches": {
+      "ventblade": { "cost": 0 }
+    }
+  },
+  {
+    "name": "golem_hp_test",
+    "enemyPatches": {
+      "golem": { "hp": [42, 48] }
+    }
+  }
+]

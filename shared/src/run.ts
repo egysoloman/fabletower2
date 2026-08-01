@@ -9,6 +9,16 @@ import { EVENTS, type Outcome } from './events'
 import { genActMap, nodeById } from './map'
 import { startCombat } from './combat'
 import { deriveSeed, pick, randInt, rand, rngFromSeed } from './rng'
+import {
+  ascensionBossRelicChoices,
+  ascensionGoldRewardMultiplier,
+  ascensionLagCount,
+  ascensionMaxHp,
+  ascensionPotionDropChance,
+  ascensionRestHealFraction,
+  ascensionShopPriceMultiplier,
+} from './ascension'
+import { getActiveBalance } from './balance'
 
 export const FINAL_ACT = 3
 /** The optional post-game act: THE ROOT. Entered only by choice. */
@@ -51,13 +61,16 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
   const rng = rngFromSeed(seed)
   let uid = 1
   const deck = STARTER_DECKS[char].map((id): CardInst => ({ uid: uid++, id, up: false }))
-  // A2+: the Spire rides along — start cursed. A10 doubles down.
-  if (asc >= 2) deck.push({ uid: uid++, id: 'lag', up: false })
-  if (asc >= 10) deck.push({ uid: uid++, id: 'lag', up: false })
+  // The production curve starts curses at A2/A10; the balance lab can move
+  // those thresholds while preserving the default rules exactly.
+  for (let i = 0; i < ascensionLagCount(asc); i++) {
+    deck.push({ uid: uid++, id: 'lag', up: false })
+  }
   if (asc >= 20) deck.push({ uid: uid++, id: 'glitch', up: false })
-  const maxHp = asc >= 10 ? 60 : asc >= 5 ? 65 : 75
+  const maxHp = ascensionMaxHp(asc)
   // A14+: the climb starts before you're ready.
   const hp = asc >= 14 ? Math.floor(maxHp * 0.85) : maxHp
+  const balance = getActiveBalance()
   return {
     seed,
     rng,
@@ -78,6 +91,8 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
     potions: [],
     asc,
     char,
+    balanceId: balance.id,
+    balanceHash: balance.hash,
   }
 }
 
@@ -149,7 +164,7 @@ export function goldReward(run: RunState, kind: 'normal' | 'elite' | 'boss'): nu
       : kind === 'elite'
         ? randInt(run.rng, 32, 45)
         : randInt(run.rng, 13, 22) + run.act * 4
-  if (run.asc >= 3) base = Math.floor(base * 0.85)
+  base = Math.floor(base * ascensionGoldRewardMultiplier(run.asc))
   return withGoldBonus(run, base)
 }
 
@@ -186,7 +201,7 @@ export function bossRelicId(run: RunState): string | null {
 
 /** Up to 3 relics offered after a boss (A9+: only 2): boss-rarity first, rare fills in. */
 export function bossRelicChoices(run: RunState): string[] {
-  const want = run.asc >= 9 ? 2 : 3
+  const want = ascensionBossRelicChoices(run.asc)
   const pool = obtainableRelics(run.relics, true, run.char)
   const bosses = pool.filter((r) => r.rarity === 'boss')
   const rares = pool.filter((r) => r.rarity === 'rare')
@@ -213,7 +228,7 @@ export function randomPotionId(run: RunState): string {
 
 /** ~35% of combat victories drop a potion (A7+: 25%), if there's belt space. */
 export function rollPotionDrop(run: RunState): string | null {
-  if (rand(run.rng) >= (run.asc >= 19 ? 0.15 : run.asc >= 7 ? 0.25 : 0.35)) return null
+  if (rand(run.rng) >= ascensionPotionDropChance(run.asc)) return null
   if (run.potions.length >= MAX_POTIONS) return null
   return randomPotionId(run)
 }
@@ -244,7 +259,7 @@ const CARD_PRICE: Record<string, [number, number]> = {
 
 export function genShop(run: RunState): ShopStock {
   // A8+: everything on the grey market costs 20% more.
-  const mark = (p: number) => (run.asc >= 8 ? Math.floor(p * 1.2) : p)
+  const mark = (p: number) => Math.floor(p * ascensionShopPriceMultiplier(run.asc))
   const cards: ShopStock['cards'] = []
   let guard = 0
   while (cards.length < 5 && guard++ < 60) {
@@ -279,7 +294,7 @@ export function genShop(run: RunState): ShopStock {
 export function restHealAmount(run: RunState): number {
   let bonus = 0
   for (const r of run.relics) bonus += RELICS[r]?.hooks.restBonus ?? 0
-  return Math.floor(run.maxHp * (run.asc >= 17 ? 0.15 : run.asc >= 6 ? 0.2 : run.asc >= 3 ? 0.25 : 0.3)) + bonus
+  return Math.floor(run.maxHp * ascensionRestHealFraction(run.asc)) + bonus
 }
 
 export function upgradeCard(run: RunState, uid: number): boolean {
