@@ -595,6 +595,14 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   z-index: 45;
   flex-direction: column;
 }
+/* The combat belt hugs the left edge, so its tooltip must open inward. */
+.potionbelt.incombat .potion[data-tip]:hover::after,
+.potionbelt.incombat .potion[data-tip].tip-on::after {
+  top: 50%;
+  bottom: auto;
+  left: calc(100% + 10px);
+  transform: translateY(-50%);
+}
 .potion-offer {
   display: flex;
   align-items: center;
@@ -1637,6 +1645,9 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
  * so the tip isn't painted behind reward/event/shop screens. */
 .topbar:has([data-tip]:hover),
 .topbar:has([data-tip].tip-on) { z-index: 210; }
+/* Acquisition toasts are children of the bar; lift their parent stacking
+ * context while they cross over a reward/shop overlay. */
+.topbar:has(.gaintoast) { z-index: 320; }
 
 /* "you just got X" toast — relics/potions announce themselves by name. */
 .gaintoast {
