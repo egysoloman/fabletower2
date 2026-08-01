@@ -1014,6 +1014,14 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   place-items: center;
   padding: 0 2px;
 }
+.card .cdesc > span {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
 .card .cpreview {
   min-height: 18px;
   display: flex;

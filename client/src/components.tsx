@@ -59,7 +59,7 @@ export function CardView(props: {
       )}
       <div class={`cname ${card.up ? 'upgraded' : ''}`}>{cardName(card)}</div>
       <div class="ctype">{typeLabel}</div>
-      <div class="cdesc">{describeCard(card)}</div>
+      <div class="cdesc"><span>{describeCard(card)}</span></div>
       {props.preview && (props.preview.damage || props.preview.block) && (
         <div class="cpreview">
           {props.preview.damage && (
