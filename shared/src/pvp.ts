@@ -3,7 +3,7 @@
  * interpreter as PvE. Runs on the server (authoritative validation) and the
  * client renders the redacted views it gets back.
  */
-import type { CardInst, DeckSide, GameEvent, MinionC, PvpAction, PvpState, Statuses, StepResult } from './types'
+import type { CardInst, CharId, DeckSide, GameEvent, MinionC, PvpAction, PvpState, Statuses, StepResult } from './types'
 import {
   applyOverheat,
   discardHand,
@@ -15,10 +15,20 @@ import {
   tickTurnStart,
 } from './core'
 import { rngFromSeed } from './rng'
-import { CARDS } from './cards'
+import { CARDS, obtainableCards } from './cards'
 import { modifiedDamage } from './core'
+import { STARTER_DECKS } from './run'
 
 export const PVP_HP = 72
+export const PVP_DRAFT_SIZE = 5
+
+/** Build a direct-duel deck from the character starter deck plus five picks. */
+export function buildPvpDraftDeck(char: CharId, picks: readonly string[]): { id: string; up: boolean }[] | null {
+  if (picks.length !== PVP_DRAFT_SIZE || new Set(picks).size !== picks.length) return null
+  const allowed = new Set(obtainableCards(char).map((card) => card.id))
+  if (picks.some((id) => !allowed.has(id))) return null
+  return [...STARTER_DECKS[char], ...picks].map((id) => ({ id, up: false }))
+}
 
 /** Both duelists get the same fixed, fair deck. */
 export const PVP_DECK: string[] = [

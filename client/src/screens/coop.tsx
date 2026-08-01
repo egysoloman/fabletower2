@@ -4,7 +4,7 @@
  * Everything is server-authoritative; this file only renders and asks.
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, EVENTS, POTIONS, cardCost, cardName, cardRetains, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CardInst, type CharId } from '@neonspire/engine'
+import { CARDS, EVENTS, POTIONS, RELICS, ascensionRestHealFraction, cardCost, cardName, cardRetains, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicDesc, relicName, type CardInst, type CharId } from '@neonspire/engine'
 import { BlockChip, CardById, CardView, HpBar, MinionCard, PotionBelt, RelicBar, StatusRow, byName } from '../components'
 import {
   anchorCenter,
@@ -61,14 +61,15 @@ import {
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
-import { DraggableHand, dragHoverWho } from './hand'
+import { DraggableHand, dragHoverWho, dragTargetKind } from './hand'
 import { charColor, lastChar } from './charselect'
-import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
+import { AscensionPicker, CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { MapView, mapGeometry, type MapTravel } from './mapview'
 import { enemyMove, intentText } from '../intent'
 import { mpName } from '../mp'
 import { pileView } from '../store'
 import { HandDrawFlights, sweepHandToDiscard } from './pilefx'
+import { ascUnlocked } from '../game'
 
 function animateQueuedCardImpact(dest: { x: number; y: number }, type: string, id: string) {
   const ext = type === 'attack' ? '.sh' : type === 'power' ? '.sys' : '.cfg'
@@ -85,9 +86,10 @@ function CoopActionStack() {
   useEffect(() => {
     if (!dispatch) return
     const from = anchorCenter('coop-queue')
-    const who = Number.isInteger(dispatch.target)
+    const def = CARDS[dispatch.id]
+    const who = def?.target === 'enemy' && Number.isInteger(dispatch.target)
       ? 'e' + dispatch.target
-      : Number.isInteger(dispatch.ally)
+      : def?.target === 'ally' && Number.isInteger(dispatch.ally)
         ? 'c' + dispatch.ally
         : 'c' + coopYou.value
     const dest = anchorCenter(who)
@@ -176,6 +178,8 @@ export function CoopScreen() {
   const [char, setChar] = useState<CharId>(lastChar())
   const [picking, setPicking] = useState(false)
   const [size, setSize] = useState(2)
+  const [asc, setAsc] = useState(0)
+  const [rewardRelic, setRewardRelic] = useState<string | null>(null)
   const phase = coopPhase.value
   const shakeCls = useShake()
   const submitAndWait = (msg: unknown, waitingFor: string) => {
@@ -183,6 +187,10 @@ export function CoopScreen() {
     coopWaitingFor.value = waitingFor
     coopPhase.value = 'waiting'
   }
+  useEffect(() => {
+    const choices = Array.isArray(coopReward.value?.relics) ? coopReward.value.relics as string[] : []
+    setRewardRelic(choices.length === 1 ? choices[0] : null)
+  }, [coopReward.value])
   useEffect(() => {
     if (phase === 'combat') localWho.value = 'c' + coopYou.value
     return () => {
@@ -289,9 +297,18 @@ export function CoopScreen() {
     const canExtendQueue = coopMode.value === 'hybrid' && coopHybridPlayOpen.value
     const inputBlocked = pending && !canExtendQueue
     const hand = me.hand as { uid: number; id: string; up: boolean }[]
+    const enemyTargets = v.enemies.map((e: any, i: number) => (e.dead ? null : 'e' + i)).filter(Boolean) as string[]
+    const allyTargets = v.players
+      .map((p: any, i: number) => (i === you || v.downed[i] || p.hp <= 0 ? null : 'c' + i))
+      .filter(Boolean) as string[]
     const playableSet = new Set(
       myTurn
-        ? hand.map((c, i) => (!CARDS[c.id]?.unplayable && me.energy >= cardCost(c) ? i : -1)).filter((i) => i >= 0)
+        ? hand
+            .map((c, i) => {
+              const def = CARDS[c.id]
+              return !def?.unplayable && me.energy >= cardCost(c) && (def.target !== 'ally' || allyTargets.length > 0) ? i : -1
+            })
+            .filter((i) => i >= 0)
         : [],
     )
     const play = (idx: number, who: string | undefined, from?: { x: number; y: number }) => {
@@ -299,15 +316,21 @@ export function CoopScreen() {
       const card = hand[idx]
       if (!card) return
       const def = CARDS[card.id]
-      const target = who?.startsWith('e') ? Number(who.slice(1)) : undefined
-      const action = { t: 'play' as const, hand: idx, target, ally: def.target === 'ally' ? you : undefined }
+      const target = def.target === 'enemy' && who?.startsWith('e') ? Number(who.slice(1)) : undefined
+      const ally = def.target === 'ally' && who?.startsWith('c') ? Number(who.slice(1)) : undefined
+      const action = { t: 'play' as const, hand: idx, target, ally }
       const sum = coopMode.value === 'hybrid' ? coopChecksum(v) : undefined
       const pred = coopMode.value === 'hybrid' ? predictCoopPlay(v, you, idx, target) : null
       if (coopMode.value === 'hybrid' && pending && !pred) {
         coopFlash(t('coopQueueWait'))
         return
       }
-      const dest = anchorCenter(who ?? 'c' + you)
+      const destWho = def.target === 'enemy' && target !== undefined
+        ? 'e' + target
+        : def.target === 'ally' && ally !== undefined
+          ? 'c' + ally
+          : 'c' + you
+      const dest = anchorCenter(destWho)
       const src = from ?? anchorCenter('c' + you)
       const waitsInQueue = !!pred && canExtendQueue
       const queueAnchor = waitsInQueue ? anchorCenter('coop-queue') : null
@@ -344,7 +367,10 @@ export function CoopScreen() {
       coopPending.value = true
       coopSend({ t: 'coopaction', action })
     }
-    const enemyTargets = v.enemies.map((e: any, i: number) => (e.dead ? null : 'e' + i)).filter(Boolean) as string[]
+    const defaultAllyTarget = v.players
+      .map((player: any, i: number) => ({ who: 'c' + i, hp: player.hp, ratio: player.maxHp > 0 ? player.hp / player.maxHp : 1, down: v.downed[i] }))
+      .filter((entry: { who: string; hp: number; down: boolean }) => entry.who !== 'c' + you && !entry.down && entry.hp > 0)
+      .sort((a: { ratio: number }, b: { ratio: number }) => a.ratio - b.ratio)[0]?.who
     const hoverWho = dragHoverWho.value
     const hoverEnemy = hoverWho?.startsWith('e') ? v.enemies[Number(hoverWho.slice(1))] : undefined
     const previewTargets =
@@ -387,11 +413,20 @@ export function CoopScreen() {
             {v.players.map((p: any, i: number) => (
               <div
                 key={i}
-                class={`player-zone coopmate ${v.downed[i] ? 'downed' : ''} ${fxPulses.value['c' + i] ?? ''}`}
+                class={`player-zone coopmate ${v.downed[i] ? 'downed' : ''} ${dragTargetKind.value === 'ally' && i !== you && !v.downed[i] && p.hp > 0 ? 'ally-targetable' : ''} ${dragHoverWho.value === 'c' + i ? 'ally-snap' : ''} ${fxPulses.value['c' + i] ?? ''}`}
                 style={{ borderColor: coopMap.value?.party?.[i]?.color }}
                 ref={(el) => registerAnchor('c' + i, el)}
               >
                 {i === v.active && !v.over && <div class="turnchip">▶</div>}
+                {i === you && (
+                  <div
+                    class={`energy-orb ${fxPulses.value.orb ?? ''}`}
+                    data-tip={t('energyTip')}
+                    ref={(el) => registerAnchor('orb', el)}
+                  >
+                    {p.energy}/{p.energyMax}
+                  </div>
+                )}
                 <BlockChip block={p.block} />
                 <div class="glyph" style={{ opacity: v.downed[i] ? 0.3 : 1, color: coopMap.value?.party?.[i]?.color }}>
                   <Sprite id={coopMap.value?.party?.[i]?.char ?? 'runner'} size={44} />
@@ -415,7 +450,7 @@ export function CoopScreen() {
               return (
                 <div
                   key={i}
-                  class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${e.summoned ? 'summon' : ''} spawn-in ${e.dead ? '' : (fxPulses.value['e' + i] ?? '')}`}
+                  class={`enemy ${e.dead ? 'dead' : ''} ${boss ? 'boss' : ''} ${e.summoned ? 'summon' : ''} ${dragTargetKind.value === 'enemy' && !e.dead ? 'targetable' : ''} ${dragHoverWho.value === 'e' + i ? 'snap' : ''} spawn-in ${e.dead ? '' : (fxPulses.value['e' + i] ?? '')}`}
                   ref={(el) => registerAnchor('e' + i, el)}
                 >
                   <BlockChip block={e.block} />
@@ -476,6 +511,7 @@ export function CoopScreen() {
             cards={hand}
             playable={playableSet}
             targets={myTurn && !inputBlocked ? enemyTargets : []}
+            allyTargets={myTurn && !inputBlocked ? allyTargets : []}
             disabled={!myTurn || inputBlocked}
             previewCard={(card) =>
               previewCard(card, me, previewTargets, {
@@ -483,7 +519,12 @@ export function CoopScreen() {
                 firstCardFree: v.firstCardFree,
               })
             }
-            onCardClick={(i) => playableSet.has(i) && play(i, enemyTargets[0])}
+            onCardClick={(i) => {
+              if (!playableSet.has(i)) return
+              const targetKind = CARDS[hand[i].id]?.target
+              const targetWho = targetKind === 'enemy' ? enemyTargets[0] : targetKind === 'ally' ? defaultAllyTarget : undefined
+              play(i, targetWho)
+            }}
             onPlay={play}
           />
           <HandDrawFlights hand={hand as CardInst[]} root=".coop-combat" />
@@ -539,7 +580,7 @@ export function CoopScreen() {
       <div class="logo" style={{ fontSize: 'clamp(28px,5vw,46px)' }}>
         CO<span>OP</span>
       </div>
-      <div class={`pvp-status ${phase === 'map' ? 'coop-map-status' : ''}`}>
+      <div class={`pvp-status ${phase === 'map' ? 'coop-map-status' : ''} ${phase === 'reward' ? 'coop-reward-status' : ''}`}>
         {phase === 'idle' && (
           <>
             <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('coopIntro')}</div>
@@ -560,9 +601,10 @@ export function CoopScreen() {
                 </button>
               ))}
             </div>
+            <AscensionPicker value={asc} max={ascUnlocked()} onChange={setAsc} />
             <MpConnect />
-            <button class="btn big pink" onClick={() => coopQueue(mpName(), char, size)}>
-              {t('coopFind')}
+            <button class="btn big pink" onClick={() => coopQueue(mpName(), char, size, asc)}>
+              {t('coopFind')}{asc > 0 ? ` · A${asc}` : ''}
             </button>
           </>
         )}
@@ -650,22 +692,54 @@ export function CoopScreen() {
             </div>
           </>
         )}
-        {phase === 'reward' && coopReward.value && (
-          <div class="phase-in">
-            <h2 style={{ color: 'var(--gold)' }}>{t('spoils')}</h2>
-            <div class="sub">+{coopReward.value.gold}¤{coopReward.value.relic ? ` · ${coopReward.value.relic}` : ''}</div>
-            <div class="cardrow" style={{ display: 'flex', gap: '12px' }}>
-              {coopReward.value.cards.map((id: string, i: number) => (
-                <div key={id} onClick={() => (submitAndWait({ t: 'cooptake', card: id, relic: true }, 'reward'), (coopReward.value = null))}>
-                  <CardView card={{ uid: 0, id, up: false }} cls="reveal" style={{ '--reveal': `${i * 110}ms` } as never} />
-                </div>
-              ))}
+        {phase === 'reward' && coopReward.value && (() => {
+          const choices = Array.isArray(coopReward.value.relics) ? coopReward.value.relics as string[] : []
+          const needsRelic = choices.length > 1 && !rewardRelic
+          const take = (card: string | null) => {
+            if (needsRelic) return
+            submitAndWait({ t: 'cooptake', card, relic: rewardRelic }, 'reward')
+            coopReward.value = null
+          }
+          return (
+            <div class="phase-in coop-reward-phase">
+              <h2 style={{ color: 'var(--gold)' }}>{t('spoils')}</h2>
+              <div class="sub" style={{ color: 'var(--gold)' }}>+{coopReward.value.gold}¤</div>
+              {choices.length > 0 && (
+                <>
+                  <div class="sub">{choices.length > 1 ? t('bossCachePick') : t('takeNote')}</div>
+                  <div class="coop-relic-choices">
+                    {choices.map((id) => {
+                      const relic = RELICS[id]
+                      return (
+                        <div
+                          key={id}
+                          class={`relic-offer ${rewardRelic === id ? 'picked' : ''}`}
+                          onClick={() => (sfx.click(), setRewardRelic(id))}
+                        >
+                          <div class="rsym">{relic?.sym ?? '◆'}</div>
+                          <div>
+                            <div class="rname">{relicName(id)}</div>
+                            <div class="rdesc">{relicDesc(id)}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+              <div class="cardrow coop-reward-cards">
+                {coopReward.value.cards.map((id: string, i: number) => (
+                  <div key={id} class={`reward-choice ${needsRelic ? 'disabled' : ''}`} onClick={() => take(id)}>
+                    <CardView card={{ uid: 0, id, up: false }} cls="reveal reward-card" style={{ '--reveal': `${i * 110}ms` } as never} />
+                  </div>
+                ))}
+              </div>
+              <button class="btn ghost" disabled={needsRelic} onClick={() => take(null)}>
+                {t('skip')}
+              </button>
             </div>
-            <button class="btn ghost" onClick={() => (submitAndWait({ t: 'cooptake', card: null, relic: true }, 'reward'), (coopReward.value = null))}>
-              {t('skip')}
-            </button>
-          </div>
-        )}
+          )
+        })()}
         {phase === 'waiting' && (
           <div class="phase-in">
             <div class="pulse" style={{ color: 'var(--green)' }}>{t('coopWaiting')}</div>
@@ -677,7 +751,7 @@ export function CoopScreen() {
             <h2>{t('safehouse')}</h2>
             <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', justifyContent: 'center' }}>
               <button class="btn" onClick={() => submitAndWait({ t: 'cooprestpick', what: 'heal' }, 'rest')}>
-                {t('coopRestHeal')}
+                {tf('coopRestHeal', { n: Math.round(ascensionRestHealFraction(Number(m.asc) || 0) * 100) })}
               </button>
               <details>
                 <summary class="btn" style={{ display: 'inline-block', cursor: 'pointer' }}>{t('patch')}</summary>

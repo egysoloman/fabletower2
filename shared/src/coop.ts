@@ -12,6 +12,11 @@ import { POTIONS } from './potions'
 import { ENEMIES, MAX_ALIVE_ENEMIES, actEnemyScale, ascAtk, chooseMove, intentFor } from './enemies'
 import { RELICS } from './relics'
 import {
+  ascensionEliteBossArtifact,
+  ascensionEliteBossStrength,
+  ascensionEnemyHp,
+} from './ascension'
+import {
   applyEffects,
   applyOverheat,
   applyStatus,
@@ -97,6 +102,7 @@ export function startCoopCombat(opts: {
   const scale = coopScale(n)
   const asc = opts.asc ?? 0
   const act = opts.act ?? 1
+  const kind = opts.kind ?? 'normal'
 
   const players = opts.players.map((p) => makeSide(p.name, p.hp, p.maxHp, p.deck.map((c) => ({ ...c })), rng, p.char))
   const playerRelics = opts.players.map((p) => [...p.relics])
@@ -122,12 +128,22 @@ export function startCoopCombat(opts: {
 
   const enemies: EnemyC[] = opts.enemyIds.map((id) => {
     const def = ENEMIES[id]
-    let hp = Math.round(randInt(rng, def.hp[0], def.hp[1]) * (1 + 0.06 * asc) * actEnemyScale(act) * scale.hp)
+    let hp = Math.round(ascensionEnemyHp(randInt(rng, def.hp[0], def.hp[1]), asc, actEnemyScale(act)) * scale.hp)
     if (asc >= 13 && def.boss) hp = Math.round(hp * 1.15)
+    if (asc >= 16) hp = Math.round(hp * 1.1)
     const statuses = { ...(def.traits ?? {}) }
     for (const [k, v] of Object.entries(enemyStart)) {
       statuses[k as keyof typeof statuses] = (statuses[k as keyof typeof statuses] ?? 0) + v
     }
+    if (def.boss || kind === 'elite') {
+      const strength = ascensionEliteBossStrength(asc)
+      const artifact = ascensionEliteBossArtifact(asc)
+      if (strength) statuses.str = (statuses.str ?? 0) + strength
+      if (artifact) statuses.artifact = (statuses.artifact ?? 0) + artifact
+    }
+    if (asc >= 11) statuses.str = (statuses.str ?? 0) + 1
+    if (asc >= 18 && (def.boss || kind === 'elite')) statuses.str = (statuses.str ?? 0) + 1
+    if (asc >= 20 && def.boss) statuses.artifact = (statuses.artifact ?? 0) + 1
     return {
       defId: id, name: def.name, glyph: def.glyph, hp, maxHp: hp, block: 0,
       statuses, intent: null, lastMoves: [], usedOn: {}, dead: false,
@@ -243,10 +259,16 @@ function enemyPhase(cs: CoopState, evs: GameEvent[]) {
             if (aliveE >= MAX_ALIVE_ENEMIES || cs.enemies.length >= 8) break
             const def2 = ENEMIES[eff.id]
             if (!def2) break
-            const hp = Math.round(randInt(cs.rng, def2.hp[0], def2.hp[1]) * (1 + 0.06 * cs.asc) * actEnemyScale(cs.act ?? 1) * coopScale(cs.partySize).hp)
+            let hp = Math.round(
+              ascensionEnemyHp(randInt(cs.rng, def2.hp[0], def2.hp[1]), cs.asc, actEnemyScale(cs.act ?? 1)) *
+                coopScale(cs.partySize).hp,
+            )
+            if (cs.asc >= 16) hp = Math.round(hp * 1.1)
+            const statuses = { ...(def2.traits ?? {}) }
+            if (cs.asc >= 11) statuses.str = (statuses.str ?? 0) + 1
             cs.enemies.push({
               defId: eff.id, name: def2.name, glyph: def2.glyph, hp, maxHp: hp, block: 0,
-              statuses: { ...(def2.traits ?? {}) }, intent: null, lastMoves: [], usedOn: {}, summoned: true, dead: false,
+              statuses, intent: null, lastMoves: [], usedOn: {}, summoned: true, dead: false,
             })
             evs.push({ e: 'summon', who: 'e' + (cs.enemies.length - 1), name: def2.name })
           }
@@ -281,10 +303,19 @@ export function coopReduce(prev: CoopState, playerIdx: number, action: CoopActio
   if (action.t === 'play') {
     const card = me.hand[action.hand]
     const def = card ? CARDS[card.id] : undefined
-    const ally =
-      def?.target === 'ally' && action.ally !== undefined && cs.players[action.ally] && !cs.downed[action.ally]
-        ? { side: cs.players[action.ally], who: whoP(action.ally) }
-        : undefined
+    if (
+      def?.target === 'ally' &&
+      (!Number.isInteger(action.ally) ||
+        action.ally === playerIdx ||
+        !cs.players[action.ally!] ||
+        cs.downed[action.ally!] ||
+        cs.players[action.ally!].hp <= 0)
+    ) {
+      return { state: prev, events: [], error: 'invalid ally target' }
+    }
+    const ally = def?.target === 'ally'
+      ? { side: cs.players[action.ally!], who: whoP(action.ally!) }
+      : undefined
     const err = playCardFromHand(cs, me, who, foesOf(cs), action.hand, action.target, evs, ally)
     if (err) return { state: prev, events: [], error: err }
     coopMarkDeaths(cs, evs)

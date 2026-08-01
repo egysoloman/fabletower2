@@ -15,6 +15,7 @@ import {
   ascAtk,
   attack,
   availableNodeIds,
+  buildPvpDraftDeck,
   combatFor,
   combatReduce,
   configureAscensionTuning,
@@ -514,6 +515,14 @@ describe('map generation', () => {
 })
 
 describe('PvP', () => {
+  it('builds direct-duel decks from starters plus five legal picks', () => {
+    const deck = buildPvpDraftDeck('runner', ['zeroday', 'twinlaser', 'backdoor', 'breaker', 'firewall'])
+    expect(deck).toHaveLength(15)
+    expect(deck?.slice(0, 5).map((card) => card.id)).toEqual(['strike', 'strike', 'strike', 'strike', 'strike'])
+    expect(buildPvpDraftDeck('runner', ['zeroday', 'zeroday', 'backdoor', 'breaker', 'firewall'])).toBeNull()
+    expect(buildPvpDraftDeck('runner', ['zeroday', 'twinlaser', 'backdoor', 'breaker', 'emberjab'])).toBeNull()
+  })
+
   it('rejects out-of-turn actions and hides opponent hands', () => {
     const ps = newPvp(1, ['A', 'B'])
     const res = pvpReduce(ps, 1, { t: 'end' })
@@ -1598,6 +1607,24 @@ describe('co-op combat (cycle 27)', () => {
     expect(duo.enemies[0].maxHp).toBeLessThanOrEqual(Math.round(48 * 1.55))
   })
 
+  it('applies the full ascension combat curve in co-op', async () => {
+    const { startCoopCombat } = await import('../src/coop')
+    const at = (asc: number, kind: 'normal' | 'boss', enemyIds = ['golem']) =>
+      startCoopCombat({
+        players: mkPlayers(2),
+        enemyIds,
+        encounterId: enemyIds.join(','),
+        seed: 9,
+        uidStart: 900,
+        asc,
+        kind,
+      })
+    expect(at(16, 'normal').enemies[0].maxHp).toBeGreaterThan(at(15, 'normal').enemies[0].maxHp)
+    const boss = at(20, 'boss', ['compiler']).enemies[0]
+    expect(boss.statuses.str).toBe(3)
+    expect(boss.statuses.artifact).toBe(2)
+  })
+
   it('players rotate turns, then the enemy phase fires', async () => {
     const { coopReduce } = await import('../src/coop')
     let cs = await start(2)
@@ -1616,18 +1643,31 @@ describe('co-op combat (cycle 27)', () => {
     }
   })
 
-  it('ally support cards heal the chosen teammate, cost the owner', async () => {
+  it('Tourniquet heals only the chosen living teammate', async () => {
     const { coopReduce } = await import('../src/coop')
     const cs = await start(2)
+    cs.players[0].hand = [inst('tourniquet', 8801)]
+    cs.players[0].hp = 40
     cs.players[1].hp = 50
-    const idx = cs.players[0].hand.findIndex((c) => c.id === 'medpatch')
-    expect(idx).toBeGreaterThanOrEqual(0)
     const energyBefore = cs.players[0].energy
-    const res = coopReduce(cs, 0, { t: 'play', hand: idx, ally: 1 })
+    const res = coopReduce(cs, 0, { t: 'play', hand: 0, ally: 1 })
     expect(res.error).toBeUndefined()
-    expect(res.state.players[1].hp).toBe(58)
-    expect(res.state.players[0].energy).toBe(energyBefore - 1)
-    expect(res.state.players[0].discard.some((c) => c.id === 'medpatch')).toBe(true)
+    expect(res.state.players[0].hp).toBe(40)
+    expect(res.state.players[1].hp).toBe(56)
+    expect(res.state.players[0].energy).toBe(energyBefore)
+    expect(res.state.players[0].exhausted.some((c) => c.id === 'tourniquet')).toBe(true)
+  })
+
+  it('rejects an ally card without an explicit valid teammate target', async () => {
+    const { coopReduce } = await import('../src/coop')
+    const cs = await start(2)
+    cs.players[0].hand = [inst('tourniquet', 8802)]
+    cs.players[0].hp = 40
+    cs.players[1].hp = 50
+    expect(coopReduce(cs, 0, { t: 'play', hand: 0 }).error).toBe('invalid ally target')
+    expect(coopReduce(cs, 0, { t: 'play', hand: 0, ally: 0 }).error).toBe('invalid ally target')
+    expect(cs.players[0].hp).toBe(40)
+    expect(cs.players[1].hp).toBe(50)
   })
 
   it('downed players are skipped; a win revives them at 30%', async () => {

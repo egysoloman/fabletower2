@@ -278,13 +278,13 @@ function attach(sock: WebSocket, url: string, onOpen: () => void) {
   sock.onmessage = (msg) => handleMsg(msg, url)
 }
 
-export function coopQueue(name: string, char: CharId, size: number) {
+export function coopQueue(name: string, char: CharId, size: number, asc: number) {
   coopLeave()
   coopNotice.value = ''
   coopPhase.value = 'connecting'
   const url = mpWsUrl()
   try {
-    attach(new WebSocket(url), url, () => coopSend({ t: 'coopqueue', name, char, size, modsKey: modsKey() }))
+    attach(new WebSocket(url), url, () => coopSend({ t: 'coopqueue', name, char, size, asc, modsKey: modsKey() }))
   } catch {
     coopNotice.value = 'bad server url'
     coopPhase.value = 'error'

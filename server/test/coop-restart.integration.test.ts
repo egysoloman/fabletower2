@@ -217,3 +217,72 @@ test('a deliberate climb leave immediately awards the rival a forfeit win', { ti
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('multiplayer ascension partitions both climb and co-op matchmaking', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'neonspire-asc-match-'))
+  const port = await freePort()
+  const server = await startServer(port, join(dir, 'coop.json'))
+  const sockets: TestSocket[] = []
+  try {
+    const climbA = await connect(port)
+    const climbOtherAsc = await connect(port)
+    const climbC = await connect(port)
+    sockets.push(climbA, climbOtherAsc, climbC)
+    climbA.ws.send(JSON.stringify({ t: 'queue', name: 'a3', char: 'runner', mode: 'climb', asc: 3, modsKey: 'vanilla' }))
+    climbOtherAsc.ws.send(JSON.stringify({ t: 'queue', name: 'a4', char: 'runner', mode: 'climb', asc: 4, modsKey: 'vanilla' }))
+    await Promise.all([climbA.next('queued'), climbOtherAsc.next('queued')])
+    climbC.ws.send(JSON.stringify({ t: 'queue', name: 'a3-peer', char: 'ghost', mode: 'climb', asc: 3, modsKey: 'vanilla' }))
+    const [climbStartA, climbStartC] = await Promise.all([climbA.next('climbstart'), climbC.next('climbstart')])
+    assert.equal(climbStartA.asc, 3)
+    assert.equal(climbStartC.asc, 3)
+
+    const coopA = await connect(port)
+    const coopOtherAsc = await connect(port)
+    const coopC = await connect(port)
+    sockets.push(coopA, coopOtherAsc, coopC)
+    coopA.ws.send(JSON.stringify({ t: 'coopqueue', name: 'coop-a6', char: 'array', size: 2, asc: 6, modsKey: 'vanilla' }))
+    coopOtherAsc.ws.send(JSON.stringify({ t: 'coopqueue', name: 'coop-a7', char: 'array', size: 2, asc: 7, modsKey: 'vanilla' }))
+    await Promise.all([coopA.next('queued'), coopOtherAsc.next('queued')])
+    coopC.ws.send(JSON.stringify({ t: 'coopqueue', name: 'coop-a6-peer', char: 'vector', size: 2, asc: 6, modsKey: 'vanilla' }))
+    const [formA, formC] = await Promise.all([coopA.next('coopform'), coopC.next('coopform')])
+    assert.equal(formA.asc, 6)
+    assert.equal(formC.asc, 6)
+  } finally {
+    for (const socket of sockets) socket.ws.close()
+    await stopServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('direct duels use each character starter deck plus exactly five chosen cards', { timeout: 30_000 }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'neonspire-duel-draft-'))
+  const port = await freePort()
+  const server = await startServer(port, join(dir, 'coop.json'))
+  const a = await connect(port)
+  const b = await connect(port)
+  try {
+    const draftA = ['payload', 'forkvirus', 'bootdisk', 'firewall', 'zeroday']
+    const draftB = ['emberjab', 'stoke', 'ventblade', 'heatsinkfins', 'flarewhip']
+    a.ws.send(JSON.stringify({ t: 'queue', name: 'runner', char: 'runner', mode: 'duel', draft: draftA, modsKey: 'vanilla' }))
+    b.ws.send(JSON.stringify({ t: 'queue', name: 'vector', char: 'vector', mode: 'duel', draft: draftB, modsKey: 'vanilla' }))
+    const [matchA, matchB] = await Promise.all([a.next('match'), b.next('match')])
+    const ownDeck = (match: any): string[] => {
+      const side = match.view.sides[match.view.you]
+      return [...(side.hand ?? []), ...(side.draw ?? [])].map((card: { id: string }) => card.id)
+    }
+    const idsA = ownDeck(matchA)
+    const idsB = ownDeck(matchB)
+    assert.equal(idsA.length, 15)
+    assert.equal(idsB.length, 15)
+    assert.deepEqual(draftA.every((id) => idsA.includes(id)), true)
+    assert.deepEqual(draftB.every((id) => idsB.includes(id)), true)
+    assert.equal(idsA.filter((id) => id === 'strike').length, 5)
+    assert.equal(idsB.filter((id) => id === 'spark').length, 4)
+    assert.equal(idsB.includes('strike'), false)
+  } finally {
+    a.ws.close()
+    b.ws.close()
+    await stopServer(server)
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

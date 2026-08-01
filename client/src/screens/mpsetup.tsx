@@ -54,6 +54,23 @@ export function CharPickButton(props: { char: CharId; onOpen: () => void }) {
   )
 }
 
+/** Shared ascension selector for server-matched multiplayer runs. */
+export function AscensionPicker(props: { value: number; max: number; onChange: (asc: number) => void }) {
+  const value = Math.max(0, Math.min(props.max, props.value))
+  return (
+    <div class="mp-ascension">
+      <div class="ascrow">
+        <button class="btn ghost" onClick={() => props.onChange(Math.max(0, value - 1))} disabled={value === 0}>−</button>
+        <span class="asclabel" data-tip={t('ascTip')}>
+          {tf('ascLabel', { n: value })} / {props.max}
+        </span>
+        <button class="btn ghost" onClick={() => props.onChange(Math.min(props.max, value + 1))} disabled={value >= props.max}>+</button>
+      </div>
+      {value > 0 && <div class="ascmod">{t(`ascMod${value}` as Parameters<typeof t>[0])}</div>}
+    </div>
+  )
+}
+
 /** CLOUD/LAN toggle + the inputs each target actually needs. */
 export function MpConnect() {
   const target = mpTarget.value

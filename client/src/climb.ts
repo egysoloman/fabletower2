@@ -46,6 +46,7 @@ export const climbOppReady = signal(false)
 export const climbView = signal<PvpView | null>(null)
 export const climbNotice = signal('')
 export const climbSeed = signal(0)
+export const climbAsc = signal(0)
 export const climbYou = signal<0 | 1>(0)
 export const climbScore = signal<[number, number]>([0, 0])
 export const climbRoundWon = signal(false)
@@ -54,12 +55,12 @@ export const climbFinalWon = signal(false)
 export const climbPending = signal(false)
 
 let ws: WebSocket | null = null
-let onMatched: ((seed: number) => void) | null = null
+let onMatched: ((seed: number, asc: number) => void) | null = null
 let resultTimer = 0
 
 export const climbActive = () => climbPhase.value !== 'idle' && climbPhase.value !== 'error'
 
-export function climbQueue(name: string, char: CharId, matched: (seed: number) => void) {
+export function climbQueue(name: string, char: CharId, asc: number, matched: (seed: number, asc: number) => void) {
   climbLeave()
   onMatched = matched
   climbNotice.value = ''
@@ -67,7 +68,7 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
   try {
     const sock = new WebSocket(mpWsUrl())
     ws = sock
-    sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name, mode: 'climb', char, modsKey: modsKey() }))
+    sock.onopen = () => sock.send(JSON.stringify({ t: 'queue', name, mode: 'climb', char, asc, modsKey: modsKey() }))
     sock.onerror = () => {
       climbNotice.value = 'server unreachable'
       climbPhase.value = 'error'
@@ -98,11 +99,12 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
             climbOppChar.value = data.oppChar
           }
           climbSeed.value = Number(data.seed) >>> 0
+          climbAsc.value = Math.max(0, Math.min(20, Math.floor(Number(data.asc) || 0)))
           if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
           climbPhase.value = 'racing'
           if (!data.rejoin) {
             sfx.win()
-            onMatched?.(climbSeed.value)
+            onMatched?.(climbSeed.value, climbAsc.value)
           }
           break
         case 'opp':
@@ -266,6 +268,7 @@ export function climbLeave() {
   onMatched = null
   climbPhase.value = 'idle'
   climbOppChar.value = 'runner'
+  climbAsc.value = 0
   climbView.value = null
   climbOppProgress.value = null
   climbOppReady.value = false

@@ -37,9 +37,9 @@ import {
   climbView,
 } from '../climb'
 import { charColor, lastChar } from './charselect'
-import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
+import { AscensionPicker, CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup'
 import { mpName } from '../mp'
-import { continueClimbAfterRound, continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
+import { ascUnlocked, continueClimbAfterRound, continueClimbAfterWin, loseClimb, startClimbRun } from '../game'
 import { screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
@@ -48,6 +48,7 @@ import { DraggableHand, dragHoverWho, dragMode } from './hand'
 
 export function ClimbScreen() {
   const [char, setChar] = useState<CharId>(lastChar())
+  const [asc, setAsc] = useState(0)
   const [picking, setPicking] = useState(false)
   const phase = climbPhase.value
   const view = climbView.value
@@ -209,9 +210,10 @@ export function ClimbScreen() {
               {t('climbIntro')}
             </div>
             <CharPickButton char={char} onOpen={() => setPicking(true)} />
+            <AscensionPicker value={asc} max={ascUnlocked()} onChange={setAsc} />
             <MpConnect />
-            <button class="btn big pink" onClick={() => climbQueue(mpName(), char, (seed) => startClimbRun(seed, char))}>
-              {t('findRival')}
+            <button class="btn big pink" onClick={() => climbQueue(mpName(), char, asc, (seed, matchedAsc) => startClimbRun(seed, matchedAsc, char))}>
+              {t('findRival')}{asc > 0 ? ` · A${asc}` : ''}
             </button>
           </>
         )}

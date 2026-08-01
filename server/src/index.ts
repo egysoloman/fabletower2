@@ -21,6 +21,7 @@ import {
   saveCoopSnapshot,
 } from './coop-store'
 import { closePostgres, persistenceBackend } from './postgres-store'
+import { rollCoopReward, type CoopReward } from './coop-rewards'
 
 const ADMIN_UI_PATH = (process.env.ADMIN_UI_PATH ?? '/admin').replace(/\/$/, '')
 import { adminHtml } from './admin-ui'
@@ -33,13 +34,14 @@ import {
   EVENTS,
   POTIONS,
   coopUsePotion,
-  STARTER_DECKS,
-  STARTER_RELICS,
+  ascensionRestHealFraction,
+  ascensionShopPriceMultiplier,
   cardsByRarity,
-  characterStartingMaxHp,
+  buildPvpDraftDeck,
   coopReduce,
   coopViewFor,
   genActMap,
+  newRun,
   newPvp,
   nodeById,
   obtainableRelics,
@@ -132,6 +134,10 @@ interface Client {
   char: CharId
   /** Enabled-mods fingerprint: only identical keys are matched together. */
   modsKey: string
+  /** Multiplayer ascension; only peers at the same level are matched. */
+  asc: number
+  /** Five chosen additions placed on top of the character starter deck. */
+  duelDraft: string[]
   lastEmote: number
 }
 
@@ -143,6 +149,7 @@ interface ClimbDeckEntry {
 interface Room {
   mode: Mode
   players: [Client, Client]
+  asc: number
   /** Active duel state (direct mode: always; climb mode: at the checkpoint). */
   state: PvpState | null
   /** Climb race only. */
@@ -231,6 +238,7 @@ interface CoopRoom {
   rng: Rng
   uid: number
   act: number
+  asc: number
   floor: number
   pos: string | null
   /** Visited node ids this act — drives the traversed-path map display. */
@@ -238,7 +246,7 @@ interface CoopRoom {
   map: ActMap
   combat: CoopState | null
   kind: 'normal' | 'elite' | 'boss'
-  rewards: { cards: string[]; relic: string | null; gold: number }[] | null
+  rewards: CoopReward[] | null
   /** Shared shop inventory: first come, first served. */
   shop: {
     cards: { id: string; price: number; sold: boolean }[]
@@ -265,6 +273,7 @@ interface CoopPlayerSnapshot extends Omit<CoopPlayer, 'client'> {
     vid: string
     char: CharId
     modsKey: string
+    asc?: number
   }
 }
 
@@ -272,12 +281,12 @@ interface CoopRoomSnapshot extends Omit<CoopRoom, 'players'> {
   players: CoopPlayerSnapshot[]
 }
 
-/** Keyed by `${size}|${modsKey}` — parties only form among same-mods players. */
+/** Keyed by size, ascension and mods — parties always share one ruleset. */
 const coopQueues = new Map<string, Client[]>()
 const coopRooms = new Map<Client, CoopRoom>()
 const coopShopTimers = new Map<string, NodeJS.Timeout>()
 
-const coopKey = (size: number, modsKey: string) => `${size}|${modsKey}`
+const coopKey = (size: number, asc: number, modsKey: string) => `${size}|a${asc}|${modsKey}`
 const coopKeySize = (key: string) => Number(key.split('|')[0]) || 2
 
 const tagOf = (c: Client) => `${c.name}#${c.vid}`
@@ -293,6 +302,7 @@ function coopSnapshot(room: CoopRoom): CoopRoomSnapshot {
         vid: p.client.vid,
         char: p.client.char,
         modsKey: p.client.modsKey,
+        asc: p.client.asc,
       },
     })),
   }
@@ -351,6 +361,8 @@ function restoreCoopRooms() {
           vid: p.client.vid,
           char: p.client.char,
           modsKey: p.client.modsKey,
+          asc: Math.max(0, Math.min(20, Math.floor(Number(p.client.asc) || 0))),
+          duelDraft: [],
           lastEmote: 0,
         }
         const player: CoopPlayer = { ...p, client }
@@ -359,6 +371,12 @@ function restoreCoopRooms() {
       const room: CoopRoom = {
         ...snap,
         players,
+        asc: Math.max(0, Math.min(20, Math.floor(Number(snap.asc) || 0))),
+        rewards: snap.rewards?.map((reward: any) => ({
+          cards: Array.isArray(reward.cards) ? reward.cards : [],
+          relics: Array.isArray(reward.relics) ? reward.relics : reward.relic ? [reward.relic] : [],
+          gold: Math.max(0, Math.floor(Number(reward.gold) || 0)),
+        })) ?? null,
         pendingNode: snap.pendingNode ?? null,
         shopCloseAt: Number.isFinite(snap.shopCloseAt) ? snap.shopCloseAt : null,
         ended: false,
@@ -387,6 +405,7 @@ interface PendingParty {
   chars: CharId[]
   ready: boolean[]
   size: number
+  asc: number
   key: string
 }
 const pendingParties = new Map<Client, PendingParty>()
@@ -404,6 +423,7 @@ function broadcastForm(party: PendingParty) {
     send(c.ws, {
       t: 'coopform',
       size: party.size,
+      asc: party.asc,
       members: party.clients.map((m, i) => ({ tag: tagOf(m), char: party.chars[i], color: PLAYER_COLORS[i % PLAYER_COLORS.length], ready: party.ready[i] })),
     })
   }
@@ -440,6 +460,7 @@ function coopMapMsg(room: CoopRoom, idx: number) {
     you: idx,
     host: 0,
     act: room.act,
+    asc: room.asc,
     floor: room.floor,
     pos: room.pos,
     path: room.path,
@@ -530,25 +551,28 @@ function sendCoopSnapshot(room: CoopRoom, idx: number) {
   }
 }
 
-function startCoopParty(clients: Client[], chars: CharId[]) {
+function startCoopParty(clients: Client[], chars: CharId[], asc: number) {
   const seed = randomBytes(4).readUInt32LE(0)
   const rng = rngFromSeed(seed)
   let uid = 1
-  const players: CoopPlayer[] = clients.map((client, i) => ({
-    client,
-    char: chars[i],
-    color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-    hp: characterStartingMaxHp(75, chars[i]),
-    maxHp: characterStartingMaxHp(75, chars[i]),
-    deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
-    relics: [STARTER_RELICS[chars[i]]],
-    potions: [],
-    gold: 99,
-    replied: false,
-  }))
+  const players: CoopPlayer[] = clients.map((client, i) => {
+    const base = newRun((seed + i + 1) >>> 0, asc, chars[i])
+    return {
+      client,
+      char: chars[i],
+      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+      hp: base.hp,
+      maxHp: base.maxHp,
+      deck: base.deck.map((card): CardInst => ({ ...card, uid: uid++ })),
+      relics: [...base.relics],
+      potions: [],
+      gold: base.gold,
+      replied: false,
+    }
+  })
   const room: CoopRoom = {
     id: randomBytes(12).toString('hex'), revision: 0, updatedAt: Date.now(), expiresAt: 0,
-    players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null, path: [],
+    players, rng, uid: uid + 1000, act: 1, asc, floor: 0, pos: null, path: [],
     map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, shopCloseAt: null, event: null,
     votes: {}, lastEncounter: '', pendingNode: null, ended: false,
   }
@@ -591,6 +615,7 @@ function completeCoopTravel(room: CoopRoom, id: string) {
   if (node.type === 'combat' || node.type === 'elite' || node.type === 'boss') {
     coopStartFight(room, node.type === 'combat' ? 'normal' : node.type)
   } else if (node.type === 'shop') {
+    const price = (value: number) => Math.floor(value * ascensionShopPriceMultiplier(room.asc))
     const stock = {
       cards: Array.from({ length: 6 }, () => {
         const who = room.players[randInt(room.rng, 0, room.players.length - 1)]
@@ -599,25 +624,25 @@ function completeCoopTravel(room: CoopRoom, id: string) {
         const def = pick(room.rng, cardsByRarity(rarity as any, who.char))
         return {
           id: def.id,
-          price: randInt(
+          price: price(randInt(
             room.rng,
             rarity === 'rare' ? 130 : rarity === 'uncommon' ? 75 : 45,
             rarity === 'rare' ? 160 : rarity === 'uncommon' ? 95 : 60,
-          ),
+          )),
           sold: false,
         }
       }),
       relics: Array.from({ length: 2 }, () => {
         const rpool = obtainableRelics([], false)
         const def = rpool[randInt(room.rng, 0, rpool.length - 1)]
-        return { id: def.id, price: randInt(room.rng, 150, 190), sold: false }
+        return { id: def.id, price: price(randInt(room.rng, 150, 190)), sold: false }
       }),
       potions: Array.from({ length: 2 }, () => {
         const pool = Object.values(POTIONS)
         const def = pool[randInt(room.rng, 0, pool.length - 1)]
-        return { id: def.id, price: randInt(room.rng, 45, 70), sold: false }
+        return { id: def.id, price: price(randInt(room.rng, 45, 70)), sold: false }
       }),
-      removePrice: 80,
+      removePrice: price(80),
     }
     room.shop = stock
     room.shopCloseAt = null
@@ -673,6 +698,8 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
     encounterId: enc.join(','),
     seed: randInt(room.rng, 1, 0x7fffffff),
     uidStart: room.uid,
+    asc: room.asc,
+    kind,
     act: room.act,
   })
   touchCoop(room)
@@ -686,26 +713,20 @@ function coopFinishFight(room: CoopRoom) {
   room.players.forEach((p, i) => {
     p.hp = Math.max(1, cs.players[i].hp)
   })
-  // Per-player rewards: gold for all, card choices from each char's pool,
-  // a relic on elite/boss kills.
+  // Per-player rewards follow the solo ascension curve. Bosses offer a real
+  // relic choice instead of silently bundling one random id with a card.
   room.rewards = room.players.map((p) => {
-    const gold = randInt(room.rng, 15, 28) + room.act * 4
-    p.gold += gold
-    const cards: string[] = []
-    let guard = 0
-    while (cards.length < 3 && guard++ < 30) {
-      const r = randInt(room.rng, 1, 100)
-      const rarity = room.kind === 'boss' ? 'rare' : r <= 8 ? 'rare' : r <= 40 ? 'uncommon' : 'common'
-      const def = pick(room.rng, cardsByRarity(rarity, p.char))
-      if (!cards.includes(def.id)) cards.push(def.id)
-    }
-    let relic: string | null = null
-    if (room.kind !== 'normal') {
-      const rpool = obtainableRelics(p.relics, room.kind === 'boss', p.char)
-      if (rpool.length > 0) relic = pick(room.rng, rpool).id
-    }
+    const reward = rollCoopReward({
+      rng: room.rng,
+      char: p.char,
+      relics: p.relics,
+      kind: room.kind,
+      asc: room.asc,
+      act: room.act,
+    })
+    p.gold += reward.gold
     p.replied = false
-    return { cards, relic, gold }
+    return reward
   })
   touchCoop(room)
   coopBroadcast(room, (i) => ({ t: 'coopreward', you: i, ...room.rewards![i] }))
@@ -762,6 +783,16 @@ function cleanModsKey(raw: unknown): string {
   return s || 'vanilla'
 }
 
+function cleanAsc(raw: unknown): number {
+  return Math.max(0, Math.min(20, Math.floor(Number(raw) || 0)))
+}
+
+function cleanDuelDraft(raw: unknown, char: CharId): string[] | null {
+  if (!Array.isArray(raw)) return null
+  const picks = raw.map((id) => String(id ?? ''))
+  return buildPvpDraftDeck(char, picks) ? picks : null
+}
+
 /**
  * Relay an emote / quick phrase to everyone in the sender's room or party.
  * The id may come from a mod — matchmaking guarantees both sides run the
@@ -810,13 +841,23 @@ function roomChars(room: Room): CharId[] {
   return room.players.map((p) => p.char)
 }
 
+function newDirectDuel(seed: number, players: [Client, Client]): PvpState {
+  const decks = players.map((player) => buildPvpDraftDeck(player.char, player.duelDraft))
+  if (!decks[0] || !decks[1]) throw new Error('invalid direct-duel draft')
+  return newPvp(seed, [players[0].name, players[1].name], [
+    { deck: decks[0] },
+    { deck: decks[1] },
+  ])
+}
+
 function startMatch(a: Client, b: Client, mode: Mode) {
   const seed = randomBytes(4).readUInt32LE(0)
   if (mode === 'duel') {
-    const state = newPvp(seed, [a.name, b.name])
+    const state = newDirectDuel(seed, [a, b])
     const room: Room = {
       mode,
       players: [a, b],
+      asc: 0,
       state,
       seed,
       ready: [null, null],
@@ -836,6 +877,7 @@ function startMatch(a: Client, b: Client, mode: Mode) {
   const room: Room = {
     mode,
     players: [a, b],
+    asc: a.asc,
     state: null,
     seed,
     ready: [null, null],
@@ -855,6 +897,7 @@ function startMatch(a: Client, b: Client, mode: Mode) {
       oppChar: room.players[1 - i].char,
       token: mintToken(p),
       score: room.score,
+      asc: room.asc,
     })
   })
 }
@@ -954,7 +997,7 @@ wss.on('connection', (ws) => {
   let client: Client = {
     ws, name: 'RUNNER', room: null, alive: true, token: null, online: true, dcTimer: null,
     vid: randomBytes(2).toString('hex'),
-    char: 'runner', modsKey: 'vanilla', lastEmote: 0,
+    char: 'runner', modsKey: 'vanilla', asc: 0, duelDraft: [], lastEmote: 0,
   }
   ;(ws as any).isAlive = true
   send(ws, { t: 'hello', vid: client.vid })
@@ -975,7 +1018,13 @@ wss.on('connection', (ws) => {
         client.char = cleanChar(msg.char)
         client.modsKey = cleanModsKey(msg.modsKey)
         const mode: Mode = msg.mode === 'climb' ? 'climb' : 'duel'
-        const key = client.modsKey
+        client.asc = mode === 'climb' ? cleanAsc(msg.asc) : 0
+        if (mode === 'duel') {
+          const draft = cleanDuelDraft(msg.draft, client.char)
+          if (!draft) return send(ws, { t: 'err', msg: 'choose exactly five legal duel cards' })
+          client.duelDraft = draft
+        }
+        const key = mode === 'climb' ? `${client.modsKey}|a${client.asc}` : client.modsKey
         if (waiting[mode].get(key) === client) return
         const opponent = waiting[mode].get(key)
         if (opponent && opponent.ws.readyState === WebSocket.OPEN) {
@@ -984,7 +1033,7 @@ wss.on('connection', (ws) => {
         } else {
           unqueue(client)
           waiting[mode].set(key, client)
-          send(ws, { t: 'queued', mode, modsKey: key })
+          send(ws, { t: 'queued', mode, modsKey: client.modsKey, asc: client.asc })
         }
         break
       }
@@ -1026,6 +1075,7 @@ wss.on('connection', (ws) => {
               rejoin: true,
               chars: roomChars(room),
               score: room.score,
+              asc: room.asc,
               act: room.checkpointAct,
             })
           } else {
@@ -1038,6 +1088,7 @@ wss.on('connection', (ws) => {
               token: client.token,
               rejoin: true,
               score: room.score,
+              asc: room.asc,
             })
             if (room.ready[idx]) send(ws, { t: 'checkpoint', score: room.score, rejoin: true })
           }
@@ -1065,7 +1116,7 @@ wss.on('connection', (ws) => {
         const other = room.players[1 - idx]
         if (room.rematch[0] && room.rematch[1]) {
           const seed = randomBytes(4).readUInt32LE(0)
-          room.state = newPvp(seed, [room.players[0].name, room.players[1].name])
+          room.state = newDirectDuel(seed, room.players)
           room.finished = false
           room.rematch = [false, false]
           room.players.forEach((p, i) => {
@@ -1102,8 +1153,9 @@ wss.on('connection', (ws) => {
         client.name = cleanName(msg.name)
         client.char = cleanChar(msg.char)
         client.modsKey = cleanModsKey(msg.modsKey)
+        client.asc = cleanAsc(msg.asc)
         const size = Math.max(2, Math.min(4, Math.floor(Number(msg.size) || 2)))
-        const key = coopKey(size, client.modsKey)
+        const key = coopKey(size, client.asc, client.modsKey)
         for (const [k, q] of coopQueues) {
           const at = q.indexOf(client)
           if (at >= 0) {
@@ -1114,7 +1166,7 @@ wss.on('connection', (ws) => {
         const q = coopQueues.get(key) ?? []
         q.push(client)
         coopQueues.set(key, q)
-        send(ws, { t: 'queued', mode: 'coop', size, modsKey: client.modsKey })
+        send(ws, { t: 'queued', mode: 'coop', size, asc: client.asc, modsKey: client.modsKey })
         broadcastLobby(key)
         if (q.length >= size) {
           const members = q.splice(0, size)
@@ -1124,6 +1176,7 @@ wss.on('connection', (ws) => {
             chars: members.map((c) => c.char),
             ready: members.map(() => false),
             size,
+            asc: client.asc,
             key,
           }
           for (const c of members) pendingParties.set(c, party)
@@ -1139,7 +1192,7 @@ wss.on('connection', (ws) => {
         broadcastForm(party)
         if (party.ready.every(Boolean)) {
           for (const c of party.clients) pendingParties.delete(c)
-          startCoopParty(party.clients, party.chars)
+          startCoopParty(party.clients, party.chars, party.asc)
         }
         break
       }
@@ -1197,7 +1250,7 @@ wss.on('connection', (ws) => {
         break
       }
       case 'cooptake': {
-        // Reward reply: optional card pick, always acknowledges.
+        // Reward reply: optional card plus an explicit boss-relic choice.
         const room = coopRooms.get(client)
         if (!room || !room.rewards || room.ended) break
         const idx = room.players.findIndex((p) => p.client === client)
@@ -1207,8 +1260,13 @@ wss.on('connection', (ws) => {
         if (cardId && room.rewards[idx].cards.includes(cardId)) {
           player.deck.push({ uid: room.uid++, id: cardId, up: false })
         }
-        if (msg.relic && room.rewards[idx].relic) {
-          player.relics.push(room.rewards[idx].relic!)
+        const choices = room.rewards[idx].relics
+        const relicId = typeof msg.relic === 'string' ? msg.relic : choices.length === 1 ? choices[0] : null
+        if (choices.length > 1 && (!relicId || !choices.includes(relicId))) {
+          return send(ws, { t: 'err', msg: 'choose one boss relic' })
+        }
+        if (relicId && choices.includes(relicId) && !player.relics.includes(relicId)) {
+          player.relics.push(relicId)
         }
         player.replied = true
         touchCoop(room)
@@ -1372,7 +1430,10 @@ wss.on('connection', (ws) => {
           const at = player.deck.findIndex((c) => c.uid === uid)
           if (at >= 0 && player.deck.length > 6) player.deck.splice(at, 1)
         } else {
-          player.hp = Math.min(player.maxHp, player.hp + Math.floor(player.maxHp * 0.3))
+          player.hp = Math.min(
+            player.maxHp,
+            player.hp + Math.floor(player.maxHp * ascensionRestHealFraction(room.asc)),
+          )
         }
         player.replied = true
         if (room.players.every((p) => p.replied)) {
