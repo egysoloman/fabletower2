@@ -151,6 +151,10 @@ export interface CardInst {
   uid: number
   id: string
   up: boolean
+  /** Combat-only generated-card cost; omitted for normal deck cards. */
+  costOverride?: number
+  /** Combat-only generated cards can be forced into the exhaust pile. */
+  exhaustOverride?: boolean
 }
 
 // ---------------------------------------------------------------------------

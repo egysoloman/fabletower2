@@ -1372,6 +1372,7 @@ export function inst(id: string, up = false, uid?: number): CardInst {
 }
 
 export function cardCost(card: CardInst): number {
+  if (card.costOverride !== undefined) return Math.max(0, card.costOverride)
   const def = CARDS[card.id]
   return card.up && def.upCost !== undefined ? def.upCost : def.cost
 }
@@ -1382,6 +1383,7 @@ export function cardEffects(card: CardInst): Effect[] {
 }
 
 export function cardExhausts(card: CardInst): boolean {
+  if (card.exhaustOverride !== undefined) return card.exhaustOverride
   const def = CARDS[card.id]
   return !!(card.up ? (def.upExhaust ?? def.exhaust) : def.exhaust)
 }

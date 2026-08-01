@@ -1,6 +1,6 @@
 /** Solo-mode cheat console: difficulty is a suggestion. */
 import { useState } from 'preact/hooks'
-import { CARDS, cardName, obtainableRelics, relicDesc, relicName, RELICS } from '@neonspire/engine'
+import { CARDS, cardName, MAX_ASC, obtainableRelics, relicDesc, relicName, RELICS } from '@neonspire/engine'
 import { CardById } from '../components'
 import {
   cheatAddCard,
@@ -12,12 +12,14 @@ import {
   cheatGold,
   cheatKillAll,
   cheatMaxHp,
-  cheatPlayCard,
+  cheatGenerateCard,
   cheatRemoveCard,
+  cheatUnlockAscensions,
   cheatUpgradeAll,
+  ascUnlocked,
 } from '../game'
 import { cheatOpen, combat, run, screen } from '../store'
-import { t } from '../i18n'
+import { t, tf } from '../i18n'
 import { sfx } from '../sfx'
 import { cheatsEnabled } from '../account'
 
@@ -85,6 +87,8 @@ function CardPicker(props: {
 
 export function CheatMenu() {
   const [tab, setTab] = useState<Tab>('main')
+  const [relicQ, setRelicQ] = useState('')
+  const [allAscUnlocked, setAllAscUnlocked] = useState(() => ascUnlocked() >= MAX_ASC)
   if (!cheatsEnabled.value || !cheatOpen.value) return null
   const r = run.value
   if (!r || !CHEATABLE_SCREENS.has(screen.value)) return null
@@ -102,7 +106,11 @@ export function CheatMenu() {
       <CardPicker
         title={play ? t('cheatPlay') : t('cheatAddCard')}
         sub={play ? t('cheatPlaySub') : t('cheatAddCardSub')}
-        onPick={play ? cheatPlayCard : cheatAddCard}
+        onPick={play
+          ? (id) => {
+              if (cheatGenerateCard(id)) setTab('main')
+            }
+          : cheatAddCard}
         onBack={() => setTab('main')}
         onClose={close}
       />
@@ -111,12 +119,26 @@ export function CheatMenu() {
 
   if (tab === 'relics') {
     const pool = obtainableRelics(r.relics, true)
+    const norm = relicQ.trim().toLowerCase()
+    const shown = pool.filter((def) => {
+      if (!norm) return true
+      return [def.id, def.name, def.desc, relicName(def.id), relicDesc(def.id)]
+        .some((value) => value.toLowerCase().includes(norm))
+    })
     return (
       <div class="overlay" onClick={close}>
         <div class="panel" onClick={(e) => e.stopPropagation()}>
           <h2 class="pink">{t('cheatAddRelic')}</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '56vh', overflow: 'auto' }}>
-            {pool.map((def) => (
+          <div class="cheat-filters cheat-relic-filters">
+            <input
+              class="neon cheat-search"
+              placeholder={t('cheatRelicSearch')}
+              value={relicQ}
+              onInput={(e) => setRelicQ((e.target as HTMLInputElement).value)}
+            />
+          </div>
+          <div class="cheat-relic-list">
+            {shown.map((def) => (
               <div key={def.id} class="relic-offer" onClick={() => cheatAddRelic(def.id)}>
                 <div class="rsym">{RELICS[def.id].sym}</div>
                 <div>
@@ -125,7 +147,7 @@ export function CheatMenu() {
                 </div>
               </div>
             ))}
-            {pool.length === 0 && <div class="sub">{t('empty')}</div>}
+            {shown.length === 0 && <div class="sub">{t('empty')}</div>}
           </div>
           <button class="btn ghost" onClick={() => setTab('main')}>
             {t('back')}
@@ -145,6 +167,16 @@ export function CheatMenu() {
           <button class="btn" onClick={cheatGold}>{t('cheatGold')}</button>
           <button class="btn" onClick={cheatMaxHp}>{t('cheatMaxHp')}</button>
           <button class="btn purple" onClick={cheatUpgradeAll}>{t('cheatUpgradeAll')}</button>
+          <button
+            class="btn purple"
+            disabled={allAscUnlocked}
+            onClick={() => {
+              cheatUnlockAscensions()
+              setAllAscUnlocked(true)
+            }}
+          >
+            {tf(allAscUnlocked ? 'cheatAscUnlocked' : 'cheatUnlockAsc', { max: MAX_ASC })}
+          </button>
           <button class="btn purple" onClick={() => (sfx.click(), setTab('cards'))}>{t('cheatAddCard')}</button>
           <button class="btn purple" onClick={() => (sfx.click(), setTab('relics'))}>{t('cheatAddRelic')}</button>
           <button class="btn purple" onClick={cheatRemoveCard}>{t('cheatRemove')}</button>

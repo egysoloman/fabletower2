@@ -808,41 +808,33 @@ export function cheatUpgradeAll() {
   saveGame()
 }
 
-/**
- * Cheat: play any card immediately, auto-targeting the first living foe.
- * Works mid-combat only — the chosen card resolves through the real engine.
- */
-export function cheatPlayCard(id: string) {
+/** Unlock every ascension for the current account/device. */
+export function cheatUnlockAscensions() {
   if (!canCheat()) return
-  const cs = combat.value
-  if (!cs || cs.over) return
+  try {
+    localStorage.setItem('ns-ascmax', String(MAX_ASC))
+    schedulePush()
+  } catch {
+    /* local progress is best-effort */
+  }
+  sfx.win()
+  touch()
+}
+
+/** Add a generated 0-cost Exhaust copy to the live hand for the player to use. */
+export function cheatGenerateCard(id: string): boolean {
+  if (!canCheat()) return false
+  const current = combat.value
+  if (!current || current.over) return false
   const def = CARDS[id]
-  if (!def || def.unplayable) return
-  // Append a temporary upgraded copy to the hand so the normal play path
-  // (validation, cost, events, discard) runs untouched.
-  const handIdx = cs.player.hand.length
-  cs.player.hand.push({ uid: cs.uid++, id, up: true })
-  let target: number | undefined
-  if (def.target === 'enemy') {
-    const alive = cs.enemies.map((e, i) => (e.dead ? -1 : i)).filter((i) => i >= 0)
-    target = alive[0]
-    if (target === undefined) {
-      cs.player.hand.pop()
-      sfx.click()
-      return
-    }
-  }
-  const res = combatReduce(cs, { t: 'play', hand: handIdx, target })
-  if (res.error) {
-    cs.player.hand.pop()
-    sfx.click()
-    return
-  }
-  sfx.play()
-  combat.value = res.state
-  checkCombat(res.state)
-  processEvents(res.events, {})
+  if (!def || def.unplayable) return false
+  const next = structuredClone(current)
+  next.player.hand.push({ uid: next.uid++, id, up: false, costOverride: 0, exhaustOverride: true })
+  combat.value = next
+  sfx.draw()
+  cheatOpen.value = false
   saveGame()
+  return true
 }
 
 export function cheatAddCard(id: string) {
