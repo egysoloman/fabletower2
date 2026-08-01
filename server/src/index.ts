@@ -12,13 +12,15 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, join, normalize, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocket, WebSocketServer } from 'ws'
-import { ADMIN_API_PATH, getMpMode, handleApi } from './accounts'
+import { ADMIN_API_PATH, flushAccounts, getMpMode, handleApi, initializeAccounts } from './accounts'
 import {
   deleteCoopSnapshot,
   flushCoopSnapshots,
+  initializeCoopStore,
   loadCoopSnapshots,
   saveCoopSnapshot,
 } from './coop-store'
+import { closePostgres, persistenceBackend } from './postgres-store'
 
 const ADMIN_UI_PATH = (process.env.ADMIN_UI_PATH ?? '/admin').replace(/\/$/, '')
 import { adminHtml } from './admin-ui'
@@ -681,8 +683,6 @@ function endCoop(room: CoopRoom) {
     releaseSeat(p.client)
   }
 }
-
-restoreCoopRooms()
 
 function send(ws: WebSocket, msg: unknown) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg))
@@ -1433,15 +1433,36 @@ const heartbeat = setInterval(() => {
 }, 30000)
 wss.on('close', () => clearInterval(heartbeat))
 
-process.once('SIGTERM', () => {
-  flushCoopSnapshots()
-  process.exit(0)
-})
-process.once('SIGINT', () => {
-  flushCoopSnapshots()
-  process.exit(0)
-})
+let stopping = false
+async function shutdown(signal: string) {
+  if (stopping) return
+  stopping = true
+  clearInterval(heartbeat)
+  let exitCode = 0
+  try {
+    await Promise.all([flushAccounts(), flushCoopSnapshots()])
+    await closePostgres()
+  } catch (error) {
+    exitCode = 1
+    console.error(`durable store flush failed during ${signal}:`, error)
+  }
+  process.exit(exitCode)
+}
 
-http.listen(PORT, () => {
-  console.log(`NEONSPIRE server listening on http://localhost:${PORT} (ws same port)`)
+process.once('SIGTERM', () => void shutdown('SIGTERM'))
+process.once('SIGINT', () => void shutdown('SIGINT'))
+
+async function start() {
+  await Promise.all([initializeAccounts(), initializeCoopStore()])
+  restoreCoopRooms()
+  http.listen(PORT, () => {
+    console.log(`NEONSPIRE server listening on http://localhost:${PORT} (ws same port; persistence=${persistenceBackend})`)
+  })
+}
+
+void start().catch(async (error) => {
+  clearInterval(heartbeat)
+  console.error('NEONSPIRE server failed to start:', error)
+  await closePostgres().catch(() => undefined)
+  process.exit(1)
 })

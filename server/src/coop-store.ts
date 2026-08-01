@@ -1,13 +1,17 @@
 /**
  * Durable co-op room snapshots.
  *
- * The multiplayer server keeps hot rooms in memory, but every accepted room
- * mutation is mirrored here.  A small atomic JSON store fits the project's
- * current single-process deployment and survives restarts/redeploys when the
- * data directory is mounted.  NS_COOP_DATA_FILE can point at that volume.
+ * File storage remains the zero-configuration default. PostgreSQL persistence
+ * is opt-in for hosts (such as Render) without a durable local filesystem.
  */
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+import {
+  initializePostgres,
+  loadCoopRooms,
+  persistenceBackend,
+  writeCoopChanges,
+} from './postgres-store'
 
 export interface StoredCoopSnapshot {
   id: string
@@ -33,22 +37,68 @@ try {
 }
 
 let saveTimer: NodeJS.Timeout | null = null
+const dirty = new Map<string, StoredCoopSnapshot>()
+const deleted = new Set<string>()
+let postgresWriteChain: Promise<void> = Promise.resolve()
 
-function flush() {
-  saveTimer = null
-  try {
-    mkdirSync(dirname(DATA_FILE), { recursive: true })
-    const tmp = `${DATA_FILE}.tmp`
-    writeFileSync(tmp, JSON.stringify({ version: 1, rooms: [...snapshots.values()] }))
-    renameSync(tmp, DATA_FILE)
-  } catch (e) {
-    console.error('co-op room store write failed:', e)
-  }
+function flushFile() {
+  mkdirSync(dirname(DATA_FILE), { recursive: true })
+  const tmp = `${DATA_FILE}.tmp`
+  writeFileSync(tmp, JSON.stringify({ version: 1, rooms: [...snapshots.values()] }))
+  renameSync(tmp, DATA_FILE)
+}
+
+function queuePostgresFlush(): Promise<void> {
+  const upserts = [...dirty.values()]
+  const deletes = [...deleted]
+  dirty.clear()
+  deleted.clear()
+  const operation = postgresWriteChain.then(() => writeCoopChanges(upserts, deletes))
+  postgresWriteChain = operation.catch((error) => {
+    // Retry the latest desired value, not a stale captured value.
+    for (const id of [...upserts.map((entry) => entry.id), ...deletes]) {
+      const current = snapshots.get(id)
+      if (current) {
+        dirty.set(id, current)
+        deleted.delete(id)
+      } else {
+        dirty.delete(id)
+        deleted.add(id)
+      }
+    }
+    console.error('co-op room store write failed:', error)
+  })
+  return operation
 }
 
 function scheduleFlush() {
   if (saveTimer) return
-  saveTimer = setTimeout(flush, 100)
+  saveTimer = setTimeout(() => {
+    saveTimer = null
+    if (persistenceBackend === 'postgres') {
+      void queuePostgresFlush().catch(() => undefined)
+    } else {
+      try {
+        flushFile()
+      } catch (error) {
+        console.error('co-op room store write failed:', error)
+      }
+    }
+  }, 100)
+}
+
+/** Load remote rooms (or seed an empty database from an existing local file). */
+export async function initializeCoopStore(): Promise<void> {
+  if (persistenceBackend === 'file') return
+  await initializePostgres()
+  const stored = await loadCoopRooms()
+  if (stored.length) {
+    snapshots = new Map(stored.map((entry) => [entry.id, entry]))
+  } else if (snapshots.size) {
+    await writeCoopChanges([...snapshots.values()], [])
+  }
+  dirty.clear()
+  deleted.clear()
 }
 
 export function loadCoopSnapshots(): StoredCoopSnapshot[] {
@@ -57,16 +107,32 @@ export function loadCoopSnapshots(): StoredCoopSnapshot[] {
 
 export function saveCoopSnapshot(snapshot: StoredCoopSnapshot) {
   snapshots.set(snapshot.id, snapshot)
+  if (persistenceBackend === 'postgres') {
+    dirty.set(snapshot.id, snapshot)
+    deleted.delete(snapshot.id)
+  }
   scheduleFlush()
 }
 
 export function deleteCoopSnapshot(id: string) {
   if (!snapshots.delete(id)) return
+  if (persistenceBackend === 'postgres') {
+    dirty.delete(id)
+    deleted.add(id)
+  }
   scheduleFlush()
 }
 
 /** Test/shutdown hook: make the latest mutation durable immediately. */
-export function flushCoopSnapshots() {
-  if (saveTimer) clearTimeout(saveTimer)
-  flush()
+export async function flushCoopSnapshots(): Promise<void> {
+  if (saveTimer) {
+    clearTimeout(saveTimer)
+    saveTimer = null
+  }
+  if (persistenceBackend === 'file') {
+    flushFile()
+    return
+  }
+  await postgresWriteChain
+  while (dirty.size || deleted.size) await queuePostgresFlush()
 }
