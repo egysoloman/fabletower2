@@ -38,8 +38,10 @@ export const coopView = signal<any>(null)
 export const coopReward = signal<any>(null)
 export const coopNotice = signal('')
 export const coopPending = signal(false)
-/** Predicted Hybrid plays either being validated or waiting to be sent. */
+/** Predicted Hybrid plays waiting behind the card currently being validated. */
 export const coopActionQueueDepth = signal(0)
+/** True only while Hybrid is validating a card play, so more cards may queue. */
+export const coopHybridPlayOpen = signal(false)
 export interface CoopQueuedCardVisual {
   uid: number
   id: string
@@ -65,6 +67,8 @@ export const coopShop = signal<any>(null)
 export const coopEvent = signal<any>(null)
 export const coopRestDeck = signal<any[]>([])
 export const coopBelt = signal<string[]>([])
+export const coopDeck = signal<any[]>([])
+export const coopRelics = signal<string[]>([])
 /** Advisory path votes: one row per player {i, name, color, id|null}. */
 export const coopVotes = signal<{ i: number; name: string; color: string; id: string | null }[]>([])
 export const coopToast = signal('')
@@ -92,43 +96,41 @@ interface HybridQueuedPlay {
 /** Only one action is in flight; later clicks wait here in visual order. */
 const hybridPlayQueue: HybridQueuedPlay[] = []
 let hybridInFlight: HybridQueuedPlay | null = null
-let hybridStageTimer = 0
-let hybridStageView: any = null
 let hybridDispatchSeq = 0
-const HYBRID_QUEUE_STAGE_MS = 420
 
 function updateHybridQueueState() {
-  const depth = hybridPlayQueue.length + (hybridInFlight ? 1 : 0)
+  const depth = hybridPlayQueue.length
   coopActionQueueDepth.value = depth
   coopActionQueueCards.value = hybridPlayQueue.map(({ uid, id, label, cls }) => ({ uid, id, label, cls }))
-  coopPending.value = depth > 0
+  coopHybridPlayOpen.value = hybridInFlight !== null
+  coopPending.value = depth > 0 || hybridInFlight !== null
 }
 
 function resetHybridQueue() {
-  clearTimeout(hybridStageTimer)
-  hybridStageTimer = 0
-  hybridStageView = null
   hybridPlayQueue.length = 0
   hybridInFlight = null
   coopActionQueueDepth.value = 0
+  coopHybridPlayOpen.value = false
   coopActionQueueCards.value = []
   coopQueueDispatch.value = null
   coopPending.value = false
 }
 
-function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any): boolean {
+function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any, animateFromQueue = false): boolean {
   const hand = authoritativeView?.players?.[coopYou.value]?.hand as { uid: number }[] | undefined
   const handIdx = hand?.findIndex((card) => card.uid === item.uid) ?? -1
   if (handIdx < 0) return false
   hybridInFlight = item
-  coopQueueDispatch.value = {
-    uid: item.uid,
-    id: item.id,
-    label: item.label,
-    cls: item.cls,
-    seq: ++hybridDispatchSeq,
-    target: item.target,
-    ally: item.ally,
+  if (animateFromQueue) {
+    coopQueueDispatch.value = {
+      uid: item.uid,
+      id: item.id,
+      label: item.label,
+      cls: item.cls,
+      seq: ++hybridDispatchSeq,
+      target: item.target,
+      ally: item.ally,
+    }
   }
   coopSend({
     t: 'coopaction',
@@ -143,23 +145,19 @@ function sendHybridPlay(item: HybridQueuedPlay, authoritativeView: any): boolean
  * Card identity, rather than its shifting hand index, survives every rebase.
  */
 export function coopEnqueueHybridPlay(item: HybridQueuedPlay, authoritativeView: any) {
-  hybridPlayQueue.push(item)
-  if (!hybridInFlight && !hybridStageTimer) {
-    hybridStageView = authoritativeView
-    hybridStageTimer = window.setTimeout(() => {
-      hybridStageTimer = 0
-      const next = hybridPlayQueue.shift()
-      const base = hybridStageView
-      hybridStageView = null
-      if (!next || !sendHybridPlay(next, base)) {
-        resetHybridQueue()
-        coopSend({ t: 'coopsync' })
-        coopFlash(t('coopQueueAdjusted'))
-        return
-      }
-      updateHybridQueueState()
-    }, HYBRID_QUEUE_STAGE_MS)
+  // The first click is already flying directly to its target. Only clicks
+  // made while that card is being validated belong in the visible stack.
+  if (!hybridInFlight && hybridPlayQueue.length === 0) {
+    if (!sendHybridPlay(item, authoritativeView)) {
+      resetHybridQueue()
+      coopSend({ t: 'coopsync' })
+      coopFlash(t('coopQueueAdjusted'))
+      return false
+    }
+    updateHybridQueueState()
+    return true
   }
+  hybridPlayQueue.push(item)
   updateHybridQueueState()
   return true
 }
@@ -188,7 +186,7 @@ function settleHybridPlay(authoritativeView: any): { view: any; dropped: boolean
   hybridPlayQueue.length = 0
   const next = rebased.shift()
   hybridPlayQueue.push(...rebased)
-  if (next && !sendHybridPlay(next, authoritativeView)) {
+  if (next && !sendHybridPlay(next, authoritativeView, true)) {
     hybridPlayQueue.length = 0
     hybridInFlight = null
     optimisticView = authoritativeView
@@ -347,6 +345,9 @@ function handleMsg(msg: MessageEvent, url: string) {
           coopYou.value = data.you
           coopHost.value = data.you === data.host
           coopMap.value = data
+          if (Array.isArray(data.deck)) coopDeck.value = data.deck
+          if (Array.isArray(data.relics)) coopRelics.value = data.relics
+          if (Array.isArray(data.belt)) coopBelt.value = data.belt
           if (data.votes) coopVotes.value = data.votes
           coopReward.value = null
           coopWaitingFor.value = ''
@@ -363,6 +364,7 @@ function handleMsg(msg: MessageEvent, url: string) {
           if (data.mode) coopMode.value = data.mode
           coopYou.value = data.you
           if (data.belt) coopBelt.value = data.belt
+          if (Array.isArray(data.view?.playerRelics?.[data.you])) coopRelics.value = data.view.playerRelics[data.you]
           coopPhase.value = 'combat'
           if (data.played && data.played.who !== data.you) {
             coopFlash(`◈ ally ▸ ${data.played.card.id}${data.played.card.up ? '+' : ''}`)
@@ -420,6 +422,8 @@ function handleMsg(msg: MessageEvent, url: string) {
             ? { replied: Number(data.replied) || 0, total: Number(data.total) || 0, closesAt: Number(data.closesAt) }
             : null
           if (data.belt) coopBelt.value = data.belt
+          if (Array.isArray(data.deck)) coopDeck.value = data.deck
+          if (Array.isArray(data.relics)) coopRelics.value = data.relics
           coopPhase.value = 'shop'
           break
         case 'coopbought':
@@ -551,6 +555,9 @@ export function coopLeave() {
   coopForm.value = null
   coopShop.value = null
   coopEvent.value = null
+  coopDeck.value = []
+  coopRelics.value = []
+  coopBelt.value = []
   try {
     ws?.close()
   } catch {

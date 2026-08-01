@@ -4,8 +4,8 @@
  * Everything is server-authoritative; this file only renders and asks.
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, EVENTS, POTIONS, cardCost, cardName, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CharId } from '@neonspire/engine'
-import { BlockChip, CardById, CardView, HpBar, MinionCard, StatusRow } from '../components'
+import { CARDS, EVENTS, POTIONS, cardCost, cardName, cardRetains, coopChecksum, eventChoiceDetail, eventChoiceLabel, eventName, eventText, predictCoopPlay, previewCard, previewEnemyIntent, relicName, type CardInst, type CharId } from '@neonspire/engine'
+import { BlockChip, CardById, CardView, HpBar, MinionCard, PotionBelt, RelicBar, StatusRow, byName } from '../components'
 import {
   anchorCenter,
   burst,
@@ -25,6 +25,7 @@ import {
   coopActionQueueDepth,
   coopActionQueueCards,
   coopEnqueueHybridPlay,
+  coopHybridPlayOpen,
   coopFlash,
   coopHost,
   coopMap,
@@ -39,6 +40,8 @@ import {
   coopYou,
   coopConn,
   coopBelt,
+  coopDeck,
+  coopRelics,
   coopEvent,
   coopForm,
   coopLobby,
@@ -64,6 +67,8 @@ import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup
 import { MapView, mapGeometry, type MapTravel } from './mapview'
 import { enemyMove, intentText } from '../intent'
 import { mpName } from '../mp'
+import { pileView } from '../store'
+import { HandDrawFlights, sweepHandToDiscard } from './pilefx'
 
 function animateQueuedCardImpact(dest: { x: number; y: number }, type: string, id: string) {
   const ext = type === 'attack' ? '.sh' : type === 'power' ? '.sys' : '.cfg'
@@ -111,6 +116,35 @@ function CoopActionStack() {
           <span>{card.label}</span>
         </div>
       ))}
+    </div>
+  )
+}
+
+function CoopInventoryBar() {
+  const map = coopMap.value
+  const me = map?.party?.[map.you]
+  if (!map || !me) return null
+  return (
+    <div class="topbar coop-inventory-bar">
+      <span class="stat hp-txt">♥ <b>{me.hp}/{me.maxHp}</b></span>
+      <span class="stat gold-txt">¤ <b>{me.gold}</b></span>
+      <span class="stat floor-txt">{tf('actFloor', { act: map.act, floor: map.floor })}</span>
+      <RelicBar relics={coopRelics.value} />
+      <PotionBelt ids={coopBelt.value} cls="inbar" />
+      <span class="spacer" />
+      <span
+        class="stat linkish"
+        style={{ color: 'var(--purple)' }}
+        onClick={() => {
+          sfx.click()
+          pileView.value = {
+            title: tf('deckTitle', { n: coopDeck.value.length }),
+            cards: [...coopDeck.value].sort(byName),
+          }
+        }}
+      >
+        {tf('deckBtn', { n: coopDeck.value.length })}
+      </span>
     </div>
   )
 }
@@ -252,7 +286,7 @@ export function CoopScreen() {
     const myTurn = v.active === you && !v.over && !v.downed[you]
     const pending = coopPending.value
     const queueDepth = coopActionQueueDepth.value
-    const canExtendQueue = coopMode.value === 'hybrid' && queueDepth > 0
+    const canExtendQueue = coopMode.value === 'hybrid' && coopHybridPlayOpen.value
     const inputBlocked = pending && !canExtendQueue
     const hand = me.hand as { uid: number; id: string; up: boolean }[]
     const playableSet = new Set(
@@ -275,12 +309,13 @@ export function CoopScreen() {
       }
       const dest = anchorCenter(who ?? 'c' + you)
       const src = from ?? anchorCenter('c' + you)
-      const queueAnchor = pred ? anchorCenter('coop-queue') : null
+      const waitsInQueue = !!pred && canExtendQueue
+      const queueAnchor = waitsInQueue ? anchorCenter('coop-queue') : null
       const flightDest = queueAnchor
         ? { x: queueAnchor.x + Math.min(queueDepth, 5) * 2, y: queueAnchor.y + 9 + Math.min(queueDepth, 5) * 3 }
         : dest
       if (src && flightDest) {
-        flyCard(src, flightDest, def.type, cardName(card), pred ? 'queue-in' : '')
+        flyCard(src, flightDest, def.type, cardName(card), waitsInQueue ? 'queue-in' : '')
         sfx.whoosh()
         if (!pred && dest) animateQueuedCardImpact(dest, def.type, card.id)
       }
@@ -316,7 +351,7 @@ export function CoopScreen() {
       hoverEnemy && !hoverEnemy.dead ? [hoverEnemy] : v.enemies.filter((e: any) => !e.dead)
 
     return (
-      <div class={`combat screen ${shakeCls}`}>
+      <div class={`combat screen coop-combat ${shakeCls}`}>
         <div class="topbar">
           <span class="stat" style={{ color: 'var(--green)' }}>{t('coopParty')}</span>
           <span
@@ -325,8 +360,19 @@ export function CoopScreen() {
           >
             {coopMode.value.toUpperCase()}
           </span>
+          <RelicBar relics={coopRelics.value} />
           {queueDepth > 0 && <span class="coop-queue-depth">{tf('coopQueueDepth', { n: queueDepth })}</span>}
           <span class="spacer" />
+          <span
+            class="stat linkish"
+            style={{ color: 'var(--purple)' }}
+            onClick={() => (pileView.value = {
+              title: tf('deckTitle', { n: coopDeck.value.length }),
+              cards: [...coopDeck.value].sort(byName),
+            })}
+          >
+            {tf('deckBtn', { n: coopDeck.value.length })}
+          </span>
           <span
             class={`turn-indicator ${myTurn ? 'you' : 'them'}`}
             style={{ color: coopMap.value?.party?.[v.active]?.color }}
@@ -417,6 +463,15 @@ export function CoopScreen() {
           </div>
         )}
         <div class="dock">
+          <div
+            class="pilebtn left"
+            onClick={() => (pileView.value = {
+              title: tf('drawPileTitle', { n: me.draw.length }),
+              cards: [...me.draw].sort(byName),
+            })}
+          >
+            {tf('drawBtn', { n: me.draw.length })}
+          </div>
           <DraggableHand
             cards={hand}
             playable={playableSet}
@@ -431,10 +486,21 @@ export function CoopScreen() {
             onCardClick={(i) => playableSet.has(i) && play(i, enemyTargets[0])}
             onPlay={play}
           />
+          <HandDrawFlights hand={hand as CardInst[]} root=".coop-combat" />
+          <div
+            class="pilebtn right"
+            onClick={() => (pileView.value = {
+              title: tf('discardPileTitle', { a: me.discard.length, b: me.exhausted.length }),
+              cards: [...me.discard].sort(byName).concat([...me.exhausted].sort(byName)),
+            })}
+          >
+            {tf('discardBtn', { n: me.discard.length })}
+          </div>
           <button
             class="btn pink endturn"
             disabled={!myTurn || pending}
             onClick={() => {
+              sweepHandToDiscard('.coop-combat', hand as CardInst[], cardRetains)
               coopPending.value = true
               coopSend({ t: 'coopaction', action: { t: 'end' } })
             }}
@@ -466,8 +532,10 @@ export function CoopScreen() {
     return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
   }
   const m = coopMap.value
+  const activeRun = ['map', 'shop', 'event', 'rest', 'reward', 'waiting'].includes(phase)
   return (
-    <div class="screen menu">
+    <div class={`screen menu ${activeRun ? 'coop-run-screen' : ''}`}>
+      {activeRun && <CoopInventoryBar />}
       <div class="logo" style={{ fontSize: 'clamp(28px,5vw,46px)' }}>
         CO<span>OP</span>
       </div>

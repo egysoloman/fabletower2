@@ -1646,6 +1646,22 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 
 /* --- co-op ------------------------------------------------------------------ */
 .coopparty { display: flex; gap: 26px; align-items: flex-end; }
+.menu.coop-run-screen {
+  justify-content: flex-start;
+  gap: 10px;
+  padding-top: 0;
+}
+.coop-run-screen .coop-inventory-bar {
+  flex: 0 0 auto;
+  position: sticky;
+  top: 0;
+}
+.coop-run-screen .coopmapwrap {
+  flex: 0 0 auto;
+  /* MapView's SVG is intentionally tall; keep enough height that the first
+   * selectable row is never clipped by the centered map container. */
+  height: min(78vh, 585px);
+}
 .combat .arena { position: relative; }
 .coop-action-stack {
   position: absolute;
@@ -1663,12 +1679,12 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
 .coop-action-stack::after {
   content: '';
   position: absolute;
-  inset: -7px;
+  inset: 0;
   z-index: -2;
   border: 1px solid rgba(0, 229, 255, 0.22);
-  border-radius: 8px;
-  background: radial-gradient(circle, rgba(0, 229, 255, 0.1), transparent 70%);
-  box-shadow: 0 0 18px rgba(0, 229, 255, 0.18);
+  border-radius: 5px;
+  background: transparent;
+  box-shadow: 0 0 13px rgba(0, 229, 255, 0.28);
 }
 .coop-action-stack-card {
   position: absolute;

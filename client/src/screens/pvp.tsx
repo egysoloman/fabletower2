@@ -4,8 +4,8 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, cardName, predictPvpPlay, previewCard, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
-import { BlockChip, CardView, HpBar, StatusRow } from '../components'
+import { CARDS, cardName, cardRetains, predictPvpPlay, previewCard, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
+import { BlockChip, HpBar, StatusRow, byName } from '../components'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
 import { mpName, mpWsUrl } from '../mp'
@@ -22,11 +22,12 @@ import {
   useShake,
   victoryFx,
 } from '../fx'
-import { screen } from '../store'
+import { pileView, screen } from '../store'
 import { sfx } from '../sfx'
 import { t, tf } from '../i18n'
 import { Sprite } from '../sprites'
 import { DraggableHand, dragHoverWho, dragMode } from './hand'
+import { HandDrawFlights, sweepHandToDiscard } from './pilefx'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
 
@@ -65,7 +66,6 @@ export function PvpScreen() {
   const [mode, setMode] = useState<MpMode>('hybrid')
   const predicted = useRef(false)
   const [myTag, setMyTag] = useState('')
-  const [pileOpen, setPileOpen] = useState(false)
   const shakeCls = useShake()
 
   const showToast = (msg: string) => {
@@ -348,7 +348,7 @@ export function PvpScreen() {
   const oppHl = dragMode.value === 'target' ? (dragHoverWho.value === oppWho ? 'snap' : 'targetable') : ''
 
   return (
-    <div class={`combat screen ${shakeCls}`}>
+    <div class={`combat screen pvp-combat ${shakeCls}`}>
       <div class="topbar">
         <span class={`conndot ${conn}`} data-tip={conn === 'online' ? t('connOnline') : t('connReconnecting')} />
         <span class={`modebadge ${mode}`} data-tip={mode === 'strict' ? t('modeStrictTip') : t('modeHybridTip')}>
@@ -383,8 +383,8 @@ export function PvpScreen() {
           <div class="pname">{tf('youSuffix', { name: me.name })}</div>
           <HpBar hp={me.hp} maxHp={me.maxHp} mine />
           <StatusRow statuses={me.statuses} />
-          <div class="linkish" style={{ fontSize: '11px', color: 'var(--dim)' }} onClick={() => setPileOpen(true)}>
-            {tf('pvpCounts', { a: me.drawCount, b: me.discard.length })} ▾
+          <div style={{ fontSize: '11px', color: 'var(--dim)' }}>
+            {tf('pvpCounts', { a: me.drawCount, b: me.discard.length })}
           </div>
         </div>
 
@@ -424,22 +424,6 @@ export function PvpScreen() {
         ]}
       />
 
-      {pileOpen && (
-        <div class="overlay" onClick={() => setPileOpen(false)}>
-          <div class="panel popin" onClick={(e) => e.stopPropagation()}>
-            <h2>{tf('discardPileTitle', { a: me.discard.length, b: 0 })}</h2>
-            <div class="gridcards">
-              {me.discard.length === 0 && <div class="sub">{t('empty')}</div>}
-              {me.discard.map((c, i) => (
-                <CardView key={i} card={c} style={{ '--fan': Math.min(i, 14) } as never} />
-              ))}
-            </div>
-            <button class="btn" onClick={() => setPileOpen(false)}>
-              {t('close')}
-            </button>
-          </div>
-        </div>
-      )}
       {view.over || phase === 'over' ? (
         <div class="overlay">
           <div class="panel">
@@ -457,6 +441,15 @@ export function PvpScreen() {
         </div>
       ) : (
         <div class="dock">
+          <div
+            class="pilebtn left"
+            onClick={() => (pileView.value = {
+              title: tf('drawPileTitle', { n: me.drawCount }),
+              cards: [...(me.draw ?? [])].sort(byName),
+            })}
+          >
+            {tf('drawBtn', { n: me.drawCount })}
+          </div>
           <DraggableHand
             cards={hand}
             playable={playableSet}
@@ -466,7 +459,24 @@ export function PvpScreen() {
             onCardClick={(i) => playableSet.has(i) && playFromHand(i, oppWho)}
             onPlay={playFromHand}
           />
-          <button class="btn pink endturn" disabled={!myTurn || pending} onClick={() => send({ t: 'end' })}>
+          <HandDrawFlights hand={hand} root=".pvp-combat" />
+          <div
+            class="pilebtn right"
+            onClick={() => (pileView.value = {
+              title: tf('discardPileTitle', { a: me.discard.length, b: me.exhausted.length }),
+              cards: [...me.discard].sort(byName).concat([...me.exhausted].sort(byName)),
+            })}
+          >
+            {tf('discardBtn', { n: me.discard.length })}
+          </div>
+          <button
+            class="btn pink endturn"
+            disabled={!myTurn || pending}
+            onClick={() => {
+              sweepHandToDiscard('.pvp-combat', hand, cardRetains)
+              send({ t: 'end' })
+            }}
+          >
             {t('endTurn')}
           </button>
         </div>

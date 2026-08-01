@@ -183,6 +183,8 @@ export function RelicBar(props: { relics: string[] }) {
 
 /** Potion chips. Interactive in combat (onUse), read-only elsewhere. */
 export function PotionBelt(props: {
+  /** Explicit multiplayer belt; omitted in solo mode to read the active run. */
+  ids?: string[]
   onUse?: (idx: number) => void
   onDrop?: (idx: number) => void
   selected?: number | null
@@ -190,10 +192,11 @@ export function PotionBelt(props: {
 }) {
   void lang.value
   const r = run.value
-  if (!r || r.potions.length === 0) return null
+  const ids = props.ids ?? r?.potions ?? []
+  if (ids.length === 0) return null
   return (
     <div class={`potionbelt ${props.cls ?? ''}`}>
-      {r.potions.map((id, i) => {
+      {ids.map((id, i) => {
         const def = POTIONS[id]
         if (!def) return null
         return (

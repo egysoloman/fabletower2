@@ -140,6 +140,8 @@ export interface PvpSideView {
   minions: MinionC[]
   /** Present only on your own side. */
   hand?: CardInst[]
+  /** Present only on your own side; the opponent's draw order stays hidden. */
+  draw?: CardInst[]
 }
 
 export interface PvpView {
@@ -170,7 +172,7 @@ export function viewFor(ps: PvpState, idx: 0 | 1): PvpView {
       cardsPlayed: s.cardsPlayed,
       cardsThisTurn: s.cardsThisTurn,
       minions: s.minions,
-      ...(i === idx ? { hand: s.hand } : {}),
+      ...(i === idx ? { hand: s.hand, draw: s.draw } : {}),
     }
   }
   return { you: idx, turn: ps.turn, active: ps.active, sides: [mk(0), mk(1)], over: ps.over }

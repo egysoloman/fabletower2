@@ -471,7 +471,9 @@ describe('PvP', () => {
     expect(res.error).toBe('not your turn')
     const view0 = viewFor(ps, 0)
     expect(view0.sides[0].hand).toBeTruthy()
+    expect(view0.sides[0].draw).toBeTruthy()
     expect(view0.sides[1].hand).toBeUndefined()
+    expect(view0.sides[1].draw).toBeUndefined()
     expect(view0.sides[1].handCount).toBe(0) // p1 hasn't drawn yet
   })
 

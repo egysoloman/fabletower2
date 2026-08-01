@@ -434,6 +434,7 @@ function coopBroadcast(room: CoopRoom, msg: (idx: number) => unknown) {
 }
 
 function coopMapMsg(room: CoopRoom, idx: number) {
+  const you = room.players[idx]
   return {
     t: 'coopmap',
     you: idx,
@@ -446,6 +447,10 @@ function coopMapMsg(room: CoopRoom, idx: number) {
     party: room.players.map((p) => ({
       name: tagOf(p.client), char: p.char, color: p.color, hp: p.hp, maxHp: p.maxHp, gold: p.gold, deckSize: p.deck.length,
     })),
+    // Backpack contents are private to this recipient, just like a solo run.
+    deck: you.deck,
+    relics: you.relics,
+    belt: you.potions,
     votes: voteList(room),
   }
 }
@@ -503,6 +508,7 @@ function sendCoopSnapshot(room: CoopRoom, idx: number) {
         gold: player.gold,
         deck: player.deck,
         belt: player.potions,
+        relics: player.relics,
         replied: room.players.filter((p) => p.replied).length,
         total: room.players.length,
         closesAt: room.shopCloseAt,
@@ -624,6 +630,7 @@ function completeCoopTravel(room: CoopRoom, id: string) {
       gold: room.players[i].gold,
       deck: room.players[i].deck,
       belt: room.players[i].potions,
+      relics: room.players[i].relics,
       replied: room.players.filter((p) => p.replied).length,
       total: room.players.length,
       closesAt: room.shopCloseAt,
@@ -1244,7 +1251,7 @@ wss.on('connection', (ws) => {
         touchCoop(room)
         coopBroadcast(room, (i) => ({
           t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold,
-          deck: room.players[i].deck, belt: room.players[i].potions,
+          deck: room.players[i].deck, belt: room.players[i].potions, relics: room.players[i].relics,
           replied: room.players.filter((p) => p.replied).length, total: room.players.length,
           closesAt: room.shopCloseAt,
         }))
