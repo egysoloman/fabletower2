@@ -42,7 +42,7 @@ const CARD_EFFECTS = new Set([
   'dmg', 'dmgAll', 'dmgVulnBonus', 'dmgPerPower', 'dmgPerCorrupt', 'dmgIfCombo', 'blockAsDmg',
   'block', 'doubleBlock', 'doubleCorrupt', 'draw', 'energy', 'heal', 'selfDmg', 'status',
   'cleanse', 'addCard', 'heatCool', 'ventDmg', 'ventDmgAll', 'ventBlock', 'dmgHeatBonus',
-  'summonAlly', 'enterStance', 'dmgIfStance', 'dmgPerAuto',
+  'summonAlly', 'commandMinions', 'enterStance', 'dmgIfStance', 'dmgPerAuto',
 ])
 const MOVE_EFFECTS = new Set(['atk', 'block', 'buff', 'buffAll', 'debuff', 'heal', 'addCard', 'summon', 'cleanseSelf'])
 const OUTCOMES = new Set(['gold', 'damage', 'heal', 'maxhp', 'relic', 'cardRandom', 'cardGlitch', 'upgradeRandom', 'removeChoose', 'potion', 'curse', 'cardSpecific'])

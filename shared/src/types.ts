@@ -26,8 +26,9 @@ export type StatusId =
   | 'ignition' // gain N heat at end of own turn
   | 'reactor' // overheat damages ALL enemies instead of you
   | 'artifact' // negates the next N debuffs applied to this fighter
+  | 'stable' // neutral GHOST stance; all stance exits return here
   | 'overdrive' // stance: attacks deal x1.5, attacks taken x1.5
-  | 'stealth' // stance: attacks taken x0.5; +2 energy when you leave it
+  | 'stealth' // stance: attacks taken x0.5
   | 'stancewall' // gain N block whenever you enter a stance
   | 'momentum' // gain N Strength whenever you enter Overdrive
   | 'tempoloop' // draw N whenever you enter a stance
@@ -67,8 +68,9 @@ export const STATUS_INFO: Record<StatusId, StatusInfo> = {
   ignition: { name: 'Ignition', sym: 'Δ', bad: false, desc: 'Gains {n} Heat at end of turn.', powerText: 'At the end of your turn, gain {n} Heat.' },
   reactor: { name: 'Reactor', sym: '☢', bad: false, desc: 'Overheating damages ALL enemies instead of you.', powerText: 'Overheating no longer hurts you — it deals the damage to ALL enemies instead.' },
   artifact: { name: 'Artifact', sym: '◈', bad: false, desc: 'Negates the next {n} debuff(s).', powerText: 'Gain {n} Artifact: each charge negates the next debuff applied to you.' },
+  stable: { name: 'Stable', sym: '◇', bad: false, desc: 'Neutral stance. Leaving another stance returns you to Stable.' },
   overdrive: { name: 'Overdrive', sym: '≫', bad: false, desc: 'Stance: attacks deal 50% more, but attacks against you also deal 50% more.' },
-  stealth: { name: 'Stealth', sym: '⌇', bad: false, desc: 'Stance: attacks against you deal half damage. Leaving it grants 2 Energy.' },
+  stealth: { name: 'Stealth', sym: '⌇', bad: false, desc: 'Stance: attacks against you deal half damage. Playing an Attack breaks Stealth.' },
   stancewall: { name: 'Stance Wall', sym: '⛉', bad: false, desc: 'Gain {n} Block whenever you enter a stance.', powerText: 'Whenever you enter a stance, gain {n} Block.' },
   momentum: { name: 'Momentum', sym: '⤁', bad: false, desc: 'Gain {n} Strength whenever you enter Overdrive.', powerText: 'Whenever you enter Overdrive, gain {n} Strength.' },
   tempoloop: { name: 'Tempo Loop', sym: '∿', bad: false, desc: 'Draw {n} card(s) whenever you enter a stance.', powerText: 'Whenever you enter a stance, draw {n} card(s).' },
@@ -110,6 +112,7 @@ export type Effect =
   | { k: 'enterStance'; id: 'overdrive' | 'stealth' | 'none' }
   | { k: 'dmgIfStance'; n: number; bonus: number }
   | { k: 'dmgPerAuto'; base: number; per: number }
+  | { k: 'commandMinions' }
   | { k: 'summonAlly'; id: string; n?: number }
 
 export type CharId = 'runner' | 'vector' | 'ghost' | 'array'
@@ -168,9 +171,13 @@ export interface MinionC {
   defId: string
   hp: number
   maxHp: number
+  /** Same-role summons share a board slot; absent in legacy saves means 1. */
+  stacks?: number
 }
 
 export interface DeckSide extends Fighter {
+  /** Needed by character-scoped mechanics; absent in legacy PvP states. */
+  char?: CharId
   energy: number
   energyMax: number
   hand: CardInst[]

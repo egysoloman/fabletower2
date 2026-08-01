@@ -1471,6 +1471,8 @@ function effTextEn(e: Effect): string {
       return `Deal ${e.n} damage. Deals ${e.n + e.bonus} instead while in a stance.`
     case 'dmgPerAuto':
       return `Deal ${e.base} damage, plus ${e.per} per automation stack (Turret, Plating, Viral).`
+    case 'commandMinions':
+      return 'Command all summoned allies to act once.'
     case 'summonAlly': {
       const who = `${minionName(e.id)} (${minionDesc(e.id)})`
       return e.n && e.n > 1 ? `Summon ${e.n} ${who}.` : `Summon a ${who}.`
@@ -1542,6 +1544,8 @@ function effTextZh(e: Effect): string {
       return `造成 ${e.n} 点伤害。若你处于姿态中，则改为造成 ${e.n + e.bonus} 点。`
     case 'dmgPerAuto':
       return `造成 ${e.base} 点伤害，每层自动装置（炮塔、镀层、病毒扩散）额外 +${e.per} 点。`
+    case 'commandMinions':
+      return '命令所有召唤物立即行动一次。'
     case 'summonAlly': {
       const who = `${minionName(e.id)}（${minionDesc(e.id)}）`
       return e.n && e.n > 1 ? `召唤 ${e.n} 个${who}。` : `召唤一个${who}。`

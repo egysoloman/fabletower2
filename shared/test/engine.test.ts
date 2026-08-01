@@ -13,6 +13,7 @@ import {
   applyCombatResult,
   applyOutcomes,
   ascAtk,
+  attack,
   availableNodeIds,
   combatFor,
   combatReduce,
@@ -23,6 +24,7 @@ import {
   genActMap,
   genShop,
   getActiveBalance,
+  getMechanicsTuning,
   goldReward,
   rankDeckArchetypes,
   modifiedDamage,
@@ -44,6 +46,7 @@ import {
   rollCardRewards,
   scoreClimbRound,
   startCombat,
+  summonMinion,
   upgradeCard,
   viewFor,
   type CombatState,
@@ -58,29 +61,58 @@ const inst = (id: string, uid: number, up = false) => ({ uid, id, up })
 const handIdx = (cs: CombatState, id: string) => cs.player.hand.findIndex((c) => c.id === id)
 
 describe('versioned production balance patches', () => {
-  it('applies v3 plus 5% lower enemy HP exactly once and rolls back cleanly', () => {
+  it('applies production v4 exactly once and rolls back cleanly', () => {
     resetBalanceToBaseline()
     const baseHp = Object.fromEntries(Object.entries(ENEMIES).map(([id, enemy]) => [id, [...enemy.hp]]))
     try {
       const first = activateProductionBalance()
-      expect(first.id).toBe('production-v3-enemy-hp-95')
+      expect(first.id).toBe('production-v4-mechanics')
+      expect(first.version).toBe('2.0.0')
       expect(first.patchIds).toEqual([
         'character-balance-v3@3.0.0',
         'enemy-hp-minus-5-percent@1.0.0',
+        'character-mechanics-v4@4.0.0',
       ])
       expect(CARDS.strike.effects).toEqual([{ k: 'dmg', n: 8 }])
       expect(CARDS.defend.effects).toEqual([{ k: 'block', n: 7 }])
       expect(CARDS.phaseblade.effects).toEqual([{ k: 'dmg', n: 7 }])
       expect(CARDS.cloakfield.effects).toEqual([{ k: 'block', n: 6 }])
       expect(CARDS.ventblade.effects).toEqual([{ k: 'ventDmg', mult: 3 }])
-      expect(CARDS.deployturret.cost).toBe(2)
-      expect(CARDS.deployturret.effects).toEqual([{ k: 'status', to: 'self', id: 'turret', n: 1 }])
-      expect(CARDS.deployplating.cost).toBe(2)
-      expect(CARDS.deployplating.effects).toEqual([{ k: 'status', to: 'self', id: 'plating', n: 1 }])
+      expect(CARDS.deployturret.cost).toBe(1)
+      expect(CARDS.deployturret.effects).toEqual([{ k: 'summonAlly', id: 'ferrodrone' }])
+      expect(CARDS.deployplating.cost).toBe(1)
+      expect(CARDS.deployplating.effects).toEqual([{ k: 'summonAlly', id: 'bulwarkpod' }])
+      expect(CARDS.relayburst.effects).toEqual([{ k: 'commandMinions' }])
       expect(RELICS.cortexlink.hooks.firstTurnDraw).toBe(2)
       expect(RELICS.phaselocket.hooks.combatStatuses?.stancewall).toBe(2)
+      expect(RELICS.phaselocket.hooks.stanceSwitchEnergy).toBe(1)
       expect(RELICS.dronecradle.hooks.combatStatuses?.turret).toBe(0)
+      expect(RELICS.dronecradle.hooks.minionHp).toBe(1)
       expect(RELIC_ZH.cortexlink.desc).toContain('2 张牌')
+      expect(RELIC_ZH.phaselocket.desc).toContain('2 层姿态壁垒')
+      expect(RELIC_ZH.phaselocket.desc).toContain('1 点能量')
+      expect(newRun(18, 0, 'array').maxHp).toBe(70)
+      expect(combatFor(newRun(19, 0, 'ghost'), 'normal').player.statuses).toMatchObject({
+        stable: 1,
+        stancewall: 2,
+      })
+      expect(getMechanicsTuning()).toMatchObject({
+        stance: {
+          stableState: true,
+          stealthExitAfterAttack: true,
+          energyRule: 'every-switch',
+          energyAmount: 0,
+        },
+        characterMaxHpAdjustments: { array: -5 },
+        minions: {
+          stackSameRole: true,
+          maxStacksPerRole: 4,
+          actionPerStack: true,
+          independentBodiesPerStack: false,
+          synergyPerOtherRole: 1,
+          maxSynergyOtherRoles: 1,
+        },
+      })
       for (const [id, enemy] of Object.entries(ENEMIES)) {
         expect(enemy.hp).toEqual(baseHp[id].map((hp) => Math.max(1, Math.round(hp * 0.95))))
       }
@@ -99,8 +131,49 @@ describe('versioned production balance patches', () => {
     }
     expect(CARDS.strike.effects).toEqual([{ k: 'dmg', n: 6 }])
     expect(RELICS.cortexlink.hooks.firstTurnDraw).toBe(1)
+    expect(getMechanicsTuning().stance.stableState).toBe(false)
+    expect(getMechanicsTuning().minions.stackSameRole).toBe(false)
     for (const [id, enemy] of Object.entries(ENEMIES)) expect(enemy.hp).toEqual(baseHp[id])
     expect(getActiveBalance().id).toBe('baseline')
+  })
+
+  it('promotes the reinforced-one finalist without changing its resolved mechanics', () => {
+    const snapshot = () => ({
+      arrayCards: Object.fromEntries(
+        Object.values(CARDS)
+          .filter((card) => card.char === 'array')
+          .map((card) => [card.id, structuredClone(card)]),
+      ),
+      phaseLocket: structuredClone(RELICS.phaselocket),
+      droneCradle: structuredClone(RELICS.dronecradle),
+      mechanics: structuredClone(getMechanicsTuning()),
+    })
+    try {
+      activateBalanceStack('candidate-mechanics-relic-reinforced-one-shared4')
+      const finalist = snapshot()
+      activateProductionBalance()
+      expect(snapshot()).toEqual(finalist)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('keeps production v3 as an exact rollback target', () => {
+    try {
+      const legacy = activateBalanceStack('production-v3-enemy-hp-95')
+      expect(legacy.version).toBe('1.0.0')
+      expect(legacy.patchIds).toEqual([
+        'character-balance-v3@3.0.0',
+        'enemy-hp-minus-5-percent@1.0.0',
+      ])
+      expect(CARDS.deployturret.cost).toBe(2)
+      expect(CARDS.deployturret.effects).toEqual([{ k: 'status', to: 'self', id: 'turret', n: 1 }])
+      expect(newRun(20, 0, 'array').maxHp).toBe(75)
+      expect(getMechanicsTuning().stance.stableState).toBe(false)
+      expect(getMechanicsTuning().minions.stackSameRole).toBe(false)
+    } finally {
+      resetBalanceToBaseline()
+    }
   })
 
   it('rejects an invalid patch without partially changing live content', () => {
@@ -1079,6 +1152,235 @@ describe('GHOST stances (cycle 9)', () => {
     const run = newRun(1, 0, 'ghost')
     expect(run.deck.some((c) => c.id === 'redshift')).toBe(true)
     expect(run.deck.some((c) => c.id === 'blackout')).toBe(true)
+  })
+})
+
+describe('versioned stance and summon mechanism candidates', () => {
+  function rig(cs: CombatState, ids: string[]) {
+    let uid = 17_000
+    cs.player.hand = ids.map((id) => ({ uid: uid++, id, up: false }))
+    cs.player.energy = 20
+    return cs
+  }
+
+  it('Stable is GHOST default; stable-exit energy and attack decloak are distinct transitions', () => {
+    activateBalanceStack('candidate-ghost-stable-exit')
+    try {
+      const run = newRun(101, 0, 'ghost')
+      const opened = combatFor(run, 'normal')
+      expect(opened.player.statuses.stable).toBe(1)
+      expect(combatFor(newRun(101, 0, 'runner'), 'normal').player.statuses.stable).toBeUndefined()
+
+      let cs = rig(opened, ['redshift', 'blackout', 'phaseblade'])
+      let result = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'redshift') })
+      expect(result.state.player.statuses.overdrive).toBe(1)
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain' && e.n === 1)).toBe(true)
+
+      cs = result.state
+      result = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'blackout') })
+      expect(result.state.player.statuses.stealth).toBe(1)
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain')).toBe(false)
+
+      cs = result.state
+      result = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'phaseblade'), target: 0 })
+      expect(result.state.player.statuses.stealth).toBeUndefined()
+      expect(result.state.player.statuses.stable).toBe(1)
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain')).toBe(false)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('every-switch candidate refunds all three real transitions without same-stance farming', () => {
+    activateBalanceStack('candidate-ghost-every-switch')
+    try {
+      let cs = rig(combatFor(newRun(102, 0, 'ghost'), 'normal'), ['redshift', 'blackout', 'phaseblade'])
+      for (const [id, target] of [['redshift', undefined], ['blackout', undefined], ['phaseblade', 0]] as const) {
+        const result = combatReduce(cs, { t: 'play', hand: handIdx(cs, id), target })
+        expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain' && e.n === 1)).toBe(true)
+        cs = result.state
+      }
+      expect(cs.player.statuses.stable).toBe(1)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('ARRAY linear candidate stacks roles, lowers body HP, and routes Attacks through minions', async () => {
+    activateBalanceStack('candidate-array-linear')
+    try {
+      const run = newRun(103, 0, 'array')
+      expect(run.maxHp).toBe(67)
+      expect(CARDS.relayburst.effects).toEqual([{ k: 'commandMinions' }])
+      let cs = rig(combatFor(run, 'normal'), ['deployturret', 'deployturret', 'deployplating', 'pulsebolt'])
+      for (const id of ['deployturret', 'deployturret', 'deployplating']) {
+        cs = combatReduce(cs, { t: 'play', hand: handIdx(cs, id) }).state
+      }
+      expect(cs.player.minions).toHaveLength(2)
+      expect(cs.player.minions.find((m) => m.defId === 'ferrodrone')?.stacks).toBe(2)
+      const hp0 = cs.enemies[0].hp
+      cs = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'pulsebolt'), target: 0 }).state
+      expect(hp0 - cs.enemies[0].hp).toBe(8)
+      expect(cs.player.block).toBe(3)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('mixed formation synergy boosts attack and defense per other role', () => {
+    activateBalanceStack('candidate-array-synergy')
+    try {
+      let cs = rig(fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem']), ['pulsebolt'])
+      cs.player.char = 'array'
+      cs.player.minions = [
+        { defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 2 },
+        { defId: 'bulwarkpod', hp: 8, maxHp: 8, stacks: 1 },
+      ]
+      const hp0 = cs.enemies[0].hp
+      cs = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+      expect(hp0 - cs.enemies[0].hp).toBe(10)
+      expect(cs.player.block).toBe(4)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('smooth ARRAY candidates cap mixed synergy and late role stacks', () => {
+    activateBalanceStack('candidate-mechanics-switch-smooth4')
+    try {
+      const run = newRun(105, 0, 'array')
+      expect(run.maxHp).toBe(70)
+      let cs = rig(fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem']), ['pulsebolt'])
+      cs.player.char = 'array'
+      cs.player.minions = [
+        { defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 2 },
+        { defId: 'bulwarkpod', hp: 8, maxHp: 8, stacks: 1 },
+        { defId: 'sporemite', hp: 5, maxHp: 5, stacks: 1 },
+      ]
+      const hp0 = cs.enemies[0].hp
+      cs = combatReduce(cs, { t: 'play', hand: 0, target: 0 }).state
+      // Three roles still grant only one +1 formation bonus per layer.
+      expect(hp0 - cs.enemies[0].hp).toBe(10)
+      expect(cs.player.block).toBe(4)
+
+      const side = cs.player
+      side.minions = [{ defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 4 }]
+      expect(summonMinion(side, 'ferrodrone')).toBe(false)
+    } finally {
+      resetBalanceToBaseline()
+    }
+
+    activateBalanceStack('candidate-mechanics-switch-smooth3')
+    try {
+      expect(newRun(106, 0, 'array').maxHp).toBe(72)
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('shared-body ARRAY layers add actions without adding full HP bodies', () => {
+    activateBalanceStack('candidate-mechanics-switch-shared4')
+    try {
+      const cs = fixedCombat(['strike', 'strike', 'strike', 'strike', 'strike'], ['golem'])
+      cs.player.char = 'array'
+      cs.player.minions = [{ defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 4 }]
+      attack(cs.enemies[0], cs.player, 99, 'e0', 'p', [])
+      expect(cs.player.minions).toEqual([])
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('relic-core candidate gates GHOST energy and boots ARRAY with one Ferro layer', () => {
+    activateBalanceStack('candidate-mechanics-relic-core-shared4')
+    try {
+      const ghost = newRun(107, 0, 'ghost')
+      let cs = rig(combatFor(ghost, 'normal'), ['redshift'])
+      expect(cs.player.statuses.stancewall ?? 0).toBe(0)
+      let result = combatReduce(cs, { t: 'play', hand: 0 })
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain' && e.n === 1)).toBe(true)
+
+      ghost.relics = []
+      cs = rig(combatFor(ghost, 'normal'), ['redshift'])
+      result = combatReduce(cs, { t: 'play', hand: 0 })
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain')).toBe(false)
+
+      const array = combatFor(newRun(108, 0, 'array'), 'normal')
+      expect(array.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 1 },
+      ])
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('relic-seed candidate keeps two Stance Wall and opens ARRAY with a weak upgradeable seed', () => {
+    activateBalanceStack('candidate-mechanics-relic-seed-shared4')
+    try {
+      let cs = rig(combatFor(newRun(109, 0, 'ghost'), 'normal'), ['redshift'])
+      expect(cs.player.statuses.stancewall).toBe(2)
+      const result = combatReduce(cs, { t: 'play', hand: 0 })
+      expect(result.events.some((e) => e.e === 'status' && e.id === 'energyGain' && e.n === 1)).toBe(true)
+
+      cs = rig(combatFor(newRun(110, 0, 'array'), 'normal'), ['deployturret'])
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferroseed', hp: 2, maxHp: 2, stacks: 1 },
+      ])
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 6, maxHp: 6, stacks: 2 },
+      ])
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('reinforced-role relic adds HP once per shared role without unlocking empty commands', () => {
+    activateBalanceStack('candidate-mechanics-relic-reinforced-shared4')
+    try {
+      let cs = rig(combatFor(newRun(111, 0, 'array'), 'normal'), ['pulsebolt', 'deployturret', 'deployturret'])
+      expect(cs.player.minions).toEqual([])
+      const hp0 = cs.enemies[0].hp
+      cs = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'pulsebolt'), target: 0 }).state
+      expect(cs.enemies[0].hp).toBe(hp0)
+      cs = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'deployturret') }).state
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 8, maxHp: 8, stacks: 1 },
+      ])
+      cs = combatReduce(cs, { t: 'play', hand: handIdx(cs, 'deployturret') }).state
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 8, maxHp: 8, stacks: 2 },
+      ])
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('reinforced-one finalist adds exactly one shared-body HP', () => {
+    activateBalanceStack('candidate-mechanics-relic-reinforced-one-shared4')
+    try {
+      let cs = rig(combatFor(newRun(112, 0, 'array'), 'normal'), ['deployturret', 'deployturret'])
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      expect(cs.player.minions).toEqual([
+        { defId: 'ferrodrone', hp: 7, maxHp: 7, stacks: 2 },
+      ])
+    } finally {
+      resetBalanceToBaseline()
+    }
+  })
+
+  it('ARRAY layering does not alter other characters summons', () => {
+    activateBalanceStack('candidate-array-synergy')
+    try {
+      let cs = rig(combatFor(newRun(104, 0, 'runner'), 'normal'), ['summonproxy', 'summonproxy'])
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      cs = combatReduce(cs, { t: 'play', hand: 0 }).state
+      expect(cs.player.minions).toHaveLength(2)
+      expect(cs.player.minions.map((m) => m.stacks ?? 1)).toEqual([1, 1])
+    } finally {
+      resetBalanceToBaseline()
+    }
   })
 })
 

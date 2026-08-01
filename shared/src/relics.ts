@@ -55,6 +55,8 @@ export interface RelicDef {
     minionHp?: number
     /** Start each combat with this minion already deployed. */
     startMinion?: string
+    /** Extra Energy after every real stance transition. */
+    stanceSwitchEnergy?: number
   }
 }
 

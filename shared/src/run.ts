@@ -19,6 +19,7 @@ import {
   ascensionShopPriceMultiplier,
 } from './ascension'
 import { getActiveBalance } from './balance'
+import { characterStartingMaxHp } from './mechanics'
 
 export const FINAL_ACT = 3
 /** The optional post-game act: THE ROOT. Entered only by choice. */
@@ -67,7 +68,7 @@ export function newRun(seed: number, asc = 0, char: CharId = 'runner'): RunState
     deck.push({ uid: uid++, id: 'lag', up: false })
   }
   if (asc >= 20) deck.push({ uid: uid++, id: 'glitch', up: false })
-  const maxHp = ascensionMaxHp(asc)
+  const maxHp = characterStartingMaxHp(ascensionMaxHp(asc), char)
   // A14+: the climb starts before you're ready.
   const hp = asc >= 14 ? Math.floor(maxHp * 0.85) : maxHp
   const balance = getActiveBalance()
@@ -135,6 +136,7 @@ export function combatFor(run: RunState, kind: 'normal' | 'elite' | 'boss'): Com
     asc: run.asc,
     kind,
     act: run.act,
+    char: run.char,
   })
 }
 

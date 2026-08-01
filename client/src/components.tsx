@@ -108,7 +108,9 @@ export function MinionCard(props: { m: MinionC }) {
   return (
     <div class="minion" data-tip={`${minionName(m.defId)}\n${minionDesc(m.defId)}`}>
       <div class="mglyph">{MINIONS[m.defId]?.sym}</div>
-      <div class="mname">{minionName(m.defId)}</div>
+      <div class="mname">
+        {minionName(m.defId)}{(m.stacks ?? 1) > 1 ? ` ×${m.stacks}` : ''}
+      </div>
       <HpBar hp={m.hp} maxHp={m.maxHp} />
     </div>
   )

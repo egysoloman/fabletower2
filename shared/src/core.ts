@@ -9,9 +9,10 @@
 import { CARDS, cardCost, cardEffects, cardEthereal, cardExhausts, cardInnate, cardRetains } from './cards'
 import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
-import type { CardInst, DeckSide, Effect, Fighter, GameEvent, StatusId } from './types'
+import type { CardInst, CharId, DeckSide, Effect, Fighter, GameEvent, StatusId } from './types'
 import { DEBUFFS } from './types'
 import { randInt, shuffle, type Rng } from './rng'
+import { getMechanicsTuning } from './mechanics'
 
 export const HAND_LIMIT = 10
 export const BASE_DRAW = 5
@@ -134,7 +135,19 @@ export function attack(
     m.hp -= d
     evs.push({ e: 'hit', who: whoDst, n: d, id: 'minion' })
     if (m.hp <= 0) {
-      minions.shift()
+      const stacks = m.stacks ?? 1
+      const minionTuning = getMechanicsTuning().minions
+      if (
+        (dst as DeckSide).char === 'array' &&
+        minionTuning.stackSameRole &&
+        minionTuning.independentBodiesPerStack &&
+        stacks > 1
+      ) {
+        m.stacks = stacks - 1
+        m.hp = m.maxHp
+      } else {
+        minions.shift()
+      }
       evs.push({ e: 'die', who: whoDst, id: 'minion' })
     }
     return
@@ -256,13 +269,33 @@ export function endTurnPowers(
   if (viral > 0) {
     for (const foe of foes) applyStatus(foe.f, 'corrupt', viral + focus, foe.who, evs)
   }
-  // Summoned allies take their actions (Command relics amplify them).
+  actMinions(side, whoSelf, foes, env, evs)
+}
+
+/** Make every summoned role act once; shared by end-turn and Command cards. */
+export function actMinions(
+  side: DeckSide,
+  whoSelf: string,
+  foes: { f: Fighter; who: string }[],
+  env: PlayEnv,
+  evs: GameEvent[],
+) {
+  const tuning = getMechanicsTuning().minions
+  const tunedForArray = side.char === 'array'
   const minionBoost = relicHook(env, 'minionPower')
   for (const m of side.minions) {
     const def = MINIONS[m.defId]
     if (!def) continue
     const alive = foes.filter((x) => x.f.hp > 0)
-    const n = def.act.n + minionBoost
+    const otherRoles = tunedForArray ? new Set(
+      side.minions
+        .map((other) => MINIONS[other.defId]?.role)
+        .filter((role) => role && role !== def.role),
+    ).size : 0
+    const stacks = tunedForArray && tuning.actionPerStack ? (m.stacks ?? 1) : 1
+    const synergyRoles = Math.min(otherRoles, tuning.maxSynergyOtherRoles)
+    const synergy = tunedForArray ? tuning.synergyPerOtherRole * synergyRoles : 0
+    const n = (def.act.n + minionBoost + synergy) * stacks
     switch (def.act.k) {
       case 'strike': {
         if (alive.length > 0) {
@@ -281,12 +314,39 @@ export function endTurnPowers(
         if (alive.length > 0) {
           const target = alive[randInt(env.rng, 0, alive.length - 1)]
           plainDamage(target.f, n, target.who, evs)
-          applyStatus(side, 'heat', 1, whoSelf, evs)
+          applyStatus(side, 'heat', stacks, whoSelf, evs)
         }
         break
       }
     }
   }
+}
+
+/** Add one summon, stacking same-role variants when the candidate enables it. */
+export function summonMinion(side: DeckSide, defId: string, hpBonus = 0): boolean {
+  const def = MINIONS[defId]
+  if (!def) return false
+  const tuning = getMechanicsTuning().minions
+  const hp = def.hp + hpBonus
+  if (side.char === 'array' && tuning.stackSameRole) {
+    const existing = side.minions.find((m) => MINIONS[m.defId]?.role === def.role)
+    if (existing) {
+      const stacks = existing.stacks ?? 1
+      if (stacks >= tuning.maxStacksPerRole) return false
+      existing.stacks = stacks + 1
+      // A Prime summon upgrades the whole role without discarding damaged HP.
+      if (def.hp > (MINIONS[existing.defId]?.hp ?? 0) || def.act.n > (MINIONS[existing.defId]?.act.n ?? 0)) {
+        const delta = Math.max(0, hp - existing.maxHp)
+        existing.defId = def.id
+        existing.maxHp = Math.max(existing.maxHp, hp)
+        existing.hp = Math.min(existing.maxHp, existing.hp + delta)
+      }
+      return true
+    }
+  }
+  if (side.minions.length >= MAX_MINIONS) return false
+  side.minions.push({ defId: def.id, hp, maxHp: hp, stacks: 1 })
+  return true
 }
 
 /** Start-of-turn refill for a card-playing side (after tickTurnStart). */
@@ -490,29 +550,39 @@ function resolveEffect(
       break
     }
     case 'enterStance': {
-      const from: 'overdrive' | 'stealth' | 'none' = side.statuses.overdrive
+      const tuning = getMechanicsTuning().stance
+      const from: 'stable' | 'overdrive' | 'stealth' | 'none' = side.statuses.overdrive
         ? 'overdrive'
         : side.statuses.stealth
           ? 'stealth'
-          : 'none'
-      if (from === eff.id) break // already there: no triggers, no exit bonus
+          : tuning.stableState
+            ? 'stable'
+            : 'none'
+      const to: 'stable' | 'overdrive' | 'stealth' | 'none' =
+        eff.id === 'none' && tuning.stableState ? 'stable' : eff.id
+      if (from === to) break // already there: no triggers or energy farming
+      delete side.statuses.stable
       delete side.statuses.overdrive
       delete side.statuses.stealth
-      if (from === 'stealth') {
-        // Decloaking releases stored charge.
-        side.energy += 2
-        evs.push({ e: 'status', who: whoSelf, id: 'energyGain', n: 2 })
+      const gainsEnergy =
+        tuning.energyRule === 'every-switch' ||
+        (tuning.energyRule === 'stable-exit' && from === 'stable' && to !== 'stable') ||
+        (tuning.energyRule === 'legacy-stealth-exit' && from === 'stealth')
+      const switchEnergy = tuning.energyAmount + relicHook(env, 'stanceSwitchEnergy')
+      if (gainsEnergy && switchEnergy > 0) {
+        side.energy += switchEnergy
+        evs.push({ e: 'status', who: whoSelf, id: 'energyGain', n: switchEnergy })
       }
       if (from !== 'none') evs.push({ e: 'status', who: whoSelf, id: from, n: -1 })
-      if (eff.id !== 'none') {
-        applyStatus(side, eff.id, 1, whoSelf, evs)
+      if (to !== 'none') {
+        applyStatus(side, to, 1, whoSelf, evs)
         // Entering a stance fires stance-trigger powers.
         const wall = side.statuses.stancewall ?? 0
         if (wall > 0) cardBlock(side, wall, whoSelf, foes, env, evs)
         const tempo = side.statuses.tempoloop ?? 0
         if (tempo > 0) drawCards(side, tempo, env, whoSelf, evs)
         const mom = side.statuses.momentum ?? 0
-        if (mom > 0 && eff.id === 'overdrive') applyStatus(side, 'str', mom, whoSelf, evs)
+        if (mom > 0 && to === 'overdrive') applyStatus(side, 'str', mom, whoSelf, evs)
       }
       break
     }
@@ -531,13 +601,14 @@ function resolveEffect(
       }
       break
     }
+    case 'commandMinions':
+      actMinions(side, whoSelf, foes, env, evs)
+      break
     case 'summonAlly': {
       for (let i = 0; i < (eff.n ?? 1); i++) {
-        if (side.minions.length >= MAX_MINIONS) break
         const def = MINIONS[eff.id]
         if (!def) break
-        const hp = def.hp + relicHook(env, 'minionHp')
-        side.minions.push({ defId: def.id, hp, maxHp: hp })
+        if (!summonMinion(side, def.id, relicHook(env, 'minionHp'))) break
         evs.push({ e: 'summon', who: whoSelf, name: def.name, id: 'minion' })
       }
       break
@@ -599,6 +670,7 @@ export function playCardFromHand(
   side.cardsPlayed++
   side.cardsThisTurn++
   evs.push({ e: 'move', who: whoSelf, id: card.id, name: def.name })
+  const startedInStealth = !!side.statuses.stealth
 
   // Ally-target cards land their effects on the chosen party member (in
   // solo/PvP there is no party, so they simply apply to their owner).
@@ -606,6 +678,14 @@ export function playCardFromHand(
   const effWho = def.target === 'ally' && ally ? ally.who : whoSelf
   for (const eff of cardEffects(card)) {
     resolveEffect(eff, env, effSide, effWho, foes, target ?? 0, evs)
+  }
+  if (
+    def.type === 'attack' &&
+    startedInStealth &&
+    side.statuses.stealth &&
+    getMechanicsTuning().stance.stealthExitAfterAttack
+  ) {
+    resolveEffect({ k: 'enterStance', id: 'none' }, env, side, whoSelf, foes, target ?? 0, evs)
   }
 
   // Tempo payoffs for genuinely-0-cost cards (their printed cost, not Quantum
@@ -630,13 +710,15 @@ export function playCardFromHand(
 }
 
 /** Build a fresh DeckSide from a deck list. */
-export function makeSide(name: string, hp: number, maxHp: number, deck: CardInst[], rng: Rng): DeckSide {
+export function makeSide(name: string, hp: number, maxHp: number, deck: CardInst[], rng: Rng, char?: CharId): DeckSide {
+  const stable = char === 'ghost' && getMechanicsTuning().stance.stableState ? { stable: 1 as const } : {}
   return {
     name,
     hp,
     maxHp,
     block: 0,
-    statuses: {},
+    statuses: stable,
+    char,
     energy: 0,
     energyMax: 3,
     hand: [],

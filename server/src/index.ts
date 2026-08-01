@@ -34,6 +34,7 @@ import {
   STARTER_DECKS,
   STARTER_RELICS,
   cardsByRarity,
+  characterStartingMaxHp,
   coopReduce,
   coopViewFor,
   genActMap,
@@ -481,8 +482,8 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
     client,
     char: chars[i],
     color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-    hp: 75,
-    maxHp: 75,
+    hp: characterStartingMaxHp(75, chars[i]),
+    maxHp: characterStartingMaxHp(75, chars[i]),
     deck: STARTER_DECKS[chars[i]].map((id): CardInst => ({ uid: uid++, id, up: false })),
     relics: [STARTER_RELICS[chars[i]]],
     potions: [],
@@ -606,7 +607,7 @@ function coopStartFight(room: CoopRoom, kind: 'normal' | 'elite' | 'boss') {
   room.lastEncounter = enc.join(',')
   room.kind = kind
   room.combat = startCoopCombat({
-    players: room.players.map((p) => ({ name: p.client.name, hp: p.hp, maxHp: p.maxHp, deck: p.deck, relics: p.relics })),
+    players: room.players.map((p) => ({ name: p.client.name, char: p.char, hp: p.hp, maxHp: p.maxHp, deck: p.deck, relics: p.relics })),
     enemyIds: enc,
     encounterId: enc.join(','),
     seed: randInt(room.rng, 1, 0x7fffffff),

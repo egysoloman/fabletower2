@@ -15,6 +15,7 @@ import {
   addCardToDeck,
   addRelic,
   advanceAct,
+  activateBalanceStack,
   activateBalanceOverrides,
   applyCombatResult,
   applyOutcomes,
@@ -57,7 +58,7 @@ const STATUS_IDS = [
   'str', 'weak', 'vuln', 'corrupt', 'thorns', 'plating', 'turret', 'viral',
   'energyGain', 'drawGain', 'ritual', 'regen', 'barricade', 'kernel', 'hyper',
   'chronic', 'heat', 'coolant', 'ignition', 'reactor', 'artifact', 'overdrive',
-  'stealth', 'stancewall', 'momentum', 'tempoloop', 'focus',
+  'stealth', 'stancewall', 'momentum', 'tempoloop', 'focus', 'stable',
 ] as const
 
 const BEHAVIOR_NAMES = [
@@ -84,6 +85,7 @@ interface RewardState {
 
 interface BalanceConfig extends BalanceOverrides {
   name?: string
+  balanceStack?: string
   playerMaxHpMultiplier?: number
   startingGoldMultiplier?: number
 }
@@ -129,6 +131,10 @@ function parseArgs(): Args {
 
 function loadBalanceConfig(path: string | null): BalanceConfig {
   const config: BalanceConfig = path ? JSON.parse(readFileSync(path, 'utf8')) : { name: 'baseline' }
+  if (config.balanceStack) {
+    activateBalanceStack(config.balanceStack)
+    return config
+  }
   activateBalanceOverrides(config.name ?? 'baseline', {
     enemyHpMultiplier: config.enemyHpMultiplier,
     enemyAttackMultiplier: config.enemyAttackMultiplier,
@@ -137,6 +143,7 @@ function loadBalanceConfig(path: string | null): BalanceConfig {
     relicPatches: config.relicPatches,
     relicTextPatches: config.relicTextPatches,
     ascensionTuning: config.ascensionTuning,
+    mechanicsTuning: config.mechanicsTuning,
   })
   return config
 }
@@ -164,6 +171,7 @@ function effectVector(effects: readonly Effect[], def?: CardDef, up = false): nu
     if (e.k === 'status' && e.id === 'viral') v[12] += n / 6
     if (e.k === 'status' && e.id === 'focus') v[13] += n / 3
     if (e.k === 'summonAlly') v[14] += n
+    if (e.k === 'commandMinions') v[14] += 1
     if (e.k.startsWith('dmgPer') || e.k.startsWith('dmgIf') || e.k === 'blockAsDmg') v[15] += 1
     if (e.k === 'status' && e.to === 'self') v[16] += n / 5
     if (e.k === 'status' && e.to !== 'self') v[17] += n / 5
