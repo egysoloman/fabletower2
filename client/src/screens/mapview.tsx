@@ -67,8 +67,12 @@ export function MapView(props: {
   pc: string
   /** Diffusion ring colors around the current node (defaults to [pc, pc]). */
   ringColors?: string[]
+  /** Party members shown as colored motes at the current node (co-op). */
+  markerColors?: string[]
   /** Advisory votes: node id -> voter colors (co-op). */
   votes?: Record<string, string[]>
+  /** Rival's exact node in a climb race. */
+  rival?: { pos: string; color: string; label: string }
   travel?: MapTravel | null
   /** Co-op travel renders one glowing party mote per member. */
   travelColors?: string[]
@@ -81,6 +85,7 @@ export function MapView(props: {
   const done = new Set(props.path)
   const rings = props.ringColors && props.ringColors.length > 0 ? props.ringColors : [props.pc, props.pc]
   const cur = pos ? byId.get(pos) : null
+  const rival = props.rival ? byId.get(props.rival.pos) : null
 
   return (
     <svg class="mapsvg" viewBox={`0 0 ${W} ${H}`} ref={props.svgRef} style={{ '--pc': props.pc } as never}>
@@ -145,6 +150,37 @@ export function MapView(props: {
             style={{ '--rc': col, '--rd': `${(k * (2.4 / rings.length)).toFixed(2)}s` } as never}
           />
         ))}
+      {cur && !props.travel && props.markerColors && props.markerColors.length > 0 && (
+        <g class="party-marker" transform={`translate(${cx(cur)} ${cy(cur)})`}>
+          {props.markerColors.map((color, i) => {
+            const angle = (Math.PI * 2 * i) / props.markerColors!.length - Math.PI / 2
+            const radius = cur.type === 'boss' ? 33 : 23
+            return (
+              <circle
+                key={i}
+                class="party-marker-dot"
+                cx={Math.cos(angle) * radius}
+                cy={Math.sin(angle) * radius}
+                r={5}
+                style={{ '--tc': color, '--mote-delay': `${(-0.58 * i) / props.markerColors!.length}s` } as never}
+              />
+            )
+          })}
+        </g>
+      )}
+      {rival && props.rival && (
+        <g
+          class="rival-marker"
+          style={{
+            '--rival-color': props.rival.color,
+            transform: `translate(${cx(rival) + 23}px, ${cy(rival) - 23}px)`,
+          } as never}
+        >
+          <title>{props.rival.label}</title>
+          <circle class="rival-marker-ring" r={10} />
+          <circle class="rival-marker-dot" r={6} />
+        </g>
+      )}
       {props.travel && props.travelColors && props.travelColors.length > 0 ? (
         <g
           class="travel-party"

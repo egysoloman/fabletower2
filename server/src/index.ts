@@ -171,6 +171,8 @@ const seats = new Map<string, Client>()
 const MATCH_RECONNECT_GRACE_MS = 15 * 60 * 1000
 /** Durable co-op seats expire after a week without room activity. */
 const COOP_RESUME_TTL_MS = 7 * 24 * 60 * 60 * 1000
+/** The first player leaving a shop starts a short party-wide close window. */
+const COOP_SHOP_CLOSE_GRACE_MS = Math.max(1_000, Number(process.env.COOP_SHOP_CLOSE_GRACE_MS) || 15_000)
 
 function mintToken(c: Client): string {
   if (c.token) seats.delete(c.token)
@@ -242,6 +244,8 @@ interface CoopRoom {
     potions: { id: string; price: number; sold: boolean }[]
     removePrice: number
   } | null
+  /** Auto-close deadline started by the first player who leaves the shop. */
+  shopCloseAt: number | null
   /** Active event node: everyone picks their own way through. */
   event: { id: string; picked: (number | null)[] } | null
   /** Advisory path votes: player index -> node id. Cleared on each pick. */
@@ -269,6 +273,7 @@ interface CoopRoomSnapshot extends Omit<CoopRoom, 'players'> {
 /** Keyed by `${size}|${modsKey}` — parties only form among same-mods players. */
 const coopQueues = new Map<string, Client[]>()
 const coopRooms = new Map<Client, CoopRoom>()
+const coopShopTimers = new Map<string, NodeJS.Timeout>()
 
 const coopKey = (size: number, modsKey: string) => `${size}|${modsKey}`
 const coopKeySize = (key: string) => Number(key.split('|')[0]) || 2
@@ -349,7 +354,13 @@ function restoreCoopRooms() {
         const player: CoopPlayer = { ...p, client }
         return player
       })
-      const room: CoopRoom = { ...snap, players, pendingNode: snap.pendingNode ?? null, ended: false }
+      const room: CoopRoom = {
+        ...snap,
+        players,
+        pendingNode: snap.pendingNode ?? null,
+        shopCloseAt: Number.isFinite(snap.shopCloseAt) ? snap.shopCloseAt : null,
+        ended: false,
+      }
       for (const p of players) {
         coopRooms.set(p.client, room)
         seats.set(p.client.token!, p.client)
@@ -359,6 +370,7 @@ function restoreCoopRooms() {
         const pending = room.pendingNode
         setTimeout(() => completeCoopTravel(room, pending), 50)
       }
+      if (room.shop && room.shopCloseAt) armCoopShopClose(room)
       console.log(`restored co-op room ${room.id} at revision ${room.revision}`)
     } catch (e) {
       console.error(`discarding invalid co-op room ${stored.id}:`, e)
@@ -436,6 +448,32 @@ function coopMapMsg(room: CoopRoom, idx: number) {
   }
 }
 
+function clearCoopShopTimer(room: CoopRoom) {
+  const timer = coopShopTimers.get(room.id)
+  if (timer) clearTimeout(timer)
+  coopShopTimers.delete(room.id)
+}
+
+function finishCoopShop(room: CoopRoom) {
+  if (!room.shop || room.ended) return
+  clearCoopShopTimer(room)
+  room.shop = null
+  room.shopCloseAt = null
+  room.players.forEach((player) => (player.replied = true))
+  touchCoop(room)
+  coopBroadcast(room, (i) => coopMapMsg(room, i))
+}
+
+function armCoopShopClose(room: CoopRoom) {
+  clearCoopShopTimer(room)
+  if (!room.shop || !room.shopCloseAt || room.ended) return
+  const delay = Math.max(1, room.shopCloseAt - Date.now())
+  coopShopTimers.set(room.id, setTimeout(() => {
+    coopShopTimers.delete(room.id)
+    finishCoopShop(room)
+  }, delay))
+}
+
 /** Full current phase for reconnects and revision-gap recovery. */
 function sendCoopSnapshot(room: CoopRoom, idx: number) {
   const player = room.players[idx]
@@ -463,10 +501,18 @@ function sendCoopSnapshot(room: CoopRoom, idx: number) {
         gold: player.gold,
         deck: player.deck,
         belt: player.potions,
+        replied: room.players.filter((p) => p.replied).length,
+        total: room.players.length,
+        closesAt: room.shopCloseAt,
         rejoin: true,
         rev: room.revision,
       })
-    } else send(ws, { t: 'coopwaiting', phase: 'shop', rev: room.revision })
+    } else {
+      send(ws, {
+        t: 'coopwaiting', phase: 'shop', replied: room.players.filter((p) => p.replied).length,
+        total: room.players.length, closesAt: room.shopCloseAt, rev: room.revision,
+      })
+    }
   } else if (room.event) {
     if (!player.replied) send(ws, { t: 'coopevent', you: idx, id: room.event.id, gold: player.gold, rejoin: true, rev: room.revision })
     else send(ws, { t: 'coopwaiting', phase: 'event', rev: room.revision })
@@ -495,7 +541,7 @@ function startCoopParty(clients: Client[], chars: CharId[]) {
   const room: CoopRoom = {
     id: randomBytes(12).toString('hex'), revision: 0, updatedAt: Date.now(), expiresAt: 0,
     players, rng, uid: uid + 1000, act: 1, floor: 0, pos: null, path: [],
-    map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, event: null,
+    map: coopMap(1, rng), combat: null, kind: 'normal', rewards: null, shop: null, shopCloseAt: null, event: null,
     votes: {}, lastEncounter: '', pendingNode: null, ended: false,
   }
   for (const c of clients) coopRooms.set(c, room)
@@ -566,6 +612,7 @@ function completeCoopTravel(room: CoopRoom, id: string) {
       removePrice: 80,
     }
     room.shop = stock
+    room.shopCloseAt = null
     room.players.forEach((p) => (p.replied = false))
     touchCoop(room)
     coopBroadcast(room, (i) => ({
@@ -575,6 +622,9 @@ function completeCoopTravel(room: CoopRoom, id: string) {
       gold: room.players[i].gold,
       deck: room.players[i].deck,
       belt: room.players[i].potions,
+      replied: room.players.filter((p) => p.replied).length,
+      total: room.players.length,
+      closesAt: room.shopCloseAt,
     }))
   } else if (node.type === 'event') {
     const pool = EVENTS.filter((ev) =>
@@ -677,6 +727,7 @@ function coopMaybeAdvance(room: CoopRoom) {
 
 function endCoop(room: CoopRoom) {
   room.ended = true
+  clearCoopShopTimer(room)
   deleteCoopSnapshot(room.id)
   for (const p of room.players) {
     coopRooms.delete(p.client)
@@ -1189,7 +1240,12 @@ wss.on('connection', (ws) => {
           player.deck.splice(at, 1)
         }
         touchCoop(room)
-        coopBroadcast(room, (i) => ({ t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold, deck: room.players[i].deck, belt: room.players[i].potions }))
+        coopBroadcast(room, (i) => ({
+          t: 'coopshop', you: i, stock: room.shop, gold: room.players[i].gold,
+          deck: room.players[i].deck, belt: room.players[i].potions,
+          replied: room.players.filter((p) => p.replied).length, total: room.players.length,
+          closesAt: room.shopCloseAt,
+        }))
         break
       }
       case 'coopshopdone': {
@@ -1198,16 +1254,17 @@ wss.on('connection', (ws) => {
         const idx = room.players.findIndex((p) => p.client === client)
         room.players[idx].replied = true
         if (room.players.every((p) => p.replied)) {
-          room.shop = null
-          touchCoop(room)
-          coopBroadcast(room, (i) => coopMapMsg(room, i))
+          finishCoopShop(room)
         } else {
+          if (!room.shopCloseAt) room.shopCloseAt = Date.now() + COOP_SHOP_CLOSE_GRACE_MS
+          armCoopShopClose(room)
           touchCoop(room)
           coopBroadcast(room, (i) => ({
             t: 'coopprogress',
             phase: 'shop',
             replied: room.players.filter((p) => p.replied).length,
             total: room.players.length,
+            closesAt: room.shopCloseAt,
             waiting: i === idx,
           }))
         }
@@ -1335,6 +1392,7 @@ wss.on('connection', (ws) => {
             act: Number(msg.act) || 1,
             floor: Number(msg.floor) || 0,
             hp: Number(msg.hp) || 0,
+            pos: typeof msg.pos === 'string' ? msg.pos.slice(0, 64) : null,
           })
         }
         break

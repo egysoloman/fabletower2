@@ -30,10 +30,12 @@ export interface OppProgress {
   act: number
   floor: number
   hp: number
+  pos: string | null
 }
 
 export const climbPhase = signal<ClimbPhase>('idle')
 export const climbOpp = signal<string>('')
+export const climbOppChar = signal<CharId>('runner')
 /** Both duellists' characters, [p0, p1], from the server. */
 export const climbChars = signal<CharId[]>(['runner', 'runner'])
 /** Rival emote toast while outside the duel (solo map / waiting room). */
@@ -92,6 +94,9 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
         case 'climbstart':
           climbYou.value = data.you === 1 ? 1 : 0
           climbOpp.value = String(data.opp ?? 'RIVAL')
+          if (data.oppChar === 'runner' || data.oppChar === 'vector' || data.oppChar === 'ghost' || data.oppChar === 'array') {
+            climbOppChar.value = data.oppChar
+          }
           climbSeed.value = Number(data.seed) >>> 0
           if (Array.isArray(data.score)) climbScore.value = [Number(data.score[0]) || 0, Number(data.score[1]) || 0]
           climbPhase.value = 'racing'
@@ -101,7 +106,12 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
           }
           break
         case 'opp':
-          climbOppProgress.value = { act: data.act, floor: data.floor, hp: data.hp }
+          climbOppProgress.value = {
+            act: Number(data.act) || 1,
+            floor: Number(data.floor) || 0,
+            hp: Number(data.hp) || 0,
+            pos: typeof data.pos === 'string' ? data.pos : null,
+          }
           break
         case 'oppready':
           climbOppReady.value = true
@@ -192,7 +202,7 @@ export function climbQueue(name: string, char: CharId, matched: (seed: number) =
 /** Solo-climb telemetry, sent after every floor/combat change. */
 export function climbReport(run: RunState) {
   if (!ws || climbPhase.value !== 'racing') return
-  ws.send(JSON.stringify({ t: 'progress', act: run.act, floor: run.floor, hp: run.hp }))
+  ws.send(JSON.stringify({ t: 'progress', act: run.act, floor: run.floor, hp: run.hp, pos: run.pos }))
 }
 
 /** Act boss down: submit the real run deck for the checkpoint duel. */
@@ -249,6 +259,7 @@ export function climbLeave() {
   closeSocket()
   onMatched = null
   climbPhase.value = 'idle'
+  climbOppChar.value = 'runner'
   climbView.value = null
   climbOppProgress.value = null
   climbOppReady.value = false

@@ -40,6 +40,7 @@ export const coopNotice = signal('')
 export const coopPending = signal(false)
 export const coopRevision = signal(0)
 export const coopWaitingFor = signal('')
+export const coopWaitProgress = signal<{ replied: number; total: number; closesAt: number | null } | null>(null)
 export const coopTravelTarget = signal<string | null>(null)
 export const coopCompletedNode = signal<string | null>(null)
 /** Queue lobby: tags of everyone waiting for this party size. */
@@ -221,6 +222,7 @@ function handleMsg(msg: MessageEvent, url: string) {
           if (data.votes) coopVotes.value = data.votes
           coopReward.value = null
           coopWaitingFor.value = ''
+          coopWaitProgress.value = null
           coopPhase.value = 'map'
           if (data.t === 'coopstart' && !data.rejoin) sfx.win()
           break
@@ -281,6 +283,9 @@ function handleMsg(msg: MessageEvent, url: string) {
         case 'coopshop':
           coopTravelTarget.value = null
           coopShop.value = data
+          coopWaitProgress.value = data.closesAt
+            ? { replied: Number(data.replied) || 0, total: Number(data.total) || 0, closesAt: Number(data.closesAt) }
+            : null
           if (data.belt) coopBelt.value = data.belt
           coopPhase.value = 'shop'
           break
@@ -299,9 +304,19 @@ function handleMsg(msg: MessageEvent, url: string) {
           break
         case 'coopwaiting':
           coopWaitingFor.value = String(data.phase ?? '')
+          coopWaitProgress.value = data.phase === 'shop'
+            ? { replied: Number(data.replied) || 0, total: Number(data.total) || 0, closesAt: Number(data.closesAt) || null }
+            : null
           coopPhase.value = 'waiting'
           break
         case 'coopprogress':
+          if (data.phase === 'shop') {
+            coopWaitProgress.value = {
+              replied: Number(data.replied) || 0,
+              total: Number(data.total) || 0,
+              closesAt: Number(data.closesAt) || null,
+            }
+          }
           if (data.waiting) {
             coopWaitingFor.value = String(data.phase ?? '')
             coopPhase.value = 'waiting'
@@ -391,6 +406,7 @@ export function coopLeave() {
   clearTimeout(phaseTimer)
   coopRevision.value = 0
   coopWaitingFor.value = ''
+  coopWaitProgress.value = null
   coopTravelTarget.value = null
   coopCompletedNode.value = null
   coopLobby.value = null

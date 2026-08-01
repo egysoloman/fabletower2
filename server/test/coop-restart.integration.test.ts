@@ -156,6 +156,10 @@ test('checkpoint duels award points and keep both racers for the next act', { ti
     assert.deepEqual(startA.score, [0, 0])
     assert.deepEqual(startB.score, [0, 0])
 
+    a.ws.send(JSON.stringify({ t: 'progress', act: 1, floor: 2, hp: 61, pos: 'test-node' }))
+    const relayed = await b.next('opp')
+    assert.equal(relayed.pos, 'test-node')
+
     const deck = Array.from({ length: 5 }, () => ({ id: 'killswitch', up: false }))
     for (let act = 1; act <= 3; act++) {
       a.ws.send(JSON.stringify({ t: 'bosskill', act, deck, maxHp: 1 }))

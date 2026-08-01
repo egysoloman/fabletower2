@@ -3,7 +3,7 @@ import { allNodes, availableNodeIds, type MapNode } from '@neonspire/engine'
 import { TopBar } from '../components'
 import { clickNode } from '../game'
 import { burst, uiRipple } from '../fx'
-import { climbActive, climbEmote, climbOpp, climbOppProgress } from '../climb'
+import { climbActive, climbEmote, climbOpp, climbOppChar, climbOppProgress } from '../climb'
 import { completedNode, run } from '../store'
 import { sfx } from '../sfx'
 import { tf } from '../i18n'
@@ -47,6 +47,10 @@ export function MapScreen() {
   if (!r || !geom) return null
   const open = new Set(availableNodeIds(r))
   const pc = charColor(r.char)
+  const opp = climbOppProgress.value
+  const rival = climbActive() && opp?.act === r.act && opp.pos
+    ? { pos: opp.pos, color: charColor(climbOppChar.value), label: climbOpp.value }
+    : undefined
 
   // Slide a glowing marker along the path, then actually enter the node.
   const startTravel = (n: MapNode) => {
@@ -101,6 +105,7 @@ export function MapScreen() {
           onNode={startTravel}
           pc={pc}
           travel={travel}
+          rival={rival}
           svgRef={(el) => (svgRef.current = el)}
         />
       </div>

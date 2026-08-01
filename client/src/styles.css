@@ -339,6 +339,38 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   from { r: 4px; opacity: 0.72; }
   to { r: 5.6px; opacity: 1; }
 }
+.party-marker { pointer-events: none; }
+.party-marker-dot {
+  fill: var(--tc, var(--cyan));
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 0.9;
+  filter: drop-shadow(0 0 5px var(--tc, var(--cyan))) drop-shadow(0 0 10px var(--tc, var(--cyan)));
+  animation: partyMote 0.58s var(--mote-delay, 0s) ease-in-out infinite alternate;
+}
+.rival-marker {
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 0.5s cubic-bezier(0.32, 0, 0.25, 1);
+}
+.rival-marker-dot {
+  fill: var(--rival-color, var(--pink));
+  stroke: #fff;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px var(--rival-color, var(--pink))) drop-shadow(0 0 13px var(--rival-color, var(--pink)));
+}
+.rival-marker-ring {
+  fill: none;
+  stroke: var(--rival-color, var(--pink));
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: rivalRing 1.25s ease-out infinite;
+}
+@keyframes rivalRing {
+  from { transform: scale(0.7); opacity: 1; }
+  to { transform: scale(1.65); opacity: 0; }
+}
 /* current node glows in the character's palette color (--pc set on the svg) */
 .map-node.current circle {
   stroke: var(--pc, var(--pink));
@@ -2025,43 +2057,18 @@ details .cheat-filters { width: min(86vw, 460px); }
 
 .map-wrap { position: relative; }
 
-/* co-op map: the whole party orbits the current node */
-.orbitwrap { position: relative; width: 120px; height: 74px; margin: 2px auto 6px; cursor: help; }
-.orbit-core {
-  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
-  transform: translate(-50%, -50%); border-radius: 50%;
-  /* --cc = the leader's character color */
-  border: 1px solid var(--cc, var(--cyan)); box-shadow: 0 0 12px var(--cc, var(--cyan));
-}
-/* diffusion rings around the core, one per other party member, in their char colors */
-.orbit-ring {
-  position: absolute; left: 50%; top: 50%; width: 14px; height: 14px;
-  margin: -7px 0 0 -7px; border-radius: 50%;
-  border: 1.5px solid var(--cc, var(--cyan));
-  pointer-events: none;
-  animation: ringSpread 2.6s linear var(--rd, 0s) infinite;
-}
-@keyframes ringSpread {
-  0% { transform: scale(1); opacity: 0; }
-  10% { opacity: 0.85; }
-  100% { transform: scale(4.4); opacity: 0; }
-}
-.orbit-token {
-  position: absolute; left: 50%; top: 50%;
-  animation: orbit 8s linear infinite;
-  filter: drop-shadow(0 0 6px var(--oc, var(--cyan)));
-}
-@keyframes orbit {
-  from { transform: translate(-50%, -50%) rotate(0deg) translateX(42px) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg) translateX(42px) rotate(-360deg); }
-}
-/* party tokens orbiting the CURRENT NODE of the real co-op map */
 .coopmapwrap { position: relative; }
-.orbitwrap.onmap { position: absolute; width: 0; height: 0; margin: 0; pointer-events: none; cursor: default; }
-.orbitwrap.onmap .orbit-token { animation-name: orbitTight; }
-@keyframes orbitTight {
-  from { transform: translate(-50%, -50%) rotate(0deg) translateX(26px) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg) translateX(26px) rotate(-360deg); }
+.shop-close-status {
+  width: fit-content;
+  margin: 10px auto;
+  padding: 7px 12px;
+  border: 1px solid color-mix(in srgb, var(--gold) 65%, transparent);
+  border-radius: 4px;
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 8%, transparent);
+  font-family: var(--font-head);
+  font-size: 11px;
+  letter-spacing: 0.08em;
 }
 /* advisory vote markers drawn on map nodes */
 .votedot-svg { stroke: rgba(4, 2, 14, 0.8); stroke-width: 1; filter: drop-shadow(0 0 3px currentColor); }

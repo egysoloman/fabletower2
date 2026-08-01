@@ -46,6 +46,7 @@ import {
   coopSavedSeat,
   coopShop,
   coopToast,
+  coopWaitProgress,
   coopWaitingFor,
   coopTravelTarget,
   coopCompletedNode,
@@ -59,6 +60,29 @@ import { CharPickButton, CharSelectPage, EmotePanel, MpConnect } from './mpsetup
 import { MapView, mapGeometry, type MapTravel } from './mapview'
 import { enemyMove, intentText } from '../intent'
 import { mpName } from '../mp'
+
+function ShopCloseStatus() {
+  const progress = coopWaitProgress.value
+  const [now, setNow] = useState(Date.now())
+
+  useEffect(() => {
+    if (!progress?.closesAt) return
+    setNow(Date.now())
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000)
+    return () => clearInterval(timer)
+  }, [progress?.closesAt])
+
+  if (!progress?.closesAt) return null
+  return (
+    <div class="shop-close-status">
+      {tf('coopShopClosing', {
+        ready: progress.replied,
+        total: progress.total,
+        seconds: Math.max(0, Math.ceil((progress.closesAt - now) / 1_000)),
+      })}
+    </div>
+  )
+}
 
 export function CoopScreen() {
   const [char, setChar] = useState<CharId>(lastChar())
@@ -87,34 +111,9 @@ export function CoopScreen() {
   }
   const sendEmote = (m: { id?: string; text?: string; target?: number }) => coopSend({ t: 'emote', ...m })
 
-  // Party-orbit overlay: track the current node's on-screen position.
   const coopSvg = useRef<SVGSVGElement | null>(null)
-  const wrapRef = useRef<HTMLDivElement | null>(null)
-  const [orbitPos, setOrbitPos] = useState<{ x: number; y: number } | null>(null)
   const [mapTravel, setMapTravel] = useState<MapTravel | null>(null)
   const mapPos = coopMap.value?.pos ?? null
-  useEffect(() => {
-    if (phase !== 'map' || !mapPos) {
-      setOrbitPos(null)
-      return
-    }
-    const raf = requestAnimationFrame(() => {
-      const svg = coopSvg.current
-      const wrap = wrapRef.current
-      const mm = coopMap.value
-      if (!svg || !wrap || !mm) return
-      const node = mm.map.rows.flat().find((n: any) => n.id === mm.pos)
-      if (!node) return
-      const g = mapGeometry(mm.map)
-      const sr = svg.getBoundingClientRect()
-      const wr = wrap.getBoundingClientRect()
-      setOrbitPos({
-        x: sr.left - wr.left + (g.cx(node) / g.W) * sr.width,
-        y: sr.top - wr.top + (g.cy(node) / g.H) * sr.height,
-      })
-    })
-    return () => cancelAnimationFrame(raf)
-  }, [phase, mapPos])
 
   // The server announces a selected node before applying it, so every party
   // member sees the same group of colored motes travel along the edge.
@@ -469,7 +468,7 @@ export function CoopScreen() {
             <div class="sub" style={{ color: 'var(--gold)' }}>
               {tf('actFloor', { act: m.act, floor: m.floor })} · {coopHost.value ? t('coopYouLead') : t('coopHostLeads')}
             </div>
-            <div class="map-wrap coopmapwrap" ref={wrapRef}>
+            <div class="map-wrap coopmapwrap">
               <MapView
                 map={m.map}
                 pos={m.pos}
@@ -483,7 +482,8 @@ export function CoopScreen() {
                 }
                 onNode={(n) => !mapTravel && coopSend(coopHost.value ? { t: 'cooppick', id: n.id } : { t: 'coopvote', id: n.id })}
                 pc={charColor((m.party?.[0]?.char ?? 'runner') as never)}
-                ringColors={(m.party ?? []).slice(1).map((p: any) => charColor((p.char ?? 'runner') as never))}
+                ringColors={(m.party ?? []).map((p: any) => p.color ?? charColor((p.char ?? 'runner') as never))}
+                markerColors={(m.party ?? []).map((p: any) => p.color ?? charColor((p.char ?? 'runner') as never))}
                 votes={(() => {
                   const out: Record<string, string[]> = {}
                   for (const v of coopVotes.value) if (v.id) (out[v.id] ??= []).push(v.color)
@@ -493,21 +493,6 @@ export function CoopScreen() {
                 travelColors={(m.party ?? []).map((p: any) => p.color)}
                 svgRef={(el) => (coopSvg.current = el)}
               />
-              {orbitPos && !mapTravel && (
-                <div class="orbitwrap onmap" style={{ left: orbitPos.x + 'px', top: orbitPos.y + 'px' }}>
-                  {m.party.map((p: any, i: number) => (
-                    <div
-                      key={i}
-                      class="orbit-token"
-                      style={{ '--oc': p.color, animationDelay: `${(-8 * i) / m.party.length}s` }}
-                    >
-                      <span style={{ color: p.color }}>
-                        <Sprite id={p.char} size={22} />
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
             {!coopHost.value && <div class="sub" style={{ fontSize: '11px' }}>{t('voteHint')}</div>}
             <div class="coopparty-list">
@@ -541,6 +526,7 @@ export function CoopScreen() {
         {phase === 'waiting' && (
           <div class="phase-in">
             <div class="pulse" style={{ color: 'var(--green)' }}>{t('coopWaiting')}</div>
+            {coopWaitingFor.value === 'shop' && <ShopCloseStatus />}
           </div>
         )}
         {phase === 'rest' && m && (
@@ -585,6 +571,7 @@ export function CoopScreen() {
             <h2 style={{ color: 'var(--gold)' }}>{t('blackMarket')}</h2>
             <div class="sub" style={{ fontStyle: 'italic' }}>{t('shopkeeper')}</div>
             <div class="sub">¤{coopShop.value.gold}</div>
+            <ShopCloseStatus />
             <div class="cardrow" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
               {coopShop.value.stock.cards.map((it: any, i: number) => (
                 <div key={i} class={`shopitem ${it.sold ? 'soldout' : ''}`} style={{ '--reveal': `${i * 70}ms` } as never}>
