@@ -166,7 +166,7 @@ export function RewardScreen() {
                 {b.cards.map((id, i) => (
                   <div
                     key={id}
-                    class="cardpick"
+                    class="reward-choice"
                     onClick={(e) => {
                       const p = evCenter(e)
                       flyToDeck(p, '#00e5ff')
@@ -175,15 +175,9 @@ export function RewardScreen() {
                       takeCardReward(id)
                     }}
                   >
-                    <CardById id={id} cls="reveal" style={{ '--reveal': `${i * 110}ms` } as never} />
-                    <div class="cardpick-up">
-                      <CardById id={id} up />
-                    </div>
+                    <CardById id={id} cls="reveal reward-card" style={{ '--reveal': `${i * 110}ms` } as never} />
                   </div>
                 ))}
-              </div>
-              <div class="sub" style={{ fontSize: '11px', color: 'var(--dim)', marginTop: '-6px' }}>
-                {t('upgradePreview')}
               </div>
               <DeckSummary deck={run.value?.deck ?? []} />
             </>
@@ -261,12 +255,7 @@ export function ShopScreen() {
                   shopBuyCard(i)
                 }}
               >
-                <div class="cardpick">
-                  <CardById id={item.id} />
-                  <div class="cardpick-up">
-                    <CardById id={item.id} up />
-                  </div>
-                </div>
+                <CardById id={item.id} />
                 <div class="pricetag" style={r.gold < item.price ? { color: 'var(--red)' } : {}}>
                   {item.sold ? t('sold') : `${item.price}¤`}
                 </div>

@@ -6,7 +6,7 @@
  * resolves every layer against private baseline snapshots, validates the
  * result, and only then replaces the live catalog entries transactionally.
  */
-import type { CardDef, EnemyDef } from './types'
+import type { CardDef, Effect, EnemyDef } from './types'
 import { CARDS } from './cards'
 import { ENEMIES } from './enemies'
 import { RELICS, type RelicDef } from './relics'
@@ -16,6 +16,10 @@ import {
   type AscensionStep,
   type AscensionTuningPatch,
 } from './ascension'
+import {
+  configureMechanicsTuning,
+  type MechanicsTuningPatch,
+} from './mechanics'
 
 export const BALANCE_BASE_VERSION = 'content-2026.08.01'
 
@@ -33,6 +37,7 @@ export interface BalanceOverrides {
   relicPatches?: Record<string, Record<string, unknown>>
   relicTextPatches?: Record<string, RelicTextPatch>
   ascensionTuning?: AscensionTuningPatch
+  mechanicsTuning?: MechanicsTuningPatch
 }
 
 export interface BalancePatch extends BalanceOverrides {
@@ -63,6 +68,7 @@ interface ResolvedBalance {
   relics: Record<string, RelicDef>
   relicZh: Record<string, { name: string; desc: string }>
   ascensionTuning: AscensionTuningPatch
+  mechanicsTuning: MechanicsTuningPatch
   info: ActiveBalanceInfo
 }
 
@@ -154,6 +160,31 @@ function validatePatch(patch: BalancePatch): void {
   requireMultiplier('enemyHpMultiplier', patch.enemyHpMultiplier)
   requireMultiplier('enemyAttackMultiplier', patch.enemyAttackMultiplier)
   validateAscension(patch.ascensionTuning)
+  const stance = patch.mechanicsTuning?.stance
+  if (stance?.energyRule !== undefined && !['legacy-stealth-exit', 'stable-exit', 'every-switch', 'none'].includes(stance.energyRule)) {
+    throw new Error(`invalid stance energyRule: ${stance.energyRule}`)
+  }
+  if (stance?.energyAmount !== undefined && (!Number.isInteger(stance.energyAmount) || stance.energyAmount < 0 || stance.energyAmount > 10)) {
+    throw new Error('stance energyAmount must be an integer within [0, 10]')
+  }
+  const minions = patch.mechanicsTuning?.minions
+  if (minions?.maxStacksPerRole !== undefined && (!Number.isInteger(minions.maxStacksPerRole) || minions.maxStacksPerRole < 1 || minions.maxStacksPerRole > 20)) {
+    throw new Error('maxStacksPerRole must be an integer within [1, 20]')
+  }
+  if (minions?.synergyPerOtherRole !== undefined && (!Number.isFinite(minions.synergyPerOtherRole) || minions.synergyPerOtherRole < 0 || minions.synergyPerOtherRole > 20)) {
+    throw new Error('synergyPerOtherRole must be finite and within [0, 20]')
+  }
+  if (minions?.maxSynergyOtherRoles !== undefined && (!Number.isInteger(minions.maxSynergyOtherRoles) || minions.maxSynergyOtherRoles < 0 || minions.maxSynergyOtherRoles > 20)) {
+    throw new Error('maxSynergyOtherRoles must be an integer within [0, 20]')
+  }
+  if (minions?.independentBodiesPerStack !== undefined && typeof minions.independentBodiesPerStack !== 'boolean') {
+    throw new Error('independentBodiesPerStack must be boolean')
+  }
+  for (const [char, adjustment] of Object.entries(patch.mechanicsTuning?.characterMaxHpAdjustments ?? {})) {
+    if (!['runner', 'vector', 'ghost', 'array'].includes(char) || !Number.isInteger(adjustment) || Math.abs(adjustment) > 100) {
+      throw new Error(`invalid character Max HP adjustment: ${char}`)
+    }
+  }
 }
 
 function validateResolved(value: ResolvedBalance): void {
@@ -193,6 +224,7 @@ function resolveBalanceStack(stack: BalanceStack): ResolvedBalance {
   const relics = clone(BASE_RELICS)
   const relicZh = clone(BASE_RELIC_ZH)
   const ascensionTuning: AscensionTuningPatch = {}
+  const mechanicsTuning: MechanicsTuningPatch = {}
 
   for (const patch of stack.patches) {
     validatePatch(patch)
@@ -219,6 +251,10 @@ function resolveBalanceStack(stack: BalanceStack): ResolvedBalance {
       if (text.zhDesc !== undefined) relicZh[id].desc = text.zhDesc
     }
     Object.assign(ascensionTuning, clone(patch.ascensionTuning ?? {}))
+    deepAssign(
+      mechanicsTuning as Record<string, unknown>,
+      clone(patch.mechanicsTuning ?? {}) as Record<string, unknown>,
+    )
   }
 
   const info: ActiveBalanceInfo = {
@@ -227,7 +263,7 @@ function resolveBalanceStack(stack: BalanceStack): ResolvedBalance {
     hash: '',
     patchIds: stack.patches.map((patch) => `${patch.id}@${patch.version}`),
   }
-  const resolved = { cards, enemies, relics, relicZh, ascensionTuning, info }
+  const resolved = { cards, enemies, relics, relicZh, ascensionTuning, mechanicsTuning, info }
   validateResolved(resolved)
   info.hash = fingerprint({
     baseVersion: BALANCE_BASE_VERSION,
@@ -237,6 +273,7 @@ function resolveBalanceStack(stack: BalanceStack): ResolvedBalance {
     relics,
     relicZh,
     ascensionTuning,
+    mechanicsTuning,
   })
   return resolved
 }
@@ -305,16 +342,497 @@ export const ENEMY_HP_MINUS_5_PERCENT: BalancePatch = {
   enemyHpMultiplier: 0.95,
 }
 
-export const PRODUCTION_BALANCE_STACK: BalanceStack = {
+/** Previous live stack, retained verbatim as a one-call rollback target. */
+export const PRODUCTION_V3_BALANCE_STACK: BalanceStack = {
   id: 'production-v3-enemy-hp-95',
   version: '1.0.0',
   description: 'Character tuning v3 plus 5% lower enemy base HP.',
   patches: [CHARACTER_BALANCE_V3, ENEMY_HP_MINUS_5_PERCENT],
 }
 
+export const GHOST_STABLE_EXIT_ENERGY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'ghost-stable-exit-energy',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Stable is the neutral stance; leaving Stable grants 1 Energy and Attacks break Stealth.',
+  mechanicsTuning: {
+    stance: {
+      stableState: true,
+      stealthExitAfterAttack: true,
+      energyRule: 'stable-exit',
+      energyAmount: 1,
+    },
+  },
+}
+
+export const GHOST_EVERY_SWITCH_ENERGY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'ghost-every-switch-energy',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Stable is the neutral stance; every stance switch grants 1 Energy and Attacks break Stealth.',
+  mechanicsTuning: {
+    stance: {
+      stableState: true,
+      stealthExitAfterAttack: true,
+      energyRule: 'every-switch',
+      energyAmount: 1,
+    },
+  },
+}
+
+export const GHOST_RELIC_SWITCH_ENERGY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'ghost-relic-switch-energy',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Phase Locket, rather than the naked GHOST, grants 1 Energy on every real stance switch.',
+  relicPatches: {
+    phaselocket: { hooks: { combatStatuses: { stancewall: 0 }, stanceSwitchEnergy: 1 } },
+  },
+  relicTextPatches: {
+    phaselocket: {
+      desc: 'Gain 1 Energy after every real stance switch.',
+      zhDesc: '每次发生真实姿态切换后，获得 1 点能量。',
+    },
+  },
+  mechanicsTuning: { stance: { energyAmount: 0 } },
+}
+
+export const GHOST_RELIC_SWITCH_ENERGY_WALL_ONE: BalancePatch = {
+  schemaVersion: 1,
+  id: 'ghost-relic-switch-energy-wall-one',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Phase Locket grants 1 Energy on real stance switches and retains one layer of Stance Wall.',
+  relicPatches: {
+    phaselocket: { hooks: { combatStatuses: { stancewall: 1 }, stanceSwitchEnergy: 1 } },
+  },
+  relicTextPatches: {
+    phaselocket: {
+      desc: 'Start with 1 Stance Wall. Gain 1 Energy after every real stance switch.',
+      zhDesc: '战斗开始时获得 1 层姿态壁垒；每次发生真实姿态切换后，获得 1 点能量。',
+    },
+  },
+  mechanicsTuning: { stance: { energyAmount: 0 } },
+}
+
+export const GHOST_RELIC_SWITCH_ENERGY_WALL_TWO: BalancePatch = {
+  schemaVersion: 1,
+  id: 'ghost-relic-switch-energy-wall-two',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Phase Locket grants 1 Energy on real stance switches and retains two layers of Stance Wall.',
+  relicPatches: {
+    phaselocket: { hooks: { combatStatuses: { stancewall: 2 }, stanceSwitchEnergy: 1 } },
+  },
+  relicTextPatches: {
+    phaselocket: {
+      desc: 'Start with 2 Stance Wall. Gain 1 Energy after every real stance switch.',
+      zhDesc: '战斗开始时获得 2 层姿态壁垒；每次发生真实姿态切换后，获得 1 点能量。',
+    },
+  },
+  mechanicsTuning: { stance: { energyAmount: 0 } },
+}
+
+const ACTIVE_DAMAGE_EFFECTS = new Set<Effect['k']>([
+  'dmg', 'dmgAll', 'dmgVulnBonus', 'dmgPerPower', 'dmgPerCorrupt',
+  'dmgIfCombo', 'blockAsDmg', 'ventDmg', 'ventDmgAll', 'dmgHeatBonus',
+  'dmgIfStance', 'dmgPerAuto',
+])
+
+function commandInsteadOfDamage(effects: Effect[]): Effect[] {
+  const out: Effect[] = []
+  let commanded = false
+  for (const effect of effects) {
+    if (ACTIVE_DAMAGE_EFFECTS.has(effect.k)) {
+      if (!commanded) out.push({ k: 'commandMinions' })
+      commanded = true
+    } else {
+      out.push(clone(effect))
+    }
+  }
+  return out
+}
+
+const ARRAY_COMMAND_CARD_PATCHES: Record<string, Partial<CardDef>> = Object.fromEntries(
+  Object.values(BASE_CARDS)
+    .filter((card) => card.char === 'array' && card.type === 'attack')
+    .map((card) => [card.id, {
+      ...(card.cost === 0 ? { cost: 1, ...(card.upCost === 0 ? { upCost: 1 } : {}) } : {}),
+      effects: commandInsteadOfDamage(card.effects),
+      upEffects: commandInsteadOfDamage(card.upEffects),
+    }]),
+)
+
+export const ARRAY_SUMMON_CORE: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-summon-core',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'ARRAY has lower body HP, deploys layered minions, and commands them instead of dealing direct Attack damage.',
+  cardPatches: {
+    ...ARRAY_COMMAND_CARD_PATCHES,
+    deployturret: {
+      cost: 1,
+      effects: [{ k: 'summonAlly', id: 'ferrodrone' }],
+      upEffects: [{ k: 'summonAlly', id: 'ferroprime' }],
+    },
+    deployplating: {
+      cost: 1,
+      effects: [{ k: 'summonAlly', id: 'bulwarkpod' }],
+      upEffects: [{ k: 'summonAlly', id: 'bulwarkprime' }],
+    },
+  },
+  mechanicsTuning: {
+    characterMaxHpAdjustments: { array: -8 },
+    minions: {
+      stackSameRole: true,
+      maxStacksPerRole: 5,
+      actionPerStack: true,
+      independentBodiesPerStack: true,
+      synergyPerOtherRole: 0,
+      maxSynergyOtherRoles: 20,
+    },
+  },
+}
+
+export const ARRAY_MIXED_SYNERGY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-mixed-synergy',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Each minion layer gains +1 action power for every other role in the formation.',
+  mechanicsTuning: { minions: { synergyPerOtherRole: 1 } },
+}
+
+export const ARRAY_CAPPED_MIXED_SYNERGY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-capped-mixed-synergy',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'A mixed formation grants each minion layer +1 action power, capped at one formation bonus.',
+  mechanicsTuning: { minions: { synergyPerOtherRole: 1, maxSynergyOtherRoles: 1 } },
+}
+
+export const ARRAY_SMOOTH_FOUR_STACKS: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-smooth-four-stacks',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Smooth ARRAY early and late power: -5 Max HP and at most four layers per role.',
+  mechanicsTuning: {
+    characterMaxHpAdjustments: { array: -5 },
+    minions: { maxStacksPerRole: 4 },
+  },
+}
+
+export const ARRAY_SMOOTH_THREE_STACKS: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-smooth-three-stacks',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Stronger smoothing: -3 Max HP and at most three layers per role.',
+  mechanicsTuning: {
+    characterMaxHpAdjustments: { array: -3 },
+    minions: { maxStacksPerRole: 3 },
+  },
+}
+
+export const ARRAY_SHARED_STACK_BODY: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-shared-stack-body',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Layers add actions but share one role HP bar; losing that body removes the whole role stack.',
+  mechanicsTuning: { minions: { independentBodiesPerStack: false } },
+}
+
+export const ARRAY_STARTER_FERRO: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-starter-ferro',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Drone Cradle starts each combat with one base Ferro summon instead of a legacy Turret status.',
+  relicPatches: {
+    dronecradle: { hooks: { combatStatuses: { turret: 0 }, startMinion: 'ferrodrone' } },
+  },
+  relicTextPatches: {
+    dronecradle: {
+      desc: 'Start each combat with one Ferro Drone deployed.',
+      zhDesc: '每场战斗开始时预部署 1 层铁卫无人机。',
+    },
+  },
+}
+
+export const ARRAY_STARTER_FERRO_SEED: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-starter-ferro-seed',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Drone Cradle deploys a weak Ferro Seed that shares the strike role and upgrades into regular Ferro.',
+  relicPatches: {
+    dronecradle: { hooks: { combatStatuses: { turret: 0 }, startMinion: 'ferroseed' } },
+  },
+  relicTextPatches: {
+    dronecradle: {
+      desc: 'Start each combat with one 2-HP Ferro Seed that acts for 1.',
+      zhDesc: '每场战斗开始时预部署 1 层铁卫胚体（2 点生命，行动强度 1）。',
+    },
+  },
+}
+
+export const ARRAY_STARTER_REINFORCED_ROLES: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-starter-reinforced-roles',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Drone Cradle grants +2 HP to each summoned role shared body without pre-deploying an active unit.',
+  relicPatches: {
+    dronecradle: { hooks: { combatStatuses: { turret: 0 }, minionHp: 2 } },
+  },
+  relicTextPatches: {
+    dronecradle: {
+      desc: 'Each summoned role shared body has 2 additional HP.',
+      zhDesc: '每个召唤职能的共享血条额外获得 2 点生命。',
+    },
+  },
+}
+
+export const ARRAY_STARTER_REINFORCED_ROLES_ONE: BalancePatch = {
+  schemaVersion: 1,
+  id: 'array-starter-reinforced-roles-one',
+  version: '0.1.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Drone Cradle grants +1 HP to each summoned role shared body without pre-deploying an active unit.',
+  relicPatches: {
+    dronecradle: { hooks: { combatStatuses: { turret: 0 }, minionHp: 1 } },
+  },
+  relicTextPatches: {
+    dronecradle: {
+      desc: 'Each summoned role shared body has 1 additional HP.',
+      zhDesc: '每个召唤职能的共享血条额外获得 1 点生命。',
+    },
+  },
+}
+
+/**
+ * The promoted result of the 2026-08-01 mechanics study. Keep this as one
+ * release layer: the smaller candidate layers below remain useful for lab
+ * attribution, while production and rollback stay easy to reason about.
+ */
+export const CHARACTER_MECHANICS_V4: BalancePatch = {
+  schemaVersion: 1,
+  id: 'character-mechanics-v4',
+  version: '4.0.0',
+  baseVersion: BALANCE_BASE_VERSION,
+  description: 'Promote Stable GHOST and shared-body, four-layer ARRAY summon mechanics.',
+  cardPatches: {
+    ...ARRAY_COMMAND_CARD_PATCHES,
+    deployturret: {
+      cost: 1,
+      effects: [{ k: 'summonAlly', id: 'ferrodrone' }],
+      upEffects: [{ k: 'summonAlly', id: 'ferroprime' }],
+    },
+    deployplating: {
+      cost: 1,
+      effects: [{ k: 'summonAlly', id: 'bulwarkpod' }],
+      upEffects: [{ k: 'summonAlly', id: 'bulwarkprime' }],
+    },
+  },
+  relicPatches: {
+    phaselocket: { hooks: { combatStatuses: { stancewall: 2 }, stanceSwitchEnergy: 1 } },
+    dronecradle: { hooks: { combatStatuses: { turret: 0 }, minionHp: 1 } },
+  },
+  relicTextPatches: {
+    phaselocket: {
+      desc: 'Start with 2 Stance Wall. Gain 1 Energy after every real stance switch.',
+      zhDesc: '战斗开始时获得 2 层姿态壁垒；每次发生真实姿态切换后，获得 1 点能量。',
+    },
+    dronecradle: {
+      desc: 'Each summoned role shared body has 1 additional HP.',
+      zhDesc: '每个召唤职能的共享血条额外获得 1 点生命。',
+    },
+  },
+  mechanicsTuning: {
+    stance: {
+      stableState: true,
+      stealthExitAfterAttack: true,
+      energyRule: 'every-switch',
+      energyAmount: 0,
+    },
+    characterMaxHpAdjustments: { array: -5 },
+    minions: {
+      stackSameRole: true,
+      maxStacksPerRole: 4,
+      actionPerStack: true,
+      independentBodiesPerStack: false,
+      synergyPerOtherRole: 1,
+      maxSynergyOtherRoles: 1,
+    },
+  },
+}
+
+export const PRODUCTION_BALANCE_STACK: BalanceStack = {
+  id: 'production-v4-mechanics',
+  version: '2.0.0',
+  description: 'Production v3 numbers plus the promoted GHOST and ARRAY mechanics.',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    CHARACTER_MECHANICS_V4,
+  ],
+}
+
+export const GHOST_STABLE_EXIT_STACK: BalanceStack = {
+  id: 'candidate-ghost-stable-exit', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_STABLE_EXIT_ENERGY],
+}
+
+export const GHOST_EVERY_SWITCH_STACK: BalanceStack = {
+  id: 'candidate-ghost-every-switch', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_EVERY_SWITCH_ENERGY],
+}
+
+export const ARRAY_LINEAR_STACK: BalanceStack = {
+  id: 'candidate-array-linear', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, ARRAY_SUMMON_CORE],
+}
+
+export const ARRAY_SYNERGY_STACK: BalanceStack = {
+  id: 'candidate-array-synergy', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, ARRAY_SUMMON_CORE, ARRAY_MIXED_SYNERGY],
+}
+
+export const MECHANICS_STABLE_LINEAR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-stable-linear', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_STABLE_EXIT_ENERGY, ARRAY_SUMMON_CORE],
+}
+
+export const MECHANICS_SWITCH_LINEAR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-switch-linear', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_EVERY_SWITCH_ENERGY, ARRAY_SUMMON_CORE],
+}
+
+export const MECHANICS_STABLE_SYNERGY_STACK: BalanceStack = {
+  id: 'candidate-mechanics-stable-synergy', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_STABLE_EXIT_ENERGY, ARRAY_SUMMON_CORE, ARRAY_MIXED_SYNERGY],
+}
+
+export const MECHANICS_SWITCH_SYNERGY_STACK: BalanceStack = {
+  id: 'candidate-mechanics-switch-synergy', version: '0.1.0',
+  patches: [...PRODUCTION_V3_BALANCE_STACK.patches, GHOST_EVERY_SWITCH_ENERGY, ARRAY_SUMMON_CORE, ARRAY_MIXED_SYNERGY],
+}
+
+export const MECHANICS_SWITCH_SMOOTH_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-switch-smooth4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+  ],
+}
+
+export const MECHANICS_SWITCH_SMOOTH_THREE_STACK: BalanceStack = {
+  id: 'candidate-mechanics-switch-smooth3', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_THREE_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+  ],
+}
+
+export const MECHANICS_SWITCH_SHARED_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-switch-shared4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+    ARRAY_SHARED_STACK_BODY,
+  ],
+}
+
+export const MECHANICS_RELIC_CORE_SHARED_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-relic-core-shared4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    GHOST_RELIC_SWITCH_ENERGY,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+    ARRAY_SHARED_STACK_BODY,
+    ARRAY_STARTER_FERRO,
+  ],
+}
+
+export const MECHANICS_RELIC_SEED_SHARED_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-relic-seed-shared4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    GHOST_RELIC_SWITCH_ENERGY_WALL_TWO,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+    ARRAY_SHARED_STACK_BODY,
+    ARRAY_STARTER_FERRO_SEED,
+  ],
+}
+
+export const MECHANICS_RELIC_REINFORCED_SHARED_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-relic-reinforced-shared4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    GHOST_RELIC_SWITCH_ENERGY_WALL_TWO,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+    ARRAY_SHARED_STACK_BODY,
+    ARRAY_STARTER_REINFORCED_ROLES,
+  ],
+}
+
+export const MECHANICS_RELIC_REINFORCED_ONE_SHARED_FOUR_STACK: BalanceStack = {
+  id: 'candidate-mechanics-relic-reinforced-one-shared4', version: '0.1.0',
+  patches: [
+    ...PRODUCTION_V3_BALANCE_STACK.patches,
+    GHOST_EVERY_SWITCH_ENERGY,
+    GHOST_RELIC_SWITCH_ENERGY_WALL_TWO,
+    ARRAY_SUMMON_CORE,
+    ARRAY_SMOOTH_FOUR_STACKS,
+    ARRAY_CAPPED_MIXED_SYNERGY,
+    ARRAY_SHARED_STACK_BODY,
+    ARRAY_STARTER_REINFORCED_ROLES_ONE,
+  ],
+}
+
 export const BUILTIN_BALANCE_STACKS: Readonly<Record<string, BalanceStack>> = {
   [BASELINE_BALANCE_STACK.id]: BASELINE_BALANCE_STACK,
+  [PRODUCTION_V3_BALANCE_STACK.id]: PRODUCTION_V3_BALANCE_STACK,
   [PRODUCTION_BALANCE_STACK.id]: PRODUCTION_BALANCE_STACK,
+  [GHOST_STABLE_EXIT_STACK.id]: GHOST_STABLE_EXIT_STACK,
+  [GHOST_EVERY_SWITCH_STACK.id]: GHOST_EVERY_SWITCH_STACK,
+  [ARRAY_LINEAR_STACK.id]: ARRAY_LINEAR_STACK,
+  [ARRAY_SYNERGY_STACK.id]: ARRAY_SYNERGY_STACK,
+  [MECHANICS_STABLE_LINEAR_STACK.id]: MECHANICS_STABLE_LINEAR_STACK,
+  [MECHANICS_SWITCH_LINEAR_STACK.id]: MECHANICS_SWITCH_LINEAR_STACK,
+  [MECHANICS_STABLE_SYNERGY_STACK.id]: MECHANICS_STABLE_SYNERGY_STACK,
+  [MECHANICS_SWITCH_SYNERGY_STACK.id]: MECHANICS_SWITCH_SYNERGY_STACK,
+  [MECHANICS_SWITCH_SMOOTH_FOUR_STACK.id]: MECHANICS_SWITCH_SMOOTH_FOUR_STACK,
+  [MECHANICS_SWITCH_SMOOTH_THREE_STACK.id]: MECHANICS_SWITCH_SMOOTH_THREE_STACK,
+  [MECHANICS_SWITCH_SHARED_FOUR_STACK.id]: MECHANICS_SWITCH_SHARED_FOUR_STACK,
+  [MECHANICS_RELIC_CORE_SHARED_FOUR_STACK.id]: MECHANICS_RELIC_CORE_SHARED_FOUR_STACK,
+  [MECHANICS_RELIC_SEED_SHARED_FOUR_STACK.id]: MECHANICS_RELIC_SEED_SHARED_FOUR_STACK,
+  [MECHANICS_RELIC_REINFORCED_SHARED_FOUR_STACK.id]: MECHANICS_RELIC_REINFORCED_SHARED_FOUR_STACK,
+  [MECHANICS_RELIC_REINFORCED_ONE_SHARED_FOUR_STACK.id]: MECHANICS_RELIC_REINFORCED_ONE_SHARED_FOUR_STACK,
 }
 
 let activeInfo: ActiveBalanceInfo = {
@@ -337,6 +855,7 @@ export function activateBalanceStack(stackOrId: BalanceStack | string): Readonly
   commitCatalog(RELICS, resolved.relics)
   commitCatalog(RELIC_ZH, resolved.relicZh)
   configureAscensionTuning(resolved.ascensionTuning)
+  configureMechanicsTuning(resolved.mechanicsTuning)
   activeInfo = Object.freeze({ ...resolved.info, patchIds: Object.freeze([...resolved.info.patchIds]) })
   return activeInfo
 }

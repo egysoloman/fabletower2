@@ -47,6 +47,12 @@ test('cheats default off, require an admin grant, and sessions can be validated'
     const updatedSession = await request('/api/session', { headers: auth })
     assert.equal(updatedSession.body.cheatsEnabled, true)
 
+    await request('/api/admin/cheats', {
+      method: 'POST',
+      headers: { 'x-admin-key': 'test-admin-key' },
+      body: JSON.stringify({ user: 'runner', enabled: false }),
+    })
+
     const history = [
       { d: Date.now(), seed: 11, asc: 0, act: 2, floor: 12, win: false, sc: 220, ch: 'runner', arch: 'runner-tempo', deck: 16, up: 3, relics: 2 },
       { d: Date.now() - 1000, seed: 12, asc: 1, act: 3, floor: 24, win: true, sc: 620, ch: 'vector', arch: 'vector-vent', deck: 18, up: 5, relics: 4 },
@@ -62,6 +68,16 @@ test('cheats default off, require an admin grant, and sessions can be validated'
     assert.equal(balance.body.accountsWithHistory, 1)
     assert.deepEqual(balance.body.byChar.map((r: any) => [r.id, r.runs]), [['runner', 1], ['vector', 1]])
     assert.equal(balance.body.byArchetype[0].runs, 1)
+    assert.equal(balance.body.source, 'cloud-player-history')
+
+    await request('/api/admin/cheats', {
+      method: 'POST',
+      headers: { 'x-admin-key': 'test-admin-key' },
+      body: JSON.stringify({ user: 'runner', enabled: true }),
+    })
+    const filtered = await request('/api/admin/balance', { headers: { 'x-admin-key': 'test-admin-key' } })
+    assert.equal(filtered.body.runs, 0)
+    assert.equal(filtered.body.excludedAccounts, 1)
 
     await request('/api/admin/reset', {
       method: 'POST',

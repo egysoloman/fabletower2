@@ -359,6 +359,7 @@ export const CARD_ZH: Record<string, { name: string; flavor?: string }> = {
 }
 
 export const MINION_ZH: Record<string, { name: string }> = {
+  ferroseed: { name: '铁卫胚体' },
   ferrodrone: { name: '铁噬无人机' },
   ferroprime: { name: '铁噬至尊' },
   bulwarkpod: { name: '壁垒吊舱' },
@@ -428,8 +429,9 @@ export const STATUS_ZH: Record<StatusId, { name: string; desc: string; powerText
   ignition: { name: '点火', desc: '回合结束时获得 {n} 点高热。', powerText: '你的回合结束时，获得 {n} 点高热。' },
   reactor: { name: '反应堆', desc: '过热不再伤害你，而是对所有敌人造成该伤害。', powerText: '过热不再伤害你——改为对所有敌人造成该伤害。' },
   artifact: { name: '人工制品', desc: '抵消接下来 {n} 次减益。', powerText: '获得 {n} 层人工制品：每层抵消下一次施加于你的减益。' },
+  stable: { name: '稳定', desc: '中性姿态。从其他姿态退出时回到稳定。' },
   overdrive: { name: '超载', desc: '姿态：攻击伤害提高 50%，但你受到的攻击伤害也提高 50%。' },
-  stealth: { name: '潜行', desc: '姿态：你受到的攻击伤害减半。离开时获得 2 点能量。' },
+  stealth: { name: '潜行', desc: '姿态：你受到的攻击伤害减半。打出攻击牌会退出潜行。' },
   stancewall: { name: '姿态壁垒', desc: '每当你进入姿态，获得 {n} 点格挡。', powerText: '每当你进入一个姿态，获得 {n} 点格挡。' },
   momentum: { name: '动量', desc: '每当你进入超载，获得 {n} 点力量。', powerText: '每当你进入超载，获得 {n} 点力量。' },
   tempoloop: { name: '节奏循环', desc: '每当你进入姿态，抽 {n} 张牌。', powerText: '每当你进入一个姿态，抽 {n} 张牌。' },

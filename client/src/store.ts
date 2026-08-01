@@ -39,6 +39,8 @@ export interface RewardBundle {
 export interface PickerRequest {
   title: string
   cancellable: boolean
+  /** Show a compact before/after rules diff for upgrade choices. */
+  showUpgradeDiff?: boolean
   /** Show only matching deck cards. */
   filter?: (c: CardInst) => boolean
   onPick: (uid: number) => void

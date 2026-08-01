@@ -5,7 +5,7 @@
  * size. Runs on the server (authoritative) and solo-tested in the engine
  * suite; there is no hidden information in co-op, so views are the state.
  */
-import type { CardInst, CombatState, DeckSide, EnemyC, GameEvent, MoveEffect, StepResult } from './types'
+import type { CardInst, CharId, CombatState, DeckSide, EnemyC, GameEvent, MoveEffect, StepResult } from './types'
 import { DEBUFFS } from './types'
 import { CARDS } from './cards'
 import { POTIONS } from './potions'
@@ -24,11 +24,11 @@ import {
   modifiedDamage,
   playCardFromHand,
   refillSide,
+  summonMinion,
   tickTurnEnd,
   tickTurnStart,
 } from './core'
 import { randInt, rngFromSeed, type Rng } from './rng'
-import { MAX_MINIONS, MINIONS } from './minions'
 
 export const MAX_PARTY = 4
 
@@ -39,6 +39,7 @@ export function coopScale(n: number): { hp: number; atk: number } {
 
 export interface CoopPlayerOpts {
   name: string
+  char?: CharId
   hp: number
   maxHp: number
   deck: CardInst[]
@@ -97,7 +98,7 @@ export function startCoopCombat(opts: {
   const asc = opts.asc ?? 0
   const act = opts.act ?? 1
 
-  const players = opts.players.map((p) => makeSide(p.name, p.hp, p.maxHp, p.deck.map((c) => ({ ...c })), rng))
+  const players = opts.players.map((p) => makeSide(p.name, p.hp, p.maxHp, p.deck.map((c) => ({ ...c })), rng, p.char))
   const playerRelics = opts.players.map((p) => [...p.relics])
   // Per-player relic starts (block/statuses); enemy starts sum over the party.
   const enemyStart: Record<string, number> = {}
@@ -113,12 +114,7 @@ export function startCoopCombat(opts: {
       const blk = RELICS[rid]?.hooks.combatStartBlock
       if (blk) side.block += blk
       const sm = RELICS[rid]?.hooks.startMinion
-      if (sm) {
-        const mdef = MINIONS[sm]
-        if (mdef && side.minions.length < MAX_MINIONS) {
-          side.minions.push({ defId: mdef.id, hp: mdef.hp, maxHp: mdef.hp })
-        }
-      }
+      if (sm) summonMinion(side, sm)
       const st = RELICS[rid]?.hooks.combatStartEnemyStatuses
       if (st) for (const [k, v] of Object.entries(st)) enemyStart[k] = (enemyStart[k] ?? 0) + (v ?? 0)
     }

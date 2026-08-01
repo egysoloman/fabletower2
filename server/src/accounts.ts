@@ -199,7 +199,11 @@ function telemetrySummary(runs: TelemetryRun[]) {
 }
 
 function balanceTelemetry() {
-  const accounts = Object.values(db.accounts)
+  // Balance decisions must use genuine player runs only. Accounts with admin
+  // cheats enabled (or banned accounts) are deliberately excluded so a debug
+  // session cannot distort win rates, floors, or archetype performance.
+  const allAccounts = Object.values(db.accounts)
+  const accounts = allAccounts.filter((account) => !account.banned && !account.cheatsEnabled)
   const perAccount = accounts.map((account) => accountRuns(account))
   const runs = perAccount.flat()
   const group = <K extends string | number>(key: (run: TelemetryRun) => K) => {
@@ -209,6 +213,10 @@ function balanceTelemetry() {
   }
   return {
     generatedAt: Date.now(),
+    source: 'cloud-player-history',
+    eligibleAccounts: accounts.length,
+    excludedAccounts: allAccounts.length - accounts.length,
+    retentionPerAccount: 100,
     accountsWithHistory: perAccount.filter((list) => list.length > 0).length,
     ...telemetrySummary(runs),
     recent30d: telemetrySummary(runs.filter((r) => r.d >= Date.now() - 30 * 864e5)),

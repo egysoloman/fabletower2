@@ -1,0 +1,22 @@
+[
+  {
+    "name": "baseline",
+    "balanceStack": "production-v3-enemy-hp-95"
+  },
+  {
+    "name": "stable_exit_linear",
+    "balanceStack": "candidate-mechanics-stable-linear"
+  },
+  {
+    "name": "every_switch_linear",
+    "balanceStack": "candidate-mechanics-switch-linear"
+  },
+  {
+    "name": "stable_exit_synergy",
+    "balanceStack": "candidate-mechanics-stable-synergy"
+  },
+  {
+    "name": "every_switch_synergy",
+    "balanceStack": "candidate-mechanics-switch-synergy"
+  }
+]

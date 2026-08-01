@@ -1,6 +1,7 @@
 /** PvE combat: player vs AI-driven enemies. Thin reducer over core.ts. */
 import type {
   CardInst,
+  CharId,
   CombatAction,
   CombatState,
   EnemyC,
@@ -12,7 +13,6 @@ import { DEBUFFS } from './types'
 import { CARDS, cardCost } from './cards'
 import { ENEMIES, MAX_ALIVE_ENEMIES, actEnemyScale, ascAtk, chooseMove, intentFor } from './enemies'
 import { POTIONS } from './potions'
-import { MAX_MINIONS, MINIONS } from './minions'
 import { RELICS } from './relics'
 import { ascensionEliteBossArtifact, ascensionEliteBossStrength, ascensionEnemyHp } from './ascension'
 import {
@@ -27,6 +27,7 @@ import {
   makeSide,
   playCardFromHand,
   refillSide,
+  summonMinion,
   tickTurnEnd,
   tickTurnStart,
 } from './core'
@@ -46,11 +47,13 @@ export interface StartCombatOpts {
   kind?: 'normal' | 'elite' | 'boss'
   /** Act (1-4): multiplies enemy HP/damage via actEnemyScale. */
   act?: number
+  /** Character is used only for character-specific combat mechanics. */
+  char?: CharId
 }
 
 export function startCombat(o: StartCombatOpts): CombatState {
   const rng = rngFromSeed(o.seed)
-  const player = makeSide('RUNNER', o.hp, o.maxHp, o.deck.map((c) => ({ ...c })), rng)
+  const player = makeSide('RUNNER', o.hp, o.maxHp, o.deck.map((c) => ({ ...c })), rng, o.char)
 
   const enemyStart: Record<string, number> = {}
   for (const rid of o.relics) {
@@ -64,12 +67,7 @@ export function startCombat(o: StartCombatOpts): CombatState {
     const blk = RELICS[rid]?.hooks.combatStartBlock
     if (blk) player.block += blk
     const sm = RELICS[rid]?.hooks.startMinion
-    if (sm && ENEMIES) {
-      const mdef = MINIONS[sm]
-      if (mdef && player.minions.length < MAX_MINIONS) {
-        player.minions.push({ defId: mdef.id, hp: mdef.hp, maxHp: mdef.hp })
-      }
-    }
+    if (sm) summonMinion(player, sm)
   }
 
   const asc = o.asc ?? 0

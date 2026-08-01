@@ -12,6 +12,8 @@ export const MAX_MINIONS = 3
 export interface MinionDef {
   id: string
   name: string
+  /** Variants with the same role (for example Ferro and Ferro Prime) stack. */
+  role: 'strike' | 'guard' | 'infect' | 'burn'
   /** Client sprite/glyph key. */
   sym: string
   hp: number
@@ -29,18 +31,19 @@ function reg(def: MinionDef) {
   MINIONS[def.id] = def
 }
 
-reg(M({ id: 'ferrodrone', name: 'Ferro Drone', sym: '⚙', hp: 6, act: { k: 'strike', n: 4 } }))
-reg(M({ id: 'ferroprime', name: 'Ferro Prime', sym: '⚙', hp: 9, act: { k: 'strike', n: 6 } }))
-reg(M({ id: 'bulwarkpod', name: 'Bulwark Pod', sym: '⛨', hp: 8, act: { k: 'guard', n: 3 } }))
-reg(M({ id: 'bulwarkprime', name: 'Bulwark Prime', sym: '⛨', hp: 11, act: { k: 'guard', n: 5 } }))
-reg(M({ id: 'sporemite', name: 'Spore Mite', sym: '☣', hp: 5, act: { k: 'infect', n: 1 } }))
-reg(M({ id: 'sporeprime', name: 'Spore Prime', sym: '☣', hp: 7, act: { k: 'infect', n: 2 } }))
-reg(M({ id: 'proxyworm', name: 'Proxy Worm', sym: '∿', hp: 5, act: { k: 'infect', n: 1 } }))
-reg(M({ id: 'proxyhydra', name: 'Proxy Hydra', sym: '∿', hp: 8, act: { k: 'infect', n: 2 } }))
-reg(M({ id: 'cinderimp', name: 'Cinder Imp', sym: '♨', hp: 6, act: { k: 'burn', n: 5 } }))
-reg(M({ id: 'cinderfiend', name: 'Cinder Fiend', sym: '♨', hp: 9, act: { k: 'burn', n: 7 } }))
-reg(M({ id: 'duskshade', name: 'Dusk Shade', sym: '⌇', hp: 3, act: { k: 'strike', n: 7 } }))
-reg(M({ id: 'duskwraith', name: 'Dusk Wraith', sym: '⌇', hp: 5, act: { k: 'strike', n: 10 } }))
+reg(M({ id: 'ferroseed', name: 'Ferro Seed', role: 'strike', sym: '·', hp: 2, act: { k: 'strike', n: 1 } }))
+reg(M({ id: 'ferrodrone', name: 'Ferro Drone', role: 'strike', sym: '⚙', hp: 6, act: { k: 'strike', n: 4 } }))
+reg(M({ id: 'ferroprime', name: 'Ferro Prime', role: 'strike', sym: '⚙', hp: 9, act: { k: 'strike', n: 6 } }))
+reg(M({ id: 'bulwarkpod', name: 'Bulwark Pod', role: 'guard', sym: '⛨', hp: 8, act: { k: 'guard', n: 3 } }))
+reg(M({ id: 'bulwarkprime', name: 'Bulwark Prime', role: 'guard', sym: '⛨', hp: 11, act: { k: 'guard', n: 5 } }))
+reg(M({ id: 'sporemite', name: 'Spore Mite', role: 'infect', sym: '☣', hp: 5, act: { k: 'infect', n: 1 } }))
+reg(M({ id: 'sporeprime', name: 'Spore Prime', role: 'infect', sym: '☣', hp: 7, act: { k: 'infect', n: 2 } }))
+reg(M({ id: 'proxyworm', name: 'Proxy Worm', role: 'infect', sym: '∿', hp: 5, act: { k: 'infect', n: 1 } }))
+reg(M({ id: 'proxyhydra', name: 'Proxy Hydra', role: 'infect', sym: '∿', hp: 8, act: { k: 'infect', n: 2 } }))
+reg(M({ id: 'cinderimp', name: 'Cinder Imp', role: 'burn', sym: '♨', hp: 6, act: { k: 'burn', n: 5 } }))
+reg(M({ id: 'cinderfiend', name: 'Cinder Fiend', role: 'burn', sym: '♨', hp: 9, act: { k: 'burn', n: 7 } }))
+reg(M({ id: 'duskshade', name: 'Dusk Shade', role: 'strike', sym: '⌇', hp: 3, act: { k: 'strike', n: 7 } }))
+reg(M({ id: 'duskwraith', name: 'Dusk Wraith', role: 'strike', sym: '⌇', hp: 5, act: { k: 'strike', n: 10 } }))
 
 export function minionName(id: string): string {
   return isZh() ? (MINION_ZH[id]?.name ?? MINIONS[id]?.name ?? id) : (MINIONS[id]?.name ?? id)

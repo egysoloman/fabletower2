@@ -1,0 +1,10 @@
+[
+  {
+    "name": "baseline",
+    "balanceStack": "production-v3-enemy-hp-95"
+  },
+  {
+    "name": "relic_reinforced_one_shared4",
+    "balanceStack": "candidate-mechanics-relic-reinforced-one-shared4"
+  }
+]

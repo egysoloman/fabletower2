@@ -41,6 +41,15 @@ def main() -> None:
         raise SystemExit(f"no style-*/final.pt under {checkpoint_root}")
     jobs = [(ckpt, config) for config in config_paths for ckpt in checkpoints]
 
+    # A parent process may expose only a physical GPU subset (for example
+    # CUDA_VISIBLE_DEVICES=4,5,6,7). Preserve that mapping instead of resetting
+    # every child to physical devices 0..N, which would make concurrent sweeps
+    # collide on the first GPU group and leave the second group idle.
+    visible = [item.strip() for item in os.environ.get("CUDA_VISIBLE_DEVICES", "").split(",") if item.strip()]
+    gpu_ids = visible if visible else [str(gpu) for gpu in range(args.gpus)]
+    if args.gpus > len(gpu_ids):
+        raise SystemExit(f"requested {args.gpus} GPUs but only {len(gpu_ids)} are visible")
+
     job_lock = threading.Lock()
     pending = list(jobs)
 
@@ -48,7 +57,7 @@ def main() -> None:
         style = ckpt.parent.name
         target = output / config.stem / style
         env = os.environ.copy()
-        env["CUDA_VISIBLE_DEVICES"] = str(gpu)
+        env["CUDA_VISIBLE_DEVICES"] = gpu_ids[gpu]
         cmd = [
             sys.executable, str(HERE / "evaluate.py"), "--checkpoint", str(ckpt),
             "--config", str(config), "--output", str(target), "--episodes", str(args.episodes),

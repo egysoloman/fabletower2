@@ -32,6 +32,7 @@ def args_parser() -> argparse.Namespace:
     p.add_argument("--clip", type=float, default=0.2)
     p.add_argument("--entropy", type=float, default=0.01)
     p.add_argument("--config", default=None)
+    p.add_argument("--resume", default=None, help="warm-start model and optimizer from a compatible checkpoint")
     p.add_argument("--device", default="cuda")
     p.add_argument("--save-every", type=int, default=10)
     return p.parse_args()
@@ -73,6 +74,18 @@ def main() -> None:
     )
     model = EntityActorCritic(pool.global_dim, pool.action_dim, pool.action_feat_dim).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-5)
+    if args.resume:
+        payload = torch.load(args.resume, map_location="cpu", weights_only=False)
+        meta = payload["meta"]
+        expected = (pool.global_dim, pool.action_dim, pool.action_feat_dim)
+        found = (int(meta["globalDim"]), int(meta["actionDim"]), int(meta["actionFeatDim"]))
+        if found != expected:
+            raise ValueError(f"resume checkpoint dimensions {found} do not match environment {expected}")
+        model.load_state_dict(payload["model"])
+        if "optimizer" in payload:
+            optimizer.load_state_dict(payload["optimizer"])
+            for group in optimizer.param_groups:
+                group["lr"] = args.lr
     frame = pool.frame
     deadline = time.monotonic() + args.minutes * 60
     update = 0

@@ -74,6 +74,12 @@ tail -f /opt/neonspire-rl/results/run-01/style-0/train.log
 - `enemyHpMultiplier`、`enemyAttackMultiplier`：全体敌人的测试倍率；
 - `playerMaxHpMultiplier`、`startingGoldMultiplier`：全局玩家参数；
 - `cardPatches`、`enemyPatches`、`relicPatches`：按稳定 id 深合并；数组（例如 `effects`、`hp`）整体替换。
+- `mechanicsTuning`：姿态回能、潜行退出、召唤叠层/协同和角色生命修正；
+- `balanceStack`：直接选择引擎内置的完整版本化候选栈，避免 JSON 重复机制补丁。
+
+机制候选示例见 `configs/mechanics-candidates-20260801.json`。旧 checkpoint
+兼容要求新增观测特征只能追加，不能插入既有特征中间；当前 `Stable` 已追加在
+状态向量末尾，原有特征索引保持不变。
 
 单独重跑候选评估：
 
