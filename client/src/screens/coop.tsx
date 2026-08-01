@@ -534,12 +534,12 @@ export function CoopScreen() {
   const m = coopMap.value
   const activeRun = ['map', 'shop', 'event', 'rest', 'reward', 'waiting'].includes(phase)
   return (
-    <div class={`screen menu ${activeRun ? 'coop-run-screen' : ''}`}>
+    <div class={`screen menu ${activeRun ? 'coop-run-screen' : ''} ${phase === 'map' ? 'coop-map-screen' : ''}`}>
       {activeRun && <CoopInventoryBar />}
       <div class="logo" style={{ fontSize: 'clamp(28px,5vw,46px)' }}>
         CO<span>OP</span>
       </div>
-      <div class="pvp-status">
+      <div class={`pvp-status ${phase === 'map' ? 'coop-map-status' : ''}`}>
         {phase === 'idle' && (
           <>
             <div class="sub" style={{ maxWidth: '460px', textAlign: 'center', lineHeight: 1.6 }}>{t('coopIntro')}</div>

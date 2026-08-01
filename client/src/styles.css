@@ -1651,16 +1651,35 @@ input.neon:focus { border-color: var(--cyan); box-shadow: 0 0 12px rgba(0, 229, 
   gap: 10px;
   padding-top: 0;
 }
+.menu.coop-map-screen { overflow: hidden; }
 .coop-run-screen .coop-inventory-bar {
   flex: 0 0 auto;
   position: sticky;
   top: 0;
 }
-.coop-run-screen .coopmapwrap {
-  flex: 0 0 auto;
-  /* MapView's SVG is intentionally tall; keep enough height that the first
-   * selectable row is never clipped by the centered map container. */
-  height: min(78vh, 585px);
+.coop-run-screen > .logo { flex: 0 0 auto; }
+.coop-run-screen > .pvp-status {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+}
+.coop-run-screen > .coop-map-status {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  justify-items: center;
+  gap: 8px;
+}
+.coop-map-status .coopmapwrap {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.coop-map-status .coopmapwrap .mapsvg {
+  width: auto;
+  height: 100%;
+  max-width: min(92vw, 720px);
+  max-height: 100%;
 }
 .combat .arena { position: relative; }
 .coop-action-stack {
