@@ -16,6 +16,7 @@ import { t } from '../i18n'
 
 /** 'target' while dragging an enemy-targeted card, 'zone' otherwise. */
 export const dragMode = signal<null | 'target' | 'zone'>(null)
+export const dragTargetKind = signal<null | 'enemy' | 'ally'>(null)
 /** Anchor id ('e0', 'p1', …) the drag is currently snapped to. */
 export const dragHoverWho = signal<string | null>(null)
 
@@ -59,6 +60,8 @@ export interface DraggableHandProps {
   playable: Set<number>
   /** Anchor ids of valid drop targets for enemy-targeted cards. */
   targets: string[]
+  /** Co-op party anchors; when present, ally cards use explicit targeting. */
+  allyTargets?: string[]
   /** targetWho is set when dropped on (or resolved to) a specific target. */
   onPlay: (idx: number, targetWho: string | undefined, from: { x: number; y: number }) => void
   /** Quick tap fallback (classic click-to-play / select). */
@@ -84,6 +87,7 @@ export function DraggableHand(props: DraggableHandProps) {
     // window pointerup safety net) can't double-handle this drag.
     dragRef.current = null
     dragMode.value = null
+    dragTargetKind.value = null
     dragHoverWho.value = null
     setDrag(null)
   }
@@ -151,11 +155,15 @@ export function DraggableHand(props: DraggableHandProps) {
         if (Math.hypot(e.clientX - d.startX, e.clientY - d.startY) <= DRAG_THRESHOLD) return d
         active = true
         const card = p.cards.find((c) => c.uid === d.uid)
-        dragMode.value = card && CARDS[card.id].target === 'enemy' ? 'target' : 'zone'
+        const target = card ? CARDS[card.id].target : 'none'
+        dragMode.value = target === 'enemy' || (target === 'ally' && p.allyTargets !== undefined) ? 'target' : 'zone'
+        dragTargetKind.value = target === 'enemy' || target === 'ally' ? target : null
       }
       if (active && dragMode.value === 'target') {
+        const card = p.cards.find((c) => c.uid === d.uid)
+        const candidates = card && CARDS[card.id].target === 'ally' ? (p.allyTargets ?? []) : p.targets
         let hover: string | null = null
-        for (const who of p.targets) {
+        for (const who of candidates) {
           const b = anchorBox(who)
           if (
             b &&
@@ -228,6 +236,7 @@ export function DraggableHand(props: DraggableHandProps) {
     () => () => {
       dragRef.current = null
       dragMode.value = null
+      dragTargetKind.value = null
       dragHoverWho.value = null
     },
     [],

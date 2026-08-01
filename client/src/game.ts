@@ -503,8 +503,8 @@ export function discardPotion(i: number) {
 // --- Climb race --------------------------------------------------------------
 
 /** Both racers climb the SAME seed; character is chosen at queue time. */
-export function startClimbRun(seed: number, char: import('@neonspire/engine').CharId) {
-  newGame(seed, 0, char)
+export function startClimbRun(seed: number, asc: number, char: import('@neonspire/engine').CharId) {
+  newGame(seed, asc, char)
 }
 
 /** Race resolved by the final checkpoint or a forfeit: finish the solo run. */

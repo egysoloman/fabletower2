@@ -4,8 +4,8 @@
  * server sends back (opponent hand stays hidden).
  */
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { CARDS, cardName, cardRetains, predictPvpPlay, previewCard, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
-import { BlockChip, HpBar, StatusRow, byName } from '../components'
+import { CARDS, PVP_DRAFT_SIZE, cardName, cardRetains, obtainableCards, predictPvpPlay, previewCard, pvpChecksum, type CharId, type GameEvent, type MpMode, type PvpAction, type PvpView } from '@neonspire/engine'
+import { BlockChip, CardView, HpBar, StatusRow, byName } from '../components'
 import { charColor, lastChar } from './charselect'
 import { CharPickButton, CharSelectPage, EmotePanel, MpConnect, queueIdentity, showIncomingEmote } from './mpsetup'
 import { mpName, mpWsUrl } from '../mp'
@@ -31,6 +31,20 @@ import { HandDrawFlights, sweepHandToDiscard } from './pilefx'
 
 type Phase = 'setup' | 'connecting' | 'queued' | 'playing' | 'over' | 'error'
 
+const rarityRank = { common: 0, uncommon: 1, rare: 2 } as const
+
+function duelPool(char: CharId) {
+  return obtainableCards(char).sort((a, b) => {
+    const charOrder = Number(b.char === char) - Number(a.char === char)
+    if (charOrder) return charOrder
+    return rarityRank[a.rarity as keyof typeof rarityRank] - rarityRank[b.rarity as keyof typeof rarityRank]
+  })
+}
+
+function recommendedDuelDraft(char: CharId): string[] {
+  return duelPool(char).slice(0, PVP_DRAFT_SIZE).map((card) => card.id)
+}
+
 /** Lobby badge: fetches the server's current mode for display. */
 function ModeBadgeFetch() {
   const [m, setM] = useState<string | null>(null)
@@ -48,6 +62,8 @@ function ModeBadgeFetch() {
 export function PvpScreen() {
   const [char, setChar] = useState<CharId>(lastChar())
   const [picking, setPicking] = useState(false)
+  const [draftOpen, setDraftOpen] = useState(false)
+  const [draft, setDraft] = useState<string[]>(() => recommendedDuelDraft(char))
   const [chars, setChars] = useState<CharId[]>(['runner', 'runner'])
   const [phase, setPhase] = useState<Phase>('setup')
   const [view, setView] = useState<PvpView | null>(null)
@@ -184,8 +200,12 @@ export function PvpScreen() {
   }
 
   const connect = () => {
+    if (draft.length !== PVP_DRAFT_SIZE) {
+      setDraftOpen(true)
+      return
+    }
     setPhase('connecting')
-    openSocket((sock) => sock.send(JSON.stringify({ t: 'queue', name: mpName(), char, ...queueIdentity() })))
+    openSocket((sock) => sock.send(JSON.stringify({ t: 'queue', name: mpName(), char, draft, ...queueIdentity() })))
   }
 
   useEffect(
@@ -252,7 +272,57 @@ export function PvpScreen() {
 
   if (phase !== 'playing' && phase !== 'over') {
     if (picking && phase === 'setup') {
-      return <CharSelectPage value={char} onChange={setChar} onDone={() => setPicking(false)} />
+      return (
+        <CharSelectPage
+          value={char}
+          onChange={(next) => {
+            setChar(next)
+            setDraft(recommendedDuelDraft(next))
+          }}
+          onDone={() => setPicking(false)}
+        />
+      )
+    }
+    if (draftOpen && phase === 'setup') {
+      const pool = duelPool(char)
+      const full = draft.length >= PVP_DRAFT_SIZE
+      const toggleDraft = (id: string) => {
+        setDraft((current) =>
+          current.includes(id)
+            ? current.filter((pick) => pick !== id)
+            : current.length < PVP_DRAFT_SIZE
+              ? [...current, id]
+              : current,
+        )
+      }
+      return (
+        <div class="screen menu pvp-draft-screen">
+          <div class="panel pvp-draft-panel">
+            <h2>{t('duelDraftTitle')}</h2>
+            <div class="sub">{t('duelDraftDesc')}</div>
+            <div class={`duel-draft-count ${full ? 'ready' : ''}`}>
+              {tf('duelDraftCount', { n: draft.length, max: PVP_DRAFT_SIZE })}
+            </div>
+            <div class="gridcards duel-draft-grid">
+              {pool.map((def, i) => {
+                const selected = draft.includes(def.id)
+                return (
+                  <CardView
+                    key={def.id}
+                    card={{ uid: i + 1, id: def.id, up: false }}
+                    cls={`picker-card duel-draft-card ${selected ? 'selected' : full ? 'unavailable' : ''}`}
+                    onClick={() => toggleDraft(def.id)}
+                  />
+                )
+              })}
+            </div>
+            <div class="duel-draft-actions">
+              <button class="btn ghost" onClick={() => setDraft(recommendedDuelDraft(char))}>{t('duelDraftReset')}</button>
+              <button class="btn pink" disabled={!full} onClick={() => setDraftOpen(false)}>{t('charConfirm')}</button>
+            </div>
+          </div>
+        </div>
+      )
     }
     return (
       <div class="screen menu">
@@ -263,8 +333,16 @@ export function PvpScreen() {
           {phase === 'setup' && (
             <>
               <CharPickButton char={char} onOpen={() => setPicking(true)} />
+              <button class="btn ghost duel-draft-open" onClick={() => setDraftOpen(true)}>
+                {tf('duelDraftButton', { n: draft.length, max: PVP_DRAFT_SIZE })}
+              </button>
+              <div class="duel-draft-summary">
+                <b>{t('duelStarterDeck')}</b>
+                <span>+</span>
+                <span>{draft.map((id) => cardName({ uid: 0, id, up: false })).join(' · ')}</span>
+              </div>
               <MpConnect />
-              <button class="btn big pink" onClick={connect}>
+              <button class="btn big pink" disabled={draft.length !== PVP_DRAFT_SIZE} onClick={connect}>
                 {t('findOpponent')}
               </button>
             </>
